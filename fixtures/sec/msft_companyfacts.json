@@ -1,0 +1,38 @@
+{
+  "fixture_version": "1.0.0",
+  "description": "Normalized Microsoft Corporation annual revenue facts from its FY2024 10-K.",
+  "source": {
+    "company_name": "Microsoft Corporation",
+    "cik": "0000789019",
+    "company_facts_url": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000789019.json",
+    "source_payload_sha256": "352bbb036cbf65b74e126bb7ac040d2a8f9538dc0a85a0363a9a28a22039c4c3",
+    "retrieved_at": "2026-07-28",
+    "concept": "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax"
+  },
+  "evidence": [
+    {
+      "evidence_id": "msft-revenue-fy2023",
+      "entity_cik": "0000789019",
+      "metric": "revenue",
+      "value": "211915000000",
+      "unit": "USD",
+      "period_start": "2022-07-01",
+      "period_end": "2023-06-30",
+      "accession": "0000950170-24-087843",
+      "filed_at": "2024-07-30",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/789019/000095017024087843/msft-20240630.htm"
+    },
+    {
+      "evidence_id": "msft-revenue-fy2024",
+      "entity_cik": "0000789019",
+      "metric": "revenue",
+      "value": "245122000000",
+      "unit": "USD",
+      "period_start": "2023-07-01",
+      "period_end": "2024-06-30",
+      "accession": "0000950170-24-087843",
+      "filed_at": "2024-07-30",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/789019/000095017024087843/msft-20240630.htm"
+    }
+  ]
+}

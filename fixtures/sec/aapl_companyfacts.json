@@ -1,0 +1,38 @@
+{
+  "fixture_version": "1.0.0",
+  "description": "Normalized Apple Inc. annual revenue facts from its FY2024 10-K.",
+  "source": {
+    "company_name": "Apple Inc.",
+    "cik": "0000320193",
+    "company_facts_url": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json",
+    "source_payload_sha256": "31f9ab4398402faabc733178497af89dbf94dd5038c6e36d4c894317de8a4647",
+    "retrieved_at": "2026-07-28",
+    "concept": "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax"
+  },
+  "evidence": [
+    {
+      "evidence_id": "aapl-revenue-fy2023",
+      "entity_cik": "0000320193",
+      "metric": "revenue",
+      "value": "383285000000",
+      "unit": "USD",
+      "period_start": "2022-09-25",
+      "period_end": "2023-09-30",
+      "accession": "0000320193-24-000123",
+      "filed_at": "2024-11-01",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/320193/000032019324000123/aapl-20240928.htm"
+    },
+    {
+      "evidence_id": "aapl-revenue-fy2024",
+      "entity_cik": "0000320193",
+      "metric": "revenue",
+      "value": "391035000000",
+      "unit": "USD",
+      "period_start": "2023-10-01",
+      "period_end": "2024-09-28",
+      "accession": "0000320193-24-000123",
+      "filed_at": "2024-11-01",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/320193/000032019324000123/aapl-20240928.htm"
+    }
+  ]
+}

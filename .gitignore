@@ -27,3 +27,8 @@ quantify_spec.md
 
 # macOS AppleDouble metadata
 ._*
+
+# Python generated files
+__pycache__/
+*.py[cod]
+.pytest_cache/
