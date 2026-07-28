@@ -12,6 +12,7 @@ from quantify.engine import (
     EvidenceSnapshot,
     EvidenceValue,
     RestatementPolicy,
+    SourceType,
     MetricThresholdClaim,
     Relation,
     VerificationOutcome,
@@ -51,7 +52,9 @@ def test_snapshot_rejects_unresolved_eligible_restatements(
 ) -> None:
     with pytest.raises(ValueError, match="unresolved eligible facts"):
         EvidenceSnapshot.freeze(
-            snapshot_id="invalid-unresolved-restatement", evidence=quantum_evidence
+            snapshot_id="invalid-unresolved-restatement",
+            evidence=quantum_evidence,
+            source_type=SourceType.SEC_COMPANY_FACTS,
         )
 
 
@@ -63,6 +66,7 @@ def test_latest_available_policy_selects_restated_facts(
         evidence=quantum_evidence,
         policy=RestatementPolicy.LATEST_AVAILABLE_AT_CUTOFF,
         as_of_date=date(2024, 6, 28),
+        source_type=SourceType.SEC_COMPANY_FACTS,
     )
 
     assert tuple(item.evidence_id for item in snapshot.evidence) == (
@@ -88,6 +92,7 @@ def test_as_filed_policy_preserves_original_facts(
         evidence=tuple(reversed(quantum_evidence)),
         policy=RestatementPolicy.AS_FILED_AT_CUTOFF,
         as_of_date=date(2024, 6, 28),
+        source_type=SourceType.SEC_COMPANY_FACTS,
     )
 
     assert tuple(item.evidence_id for item in snapshot.evidence) == (
@@ -108,6 +113,7 @@ def test_cutoff_excludes_later_restatement(
         evidence=quantum_evidence,
         policy=RestatementPolicy.LATEST_AVAILABLE_AT_CUTOFF,
         as_of_date=date(2023, 12, 31),
+        source_type=SourceType.SEC_COMPANY_FACTS,
     )
 
     assert tuple(item.evidence_id for item in snapshot.evidence) == (
@@ -128,6 +134,7 @@ def test_policy_selected_snapshot_excludes_superseded_counterevidence(
         evidence=quantum_evidence,
         policy=RestatementPolicy.LATEST_AVAILABLE_AT_CUTOFF,
         as_of_date=date(2024, 6, 28),
+        source_type=SourceType.SEC_COMPANY_FACTS,
     )
     claim = MetricThresholdClaim(
         claim_id="fy2023-revenue-under-415m",

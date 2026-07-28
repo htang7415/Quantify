@@ -42,7 +42,7 @@ def test_routes_partial_contrastive_sentence_to_review() -> None:
 
 def test_routes_missing_evidence_reference_to_review() -> None:
     review = validate_claim_references(
-        snapshot=load_snapshot("msft_companyfacts.json"),
+        snapshot=load_snapshot("msft_revenue_regression.json"),
         claim=MetricThresholdClaim(
             claim_id="unknown-evidence",
             cited_evidence_id="not-in-snapshot",

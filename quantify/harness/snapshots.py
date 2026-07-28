@@ -5,7 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
-from quantify.engine import EvidenceSnapshot, RestatementPolicy, RestatementSelection, freeze_selected_snapshot
+from quantify.engine import (
+    EvidenceSnapshot,
+    RestatementPolicy,
+    RestatementSelection,
+    SourceType,
+    freeze_selected_snapshot,
+)
 
 from .audit import AuditManifest, build_audit_manifest
 from .sec.client import SecPayload
@@ -30,6 +36,7 @@ def build_revenue_snapshot(
         evidence=evidence,
         policy=policy,
         as_of_date=as_of_date,
+        source_type=SourceType.SEC_COMPANY_FACTS,
     )
     return SnapshotBuild(
         snapshot=snapshot,

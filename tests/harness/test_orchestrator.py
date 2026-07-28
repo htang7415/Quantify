@@ -47,7 +47,7 @@ def test_verifies_a_grounded_microsoft_report_end_to_end() -> None:
 
     result = verify_report(
         report_text=report_text,
-        snapshot=load_snapshot("msft_companyfacts.json"),
+        snapshot=load_snapshot("msft_revenue_regression.json"),
         extraction=extraction,
     )
 

@@ -41,7 +41,7 @@ def test_runs_frozen_real_sec_cases_deterministically() -> None:
     cases = (
         RegressionCase(
             case_id="mechanical-msft-revenue-growth-v1", category="mechanical",
-            report_text=msft_report, snapshot=load_snapshot("msft_companyfacts.json"),
+            report_text=msft_report, snapshot=load_snapshot("msft_revenue_regression.json"),
             extraction=_extraction(msft_report, MetricComparisonClaim(
                 claim_id="msft-growth", left_evidence_id="msft-revenue-fy2024",
                 relation=Relation.GREATER_THAN, right_evidence_id="msft-revenue-fy2023",

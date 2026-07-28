@@ -15,6 +15,7 @@ from quantify.engine import (
     MetricComparisonClaim,
     MetricThresholdClaim,
     Relation,
+    SourceType,
     VerificationOutcome,
     analyze_claims,
     verify_claim,
@@ -122,6 +123,7 @@ def test_rejects_incompatible_period_to_period_claims(
             quantum_snapshot.evidence_by_id("qtm-revenue-fy2023-as-filed"),
             incompatible_evidence,
         ),
+        source_type=SourceType.SEC_COMPANY_FACTS,
     )
 
     result = verify_claim(
@@ -197,6 +199,7 @@ def test_frozen_snapshot_and_verification_are_deterministic(
     repeated_snapshot = EvidenceSnapshot.freeze(
         snapshot_id=quantum_snapshot.snapshot_id,
         evidence=tuple(reversed(quantum_snapshot.evidence)),
+        source_type=SourceType.SEC_COMPANY_FACTS,
         allow_conflicting_evidence=True,
     )
 

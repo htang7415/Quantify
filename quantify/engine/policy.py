@@ -12,6 +12,7 @@ from .schemas import (
     EvidenceValue,
     RestatementPolicy,
     RestatementSelection,
+    SourceType,
 )
 
 
@@ -98,10 +99,18 @@ def freeze_selected_snapshot(
     evidence: tuple[EvidenceValue, ...],
     policy: RestatementPolicy,
     as_of_date: date,
+    source_type: SourceType,
 ) -> tuple[EvidenceSnapshot, RestatementSelection]:
     """Apply policy before producing a production-valid immutable snapshot."""
 
     selected, selection = select_evidence(
         evidence=evidence, policy=policy, as_of_date=as_of_date
     )
-    return EvidenceSnapshot.freeze(snapshot_id=snapshot_id, evidence=selected), selection
+    return (
+        EvidenceSnapshot.freeze(
+            snapshot_id=snapshot_id,
+            evidence=selected,
+            source_type=source_type,
+        ),
+        selection,
+    )

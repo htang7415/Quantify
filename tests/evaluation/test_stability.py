@@ -33,7 +33,7 @@ def _verify(report_text: str, fragment_start: int) -> tuple[str, ...]:
     )
     result = verify_report(
         report_text=report_text,
-        snapshot=load_snapshot("msft_companyfacts.json"),
+        snapshot=load_snapshot("msft_revenue_regression.json"),
         extraction=extraction,
     )
     return tuple(item.verdict.value for item in result.claim_verdicts)
@@ -68,7 +68,7 @@ def test_minor_synonym_change_cannot_create_a_false_omission_or_flip() -> None:
     )
 
     result = verify_report(
-        report_text=report, snapshot=load_snapshot("msft_companyfacts.json"), extraction=extraction
+        report_text=report, snapshot=load_snapshot("msft_revenue_regression.json"), extraction=extraction
     )
     assert tuple(item.verdict.value for item in result.claim_verdicts) == ("verified",)
     assert result.material_omissions == ()

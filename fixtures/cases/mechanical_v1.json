@@ -5,7 +5,7 @@
       "case_id": "mechanical-msft-revenue-growth-v1",
       "category": "mechanical",
       "reviewer_status": "not_required",
-      "snapshot_fixture": "msft_companyfacts.json",
+      "snapshot_fixture": "msft_revenue_regression.json",
       "report_text": "Microsoft revenue increased from fiscal 2023 to fiscal 2024.",
       "claim": {"type": "comparison", "claim_id": "msft-growth", "left_evidence_id": "msft-revenue-fy2024", "relation": "greater_than", "right_evidence_id": "msft-revenue-fy2023"},
       "expected_verdict": "verified"

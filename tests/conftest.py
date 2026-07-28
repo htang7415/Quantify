@@ -5,7 +5,7 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
-from quantify.engine import EvidenceSnapshot, EvidenceValue
+from quantify.engine import EvidenceSnapshot, EvidenceValue, SourceType
 
 
 FIXTURE_ROOT = Path(__file__).parent.parent / "fixtures" / "sec"
@@ -31,5 +31,6 @@ def load_snapshot(filename: str, *, allow_conflicting_evidence: bool = False) ->
     return EvidenceSnapshot.freeze(
         snapshot_id=f"{Path(filename).stem}-v1",
         evidence=evidence,
+        source_type=SourceType.SEC_COMPANY_FACTS,
         allow_conflicting_evidence=allow_conflicting_evidence,
     )

@@ -15,6 +15,26 @@ class Relation(StrEnum):
 
     GREATER_THAN = "greater_than"
     LESS_THAN = "less_than"
+    OUTSIDE_UPPER_BASELINE = "outside_upper_baseline"
+
+
+class SourceType(StrEnum):
+    SEC_COMPANY_FACTS = "sec_company_facts"
+    SEC_FILING_HTML = "sec_filing_html"
+    SEC_FINANCIAL_STATEMENT_DATASET = "sec_financial_statement_dataset"
+    USER_DECLARED_CORPUS = "user_declared_corpus"
+
+
+class MeasurementMode(StrEnum):
+    EXACT = "exact"
+    CALIBRATED_DISTANCE = "calibrated_distance"
+    INTERVAL = "interval"
+
+
+class CalibrationMethod(StrEnum):
+    """Versioned methods that turn historical observations into a scale."""
+
+    HISTORICAL_RANGE = "historical_range"
 
 
 class VerificationOutcome(StrEnum):
@@ -35,6 +55,9 @@ class EvidenceEligibilityReason(StrEnum):
     PERIOD_ALIGNMENT_MISMATCH = "period_alignment_mismatch"
     UNIT_MISMATCH = "unit_mismatch"
     TRANSFORMATION_FAILURE = "transformation_failure"
+    CUSTOM_TAG_UNSUPPORTED = "custom_tag_unsupported"
+    DUPLICATE_FACT = "duplicate_fact"
+    UNRESOLVED_RESTATEMENT = "unresolved_restatement"
 
 
 class RestatementPolicy(StrEnum):
@@ -60,6 +83,7 @@ class EvidenceValue:
     filed_at: date
     source_url: str
     eligible: bool = True
+    is_standard_tag: bool = True
     derived_from_evidence_ids: tuple[str, ...] = ()
 
     @property
@@ -87,6 +111,8 @@ class EvidenceSnapshot:
 
     snapshot_id: str
     evidence: tuple[EvidenceValue, ...]
+    source_type: SourceType
+    visible_evidence_ids: tuple[str, ...] | None
     manifest_hash: str
 
     @classmethod
@@ -95,6 +121,8 @@ class EvidenceSnapshot:
         *,
         snapshot_id: str,
         evidence: tuple[EvidenceValue, ...],
+        source_type: SourceType,
+        visible_evidence_ids: tuple[str, ...] | None = None,
         allow_conflicting_evidence: bool = False,
     ) -> "EvidenceSnapshot":
         """Canonicalize evidence and derive a content-addressed manifest hash.
@@ -109,6 +137,12 @@ class EvidenceSnapshot:
         evidence_ids = [item.evidence_id for item in canonical_evidence]
         if len(evidence_ids) != len(set(evidence_ids)):
             raise ValueError("evidence IDs must be unique within a snapshot")
+        if visible_evidence_ids is not None:
+            if len(visible_evidence_ids) != len(set(visible_evidence_ids)):
+                raise ValueError("visible evidence IDs must be unique")
+            unknown_visible_ids = set(visible_evidence_ids).difference(evidence_ids)
+            if unknown_visible_ids:
+                raise ValueError("visible evidence IDs must belong to the snapshot")
         if not allow_conflicting_evidence:
             semantic_keys = [
                 item.semantic_key for item in canonical_evidence if item.eligible
@@ -120,6 +154,12 @@ class EvidenceSnapshot:
 
         canonical_payload = {
             "snapshot_id": snapshot_id,
+            "source_type": source_type.value,
+            "visible_evidence_ids": (
+                tuple(sorted(visible_evidence_ids))
+                if visible_evidence_ids is not None
+                else None
+            ),
             "evidence": [
                 {
                     **asdict(item),
@@ -137,6 +177,12 @@ class EvidenceSnapshot:
         return cls(
             snapshot_id=snapshot_id,
             evidence=canonical_evidence,
+            source_type=source_type,
+            visible_evidence_ids=(
+                tuple(sorted(visible_evidence_ids))
+                if visible_evidence_ids is not None
+                else None
+            ),
             manifest_hash=sha256(encoded).hexdigest(),
         )
 
@@ -194,6 +240,33 @@ class MetricComparisonClaim:
 
 
 @dataclass(frozen=True, slots=True)
+class Calibration:
+    """Replayable upper-baseline calibration derived from historical facts."""
+
+    calibration_id: str
+    historical_evidence_ids: tuple[str, ...]
+    lookback_periods: int
+    historical_cutoff: date
+    upper_baseline: Decimal
+    scale_value: Decimal
+    method: CalibrationMethod
+
+
+@dataclass(frozen=True, slots=True)
+class MetricBaselineClaim:
+    """A claim that a target fact is above a calibrated historical upper baseline."""
+
+    claim_id: str
+    cited_evidence_id: str
+    relation: Relation
+    calibration: Calibration
+
+    @property
+    def cited_evidence_ids(self) -> tuple[str, ...]:
+        return (self.cited_evidence_id, *self.calibration.historical_evidence_ids)
+
+
+@dataclass(frozen=True, slots=True)
 class VerificationResult:
     """Auditable result from local warrant and CE1-style counterevidence checks."""
 
@@ -201,6 +274,9 @@ class VerificationResult:
     outcome: VerificationOutcome
     cited_evidence_ids: tuple[str, ...]
     counterevidence_evidence_ids: tuple[str, ...] = ()
+    measurement_mode: MeasurementMode = MeasurementMode.EXACT
+    calibrated_distance: Decimal | None = None
+    calibration_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

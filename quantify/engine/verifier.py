@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+from decimal import Decimal, localcontext
+
+from .measurement import build_upper_baseline_calibration
 from .schemas import (
     EvidenceSnapshot,
     EvidenceValue,
+    MeasurementMode,
+    MetricBaselineClaim,
     MetricComparisonClaim,
     MetricThresholdClaim,
     Relation,
@@ -35,12 +40,18 @@ def _result(
     outcome: VerificationOutcome,
     cited_evidence_ids: tuple[str, ...],
     counterevidence_evidence_ids: tuple[str, ...] = (),
+    measurement_mode: MeasurementMode = MeasurementMode.EXACT,
+    calibrated_distance: Decimal | None = None,
+    calibration_id: str | None = None,
 ) -> VerificationResult:
     return VerificationResult(
         claim_id=claim_id,
         outcome=outcome,
         cited_evidence_ids=cited_evidence_ids,
         counterevidence_evidence_ids=counterevidence_evidence_ids,
+        measurement_mode=measurement_mode,
+        calibrated_distance=calibrated_distance,
+        calibration_id=calibration_id,
     )
 
 
@@ -59,7 +70,11 @@ def _verify_threshold_claim(
     """
 
     cited = snapshot.evidence_by_id(claim.cited_evidence_id)
-    if cited is None or not cited.eligible:
+    if (
+        claim.relation not in (Relation.GREATER_THAN, Relation.LESS_THAN)
+        or cited is None
+        or not cited.eligible
+    ):
         return _result(
             claim_id=claim.claim_id,
             outcome=VerificationOutcome.UNSUPPORTED,
@@ -107,6 +122,8 @@ def _verify_comparison_claim(
     left = snapshot.evidence_by_id(claim.left_evidence_id)
     right = snapshot.evidence_by_id(claim.right_evidence_id)
     if (
+        claim.relation not in (Relation.GREATER_THAN, Relation.LESS_THAN)
+        or
         left is None
         or right is None
         or not left.eligible
@@ -170,8 +187,97 @@ def _verify_comparison_claim(
     )
 
 
+def _calibrated_distance(*, value: Decimal, baseline: Decimal, scale: Decimal) -> Decimal:
+    with localcontext() as context:
+        context.prec = 28
+        distance = (value - baseline) / scale
+    return max(Decimal("0"), min(Decimal("1"), distance))
+
+
+def _verify_baseline_claim(
+    *, snapshot: EvidenceSnapshot, claim: MetricBaselineClaim
+) -> VerificationResult:
+    cited = snapshot.evidence_by_id(claim.cited_evidence_id)
+    if (
+        claim.relation is not Relation.OUTSIDE_UPPER_BASELINE
+        or cited is None
+        or not cited.eligible
+        or cited.period_end <= claim.calibration.historical_cutoff
+    ):
+        return _result(
+            claim_id=claim.claim_id,
+            outcome=VerificationOutcome.UNSUPPORTED,
+            cited_evidence_ids=claim.cited_evidence_ids,
+            measurement_mode=MeasurementMode.CALIBRATED_DISTANCE,
+        )
+
+    try:
+        expected = build_upper_baseline_calibration(
+            snapshot=snapshot,
+            historical_evidence_ids=claim.calibration.historical_evidence_ids,
+            historical_cutoff=claim.calibration.historical_cutoff,
+            method=claim.calibration.method,
+        )
+    except ValueError:
+        return _result(
+            claim_id=claim.claim_id,
+            outcome=VerificationOutcome.UNSUPPORTED,
+            cited_evidence_ids=claim.cited_evidence_ids,
+            measurement_mode=MeasurementMode.CALIBRATED_DISTANCE,
+        )
+
+    if expected != claim.calibration or cited.comparability_key != snapshot.evidence_by_id(
+        expected.historical_evidence_ids[0]
+    ).comparability_key:
+        return _result(
+            claim_id=claim.claim_id,
+            outcome=VerificationOutcome.UNSUPPORTED,
+            cited_evidence_ids=claim.cited_evidence_ids,
+            measurement_mode=MeasurementMode.CALIBRATED_DISTANCE,
+        )
+
+    distance = _calibrated_distance(
+        value=cited.value,
+        baseline=expected.upper_baseline,
+        scale=expected.scale_value,
+    )
+    if cited.value <= expected.upper_baseline:
+        return _result(
+            claim_id=claim.claim_id,
+            outcome=VerificationOutcome.UNSUPPORTED,
+            cited_evidence_ids=claim.cited_evidence_ids,
+            measurement_mode=MeasurementMode.CALIBRATED_DISTANCE,
+            calibrated_distance=distance,
+            calibration_id=expected.calibration_id,
+        )
+
+    counterevidence_ids = tuple(
+        item.evidence_id
+        for item in snapshot.evidence
+        if (
+            item.evidence_id != cited.evidence_id
+            and item.eligible
+            and item.semantic_key == cited.semantic_key
+            and item.value <= expected.upper_baseline
+        )
+    )
+    return _result(
+        claim_id=claim.claim_id,
+        outcome=(
+            VerificationOutcome.COUNTEREVIDENCE
+            if counterevidence_ids
+            else VerificationOutcome.VERIFIED
+        ),
+        cited_evidence_ids=claim.cited_evidence_ids,
+        counterevidence_evidence_ids=counterevidence_ids,
+        measurement_mode=MeasurementMode.CALIBRATED_DISTANCE,
+        calibrated_distance=distance,
+        calibration_id=expected.calibration_id,
+    )
+
+
 def verify_claim(
-    *, snapshot: EvidenceSnapshot, claim: MetricThresholdClaim | MetricComparisonClaim
+    *, snapshot: EvidenceSnapshot, claim: MetricThresholdClaim | MetricComparisonClaim | MetricBaselineClaim
 ) -> VerificationResult:
     """Return a deterministic pre-disclosure verification outcome.
 
@@ -188,4 +294,6 @@ def verify_claim(
         return _verify_threshold_claim(snapshot=snapshot, claim=claim)
     if isinstance(claim, MetricComparisonClaim):
         return _verify_comparison_claim(snapshot=snapshot, claim=claim)
+    if isinstance(claim, MetricBaselineClaim):
+        return _verify_baseline_claim(snapshot=snapshot, claim=claim)
     raise TypeError(f"unsupported claim type: {type(claim).__name__}")

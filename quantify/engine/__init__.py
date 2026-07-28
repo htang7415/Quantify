@@ -2,6 +2,8 @@
 
 from .schemas import (
     ClaimAnalysisResult,
+    Calibration,
+    CalibrationMethod,
     ClaimVerdict,
     ComposedClaimVerdict,
     CounterevidenceDetail,
@@ -16,18 +18,22 @@ from .schemas import (
     MetricThresholdClaim,
     LocalWarrantResult,
     Relation,
+    MeasurementMode,
+    MetricBaselineClaim,
     RestatementPolicy,
     RestatementSelection,
     ReportSpan,
     ReviewItem,
     ReviewReason,
     StatementClassification,
+    SourceType,
     VerificationOutcome,
     VerificationResult,
 )
 from .analysis import analyze_claims
 from .eligibility import evaluate_eligibility
 from .derived import derive_margin, derive_total_debt
+from .measurement import build_upper_baseline_calibration
 from .verdicts import compose_claim_verdicts
 from .policy import freeze_selected_snapshot, select_evidence
 from .verifier import verify_claim
@@ -36,6 +42,8 @@ __all__ = [
     "EvidenceSnapshot",
     "EvidenceValue",
     "ClaimAnalysisResult",
+    "Calibration",
+    "CalibrationMethod",
     "ClaimVerdict",
     "ComposedClaimVerdict",
     "CounterevidenceDetail",
@@ -45,21 +53,25 @@ __all__ = [
     "EvidenceEligibilityDecision",
     "EvidenceEligibilityReason",
     "MetricComparisonClaim",
+    "MetricBaselineClaim",
     "MetricThresholdClaim",
     "LocalWarrantResult",
     "Relation",
+    "MeasurementMode",
     "RestatementPolicy",
     "RestatementSelection",
     "ReportSpan",
     "ReviewItem",
     "ReviewReason",
     "StatementClassification",
+    "SourceType",
     "VerificationOutcome",
     "VerificationResult",
     "freeze_selected_snapshot",
     "analyze_claims",
     "evaluate_eligibility",
     "derive_margin",
+    "build_upper_baseline_calibration",
     "derive_total_debt",
     "compose_claim_verdicts",
     "select_evidence",

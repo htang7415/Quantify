@@ -7,6 +7,7 @@ from .schemas import (
     CounterevidencePair,
     EvidenceSnapshot,
     LocalWarrantResult,
+    MetricBaselineClaim,
     MetricComparisonClaim,
     MetricThresholdClaim,
     VerificationOutcome,
@@ -14,7 +15,7 @@ from .schemas import (
 from .verifier import verify_claim
 
 
-TypedClaim = MetricThresholdClaim | MetricComparisonClaim
+TypedClaim = MetricThresholdClaim | MetricComparisonClaim | MetricBaselineClaim
 
 
 def analyze_claims(

@@ -45,10 +45,12 @@ Snapshots reject unresolved competing eligible facts by default. The Quantum
 restatement fixture explicitly opts into such a conflict only as a regression
 case for CE1 behavior; normal snapshots apply a restatement policy first.
 
-Offline fixtures contain real SEC XBRL revenue facts for Microsoft, Apple, and
-Quantum Corporation. Quantum includes a later FY2023 restatement to prove the
-counterevidence path without fabricated financial data. Each fixture is listed
-with its SEC payload SHA-256 in `fixtures/sec/manifest.json`.
+The raw `msft_companyfacts.json` and `aapl_companyfacts.json` fixtures are exact
+SEC Company Facts response bytes. Their hashes, CIKs, and source endpoints are
+locked in `fixtures/sec/manifest.json` and tested offline. Compact
+`*_revenue_regression.json` files are deliberately separate, curated subsets
+used by focused engine tests. Quantum includes a later FY2023 restatement to
+prove the counterevidence path without fabricated financial data.
 
 Run the slice with:
 

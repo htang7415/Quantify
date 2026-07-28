@@ -13,6 +13,7 @@ from .disclosure import DisclosureDetector
 from .snapshots import SnapshotBuild, build_revenue_snapshot
 from .verification_cache import VerificationCache
 from .observability import RequestMetrics, append_jsonl
+from .coverage import EvidenceRequestType, assess_coverage
 
 __all__ = [
     "ExtractedStatement",
@@ -24,6 +25,8 @@ __all__ = [
     "VerificationCache",
     "RequestMetrics",
     "append_jsonl",
+    "EvidenceRequestType",
+    "assess_coverage",
     "SnapshotBuild",
     "StructuredExtractor",
     "build_revenue_snapshot",

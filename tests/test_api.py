@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from quantify.api import VerifyRequest, create_app
+from quantify.service import ApplicationService
 
 
 class FixtureService:
@@ -25,3 +26,10 @@ def test_v1_verify_endpoint_preserves_contract_inputs() -> None:
     assert response.status_code == 200
     assert response.json()["audit_manifest"] == {"cik": "789019", "as_of_date": "2024-07-30"}
     assert response.json()["evidence_scope"]["forms"] == ["10-K"]
+
+def test_api_runs_injected_application_service() -> None:
+    calls = []
+    app = create_app(ApplicationService(lambda **kwargs: (calls.append(kwargs) or {"claim_results": [], "audit_manifest": {}})))
+    response = TestClient(app).post("/v1/companies/789019/verify", json={"analysis": "x", "as_of_date": "2024-07-30"})
+    assert response.status_code == 200
+    assert calls[0]["cik"] == "789019"

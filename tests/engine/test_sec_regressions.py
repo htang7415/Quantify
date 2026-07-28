@@ -11,7 +11,7 @@ from tests.conftest import load_snapshot
 
 
 def test_microsoft_fy2024_revenue_exceeded_fy2023() -> None:
-    snapshot = load_snapshot("msft_companyfacts.json")
+    snapshot = load_snapshot("msft_revenue_regression.json")
     result = verify_claim(
         snapshot=snapshot,
         claim=MetricComparisonClaim(
@@ -26,7 +26,7 @@ def test_microsoft_fy2024_revenue_exceeded_fy2023() -> None:
 
 
 def test_apple_fy2024_revenue_exceeded_fy2023() -> None:
-    snapshot = load_snapshot("aapl_companyfacts.json")
+    snapshot = load_snapshot("aapl_revenue_regression.json")
     claim = MetricComparisonClaim(
         claim_id="aapl-fy2024-revenue-increased",
         left_evidence_id="aapl-revenue-fy2024",
