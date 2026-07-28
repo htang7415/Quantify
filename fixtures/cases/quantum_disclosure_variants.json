@@ -1,0 +1,12 @@
+{
+  "case_set_version": "1.0.0",
+  "snapshot_fixture": "quantum_revenue_restatement.json",
+  "report_text": "Quantum revenue was under $415 million.",
+  "variants": [
+    {"case_id": "qtm-not-disclosed", "disclosure_status": "not_disclosed", "expected_verdict": "defeated", "expects_material_omission": true},
+    {"case_id": "qtm-disclosed-same-sentence", "disclosure_status": "disclosed_same_sentence", "expected_verdict": "qualified", "expects_material_omission": false},
+    {"case_id": "qtm-disclosed-elsewhere", "disclosure_status": "disclosed_elsewhere", "expected_verdict": "qualified", "expects_material_omission": false},
+    {"case_id": "qtm-ambiguous", "disclosure_status": "ambiguous", "expected_verdict": "requires_human_review", "expects_material_omission": false},
+    {"case_id": "qtm-missing-assessment", "disclosure_status": null, "expected_verdict": "requires_human_review", "expects_material_omission": false}
+  ]
+}
