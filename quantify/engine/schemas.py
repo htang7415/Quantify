@@ -278,6 +278,16 @@ class ReviewReason(StrEnum):
     REPORT_SPAN_NOT_GROUNDED = "report_span_not_grounded"
     PARTIAL_CONTRASTIVE_EXTRACTION = "partial_contrastive_extraction"
     INVALID_EVIDENCE_REFERENCE = "invalid_evidence_reference"
+    EXTRACTION_SCHEMA_FAILURE = "extraction_schema_failure"
+
+
+class StatementClassification(StrEnum):
+    """Conservative classification before a statement enters the engine."""
+
+    CLASSIFIED = "classified"
+    UNCLASSIFIED = "unclassified"
+    NON_FACTUAL = "non_factual"
+    REQUIRES_HUMAN_REVIEW = "requires_human_review"
 
 
 @dataclass(frozen=True, slots=True)

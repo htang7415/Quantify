@@ -21,6 +21,7 @@ from .schemas import (
     ReportSpan,
     ReviewItem,
     ReviewReason,
+    StatementClassification,
     VerificationOutcome,
     VerificationResult,
 )
@@ -50,6 +51,7 @@ __all__ = [
     "ReportSpan",
     "ReviewItem",
     "ReviewReason",
+    "StatementClassification",
     "VerificationOutcome",
     "VerificationResult",
     "freeze_selected_snapshot",
