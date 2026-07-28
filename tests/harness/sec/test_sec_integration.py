@@ -7,7 +7,7 @@ import pytest
 
 from quantify.engine import RestatementPolicy
 from quantify.harness import build_revenue_snapshot
-from quantify.harness.sec import SecCompanyFactsClient, normalize_revenue_facts
+from quantify.harness.sec import SecCompanyFactsClient, normalize_company_facts, normalize_revenue_facts
 
 
 def _microsoft_company_facts() -> dict:
@@ -47,6 +47,21 @@ def _microsoft_company_facts() -> dict:
                                 "filed": "2024-04-25",
                                 "accn": "0000950170-24-050212",
                             },
+                        ]
+                    }
+                },
+                "OperatingIncomeLoss": {
+                    "units": {
+                        "USD": [
+                            {
+                                "start": "2023-07-01",
+                                "end": "2024-06-30",
+                                "val": 109433000000,
+                                "form": "10-K",
+                                "fp": "FY",
+                                "filed": "2024-07-30",
+                                "accn": "0000950170-24-087843",
+                            }
                         ]
                     }
                 }
@@ -123,3 +138,16 @@ def test_normalizer_and_snapshot_builder_are_offline_and_auditable(tmp_path) -> 
     assert build.audit_manifest.cache_hit is False
     assert build.audit_manifest.filing_accessions == ("0000950170-24-087843",)
     assert len(build.audit_manifest.manifest_hash) == 64
+
+
+def test_normalizes_the_initial_metric_routes_and_excludes_unrouted_values() -> None:
+    facts = _microsoft_company_facts()
+    normalized = normalize_company_facts(
+        company_facts=facts, source_url="https://data.sec.gov/example"
+    )
+
+    assert {(item.metric, item.value) for item in normalized} == {
+        ("revenue", 211915000000),
+        ("revenue", 245122000000),
+        ("operating_income", 109433000000),
+    }

@@ -13,6 +13,7 @@ from urllib.request import Request, urlopen
 
 
 COMPANY_FACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
+SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik}.json"
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,15 +69,28 @@ class SecCompanyFactsClient:
         return digits.zfill(10)
 
     def fetch_company_facts(self, cik: str | int) -> SecPayload:
+        return self._fetch(
+            cik=self.normalize_cik(cik),
+            source_url=COMPANY_FACTS_URL.format(cik=self.normalize_cik(cik)),
+            cache_kind="companyfacts",
+        )
+
+    def fetch_submissions(self, cik: str | int) -> SecPayload:
         normalized_cik = self.normalize_cik(cik)
-        source_url = COMPANY_FACTS_URL.format(cik=normalized_cik)
-        payload_path = self._cache_dir / "companyfacts" / f"{normalized_cik}.json"
+        return self._fetch(
+            cik=normalized_cik,
+            source_url=SUBMISSIONS_URL.format(cik=normalized_cik),
+            cache_kind="submissions",
+        )
+
+    def _fetch(self, *, cik: str, source_url: str, cache_kind: str) -> SecPayload:
+        payload_path = self._cache_dir / cache_kind / f"{cik}.json"
         metadata_path = payload_path.with_suffix(".metadata.json")
         if payload_path.exists() and metadata_path.exists():
             payload = payload_path.read_bytes()
             metadata = json.loads(metadata_path.read_text())
             return SecPayload(
-                cik=normalized_cik,
+                cik=cik,
                 source_url=metadata["source_url"],
                 payload=payload,
                 payload_sha256=sha256(payload).hexdigest(),
@@ -103,7 +117,7 @@ class SecCompanyFactsClient:
             )
         )
         return SecPayload(
-            cik=normalized_cik,
+            cik=cik,
             source_url=source_url,
             payload=payload,
             payload_sha256=sha256(payload).hexdigest(),

@@ -31,6 +31,10 @@ class EvidenceEligibilityReason(StrEnum):
     ELIGIBLE = "eligible"
     MISSING_PROVENANCE = "missing_provenance"
     FUTURE_FILING = "future_filing"
+    ENTITY_SCOPE_MISMATCH = "entity_scope_mismatch"
+    PERIOD_ALIGNMENT_MISMATCH = "period_alignment_mismatch"
+    UNIT_MISMATCH = "unit_mismatch"
+    TRANSFORMATION_FAILURE = "transformation_failure"
 
 
 class RestatementPolicy(StrEnum):

@@ -28,6 +28,17 @@ restatement policy, and returns an immutable snapshot with a replayable audit
 manifest. Both the SEC transport and structured extractor are provider-neutral
 interfaces, keeping external calls outside the deterministic engine.
 
+The metric router also supports gross profit, operating income, net income,
+operating cash flow, capital expenditure, cash, and diluted share count. Debt
+aggregation and derived margins require separate versioned policies and are not
+silently inferred from a single XBRL fact.
+
+The SEC adapter also resolves 10-K and 10-Q filing records from cached company
+submissions at the requested cutoff date, retaining amendments for later
+restatement selection. Before snapshot construction, the engine records an
+explicit eligibility result for provenance, entity scope, units, period
+alignment, filing cutoff, and transformation status.
+
 Snapshots reject unresolved competing eligible facts by default. The Quantum
 restatement fixture explicitly opts into such a conflict only as a regression
 case for CE1 behavior; normal snapshots apply a restatement policy first.
