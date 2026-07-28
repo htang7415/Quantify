@@ -7,6 +7,7 @@ import pytest
 
 from quantify.engine import RestatementPolicy
 from quantify.harness import build_revenue_snapshot
+from quantify.harness.audit import build_audit_manifest
 from quantify.harness.sec import SecCompanyFactsClient, normalize_company_facts, normalize_revenue_facts
 
 
@@ -138,6 +139,19 @@ def test_normalizer_and_snapshot_builder_are_offline_and_auditable(tmp_path) -> 
     assert build.audit_manifest.cache_hit is False
     assert build.audit_manifest.filing_accessions == ("0000950170-24-087843",)
     assert len(build.audit_manifest.manifest_hash) == 64
+    assert build.audit_manifest.normalizer_version == "1.0.0"
+    assert build.audit_manifest.extraction_model == "unconfigured"
+
+
+def test_manifest_hash_changes_when_replay_relevant_model_metadata_changes(tmp_path) -> None:
+    payload = json.dumps(_microsoft_company_facts()).encode()
+    client = SecCompanyFactsClient(cache_dir=tmp_path, user_agent="Quantify test contact@example.com", transport=lambda _url, _agent: payload)
+    source = client.fetch_company_facts(789019)
+    build = build_revenue_snapshot(source=source, as_of_date=date(2024, 7, 30), policy=RestatementPolicy.LATEST_AVAILABLE_AT_CUTOFF)
+    baseline = build.audit_manifest
+    changed = build_audit_manifest(snapshot=build.snapshot, selection=build.selection, source=source, extraction_model="pinned-model-2026-01", prompt_hash="abc")
+
+    assert baseline.manifest_hash != changed.manifest_hash
 
 
 def test_normalizes_the_initial_metric_routes_and_excludes_unrouted_values() -> None:

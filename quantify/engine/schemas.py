@@ -284,6 +284,8 @@ class ReviewReason(StrEnum):
     PARTIAL_CONTRASTIVE_EXTRACTION = "partial_contrastive_extraction"
     INVALID_EVIDENCE_REFERENCE = "invalid_evidence_reference"
     EXTRACTION_SCHEMA_FAILURE = "extraction_schema_failure"
+    DISCLOSURE_AMBIGUOUS = "disclosure_ambiguous"
+    MISSING_DISCLOSURE_ASSESSMENT = "missing_disclosure_assessment"
 
 
 class StatementClassification(StrEnum):

@@ -9,14 +9,21 @@ from .extraction import (
 )
 from .orchestrator import MaterialOmission, VerificationReport, verify_report
 from .extractor import StructuredExtractor
+from .disclosure import DisclosureDetector
 from .snapshots import SnapshotBuild, build_revenue_snapshot
+from .verification_cache import VerificationCache
+from .observability import RequestMetrics, append_jsonl
 
 __all__ = [
     "ExtractedStatement",
     "ExtractionResult",
+    "DisclosureDetector",
     "MaterialOmission",
     "ValidatedExtraction",
     "VerificationReport",
+    "VerificationCache",
+    "RequestMetrics",
+    "append_jsonl",
     "SnapshotBuild",
     "StructuredExtractor",
     "build_revenue_snapshot",

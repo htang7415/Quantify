@@ -1,0 +1,25 @@
+{
+  "case_set_version": "1.0.0",
+  "cases": [
+    {
+      "case_id": "mechanical-msft-revenue-growth-v1",
+      "category": "mechanical",
+      "reviewer_status": "not_required",
+      "snapshot_fixture": "msft_companyfacts.json",
+      "report_text": "Microsoft revenue increased from fiscal 2023 to fiscal 2024.",
+      "claim": {"type": "comparison", "claim_id": "msft-growth", "left_evidence_id": "msft-revenue-fy2024", "relation": "greater_than", "right_evidence_id": "msft-revenue-fy2023"},
+      "expected_verdict": "verified"
+    },
+    {
+      "case_id": "mechanical-quantum-restatement-v1",
+      "category": "mechanical",
+      "reviewer_status": "not_required",
+      "snapshot_fixture": "quantum_revenue_restatement.json",
+      "allow_conflicting_evidence": true,
+      "report_text": "Quantum revenue was under $415 million.",
+      "claim": {"type": "threshold", "claim_id": "qtm-under-415m", "cited_evidence_id": "qtm-revenue-fy2023-as-filed", "relation": "less_than", "threshold": "415000000"},
+      "disclosure_assessments": [{"evidence_id": "qtm-revenue-fy2023-restated", "status": "not_disclosed"}],
+      "expected_verdict": "defeated"
+    }
+  ]
+}

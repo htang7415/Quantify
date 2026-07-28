@@ -25,6 +25,17 @@ class AuditManifest:
     restatement_policy: str
     selected_evidence_ids: tuple[str, ...]
     superseded_evidence_ids: tuple[str, ...]
+    normalizer_version: str = "1.0.0"
+    adapter_version: str = "1.0.0"
+    eligibility_policy_version: str = "1.0.0"
+    relation_policy_version: str = "1.0.0"
+    counterevidence_policy_version: str = "1.0.0"
+    restatement_policy_version: str = "1.0.0"
+    disclosure_detector_version: str = "unconfigured"
+    extraction_model: str = "unconfigured"
+    structured_output_schema_version: str = "1.0.0"
+    prompt_hash: str | None = None
+    temperature: float | None = None
 
     @property
     def manifest_hash(self) -> str:
@@ -40,6 +51,10 @@ def build_audit_manifest(
     snapshot: EvidenceSnapshot,
     selection: RestatementSelection,
     source: SecPayload,
+    extraction_model: str = "unconfigured",
+    disclosure_detector_version: str = "unconfigured",
+    prompt_hash: str | None = None,
+    temperature: float | None = None,
 ) -> AuditManifest:
     return AuditManifest(
         manifest_version="1.0.0",
@@ -53,4 +68,8 @@ def build_audit_manifest(
         restatement_policy=selection.policy.value,
         selected_evidence_ids=selection.selected_evidence_ids,
         superseded_evidence_ids=selection.superseded_evidence_ids,
+        extraction_model=extraction_model,
+        disclosure_detector_version=disclosure_detector_version,
+        prompt_hash=prompt_hash,
+        temperature=temperature,
     )
