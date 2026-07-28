@@ -1,0 +1,62 @@
+{
+  "fixture_version": "1.0.0",
+  "description": "Normalized Quantum Corporation revenue facts, including values subsequently restated in its FY2024 10-K.",
+  "source": {
+    "company_name": "Quantum Corporation",
+    "cik": "0000709283",
+    "company_facts_url": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000709283.json",
+    "source_payload_sha256": "cc996bd30421774ecb9e54486bb059962c1e4a721dfafb5d370daf0b6c39cecd",
+    "retrieved_at": "2026-07-28",
+    "concept": "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax"
+  },
+  "evidence": [
+    {
+      "evidence_id": "qtm-revenue-fy2022-as-filed",
+      "entity_cik": "0000709283",
+      "metric": "revenue",
+      "value": "372827000",
+      "unit": "USD",
+      "period_start": "2021-04-01",
+      "period_end": "2022-03-31",
+      "accession": "0000709283-23-000013",
+      "filed_at": "2023-06-06",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/709283/000070928323000013/qtm-20230331.htm"
+    },
+    {
+      "evidence_id": "qtm-revenue-fy2023-as-filed",
+      "entity_cik": "0000709283",
+      "metric": "revenue",
+      "value": "412752000",
+      "unit": "USD",
+      "period_start": "2022-04-01",
+      "period_end": "2023-03-31",
+      "accession": "0000709283-23-000013",
+      "filed_at": "2023-06-06",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/709283/000070928323000013/qtm-20230331.htm"
+    },
+    {
+      "evidence_id": "qtm-revenue-fy2022-restated",
+      "entity_cik": "0000709283",
+      "metric": "revenue",
+      "value": "383432000",
+      "unit": "USD",
+      "period_start": "2021-04-01",
+      "period_end": "2022-03-31",
+      "accession": "0000709283-24-000014",
+      "filed_at": "2024-06-28",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/709283/000070928324000014/qtm-20240331.htm"
+    },
+    {
+      "evidence_id": "qtm-revenue-fy2023-restated",
+      "entity_cik": "0000709283",
+      "metric": "revenue",
+      "value": "422077000",
+      "unit": "USD",
+      "period_start": "2022-04-01",
+      "period_end": "2023-03-31",
+      "accession": "0000709283-24-000014",
+      "filed_at": "2024-06-28",
+      "source_url": "https://www.sec.gov/Archives/edgar/data/709283/000070928324000014/qtm-20240331.htm"
+    }
+  ]
+}
