@@ -30,8 +30,10 @@ interfaces, keeping external calls outside the deterministic engine.
 
 The metric router also supports gross profit, operating income, net income,
 operating cash flow, capital expenditure, cash, and diluted share count. Debt
-aggregation and derived margins require separate versioned policies and are not
-silently inferred from a single XBRL fact.
+is derived only by aggregating normalized current and noncurrent components;
+gross, operating, and cash-flow margins are derived only from compatible,
+eligible numerator and revenue facts. Every derived value preserves its input
+evidence IDs rather than silently inferring a value from a single XBRL fact.
 
 The SEC adapter also resolves 10-K and 10-Q filing records from cached company
 submissions at the requested cutoff date, retaining amendments for later

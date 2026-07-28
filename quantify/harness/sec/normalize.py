@@ -27,6 +27,8 @@ INITIAL_METRIC_ROUTES = (
     MetricRoute("operating_cash_flow", "NetCashProvidedByUsedInOperatingActivities", "USD", True),
     MetricRoute("capital_expenditure", "PaymentsToAcquirePropertyPlantAndEquipment", "USD", True),
     MetricRoute("cash", "CashAndCashEquivalentsAtCarryingValue", "USD", False),
+    MetricRoute("debt_current", "LongTermDebtCurrent", "USD", False),
+    MetricRoute("debt_noncurrent", "LongTermDebtNoncurrent", "USD", False),
     MetricRoute("diluted_share_count", "WeightedAverageNumberOfDilutedSharesOutstanding", "shares", True),
 )
 REVENUE_CONCEPT = INITIAL_METRIC_ROUTES[0].concept

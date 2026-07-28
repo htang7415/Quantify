@@ -60,6 +60,7 @@ class EvidenceValue:
     filed_at: date
     source_url: str
     eligible: bool = True
+    derived_from_evidence_ids: tuple[str, ...] = ()
 
     @property
     def semantic_key(self) -> tuple[str, str, str, date, date]:

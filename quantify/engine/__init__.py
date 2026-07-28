@@ -27,6 +27,7 @@ from .schemas import (
 )
 from .analysis import analyze_claims
 from .eligibility import evaluate_eligibility
+from .derived import derive_margin, derive_total_debt
 from .verdicts import compose_claim_verdicts
 from .policy import freeze_selected_snapshot, select_evidence
 from .verifier import verify_claim
@@ -58,6 +59,8 @@ __all__ = [
     "freeze_selected_snapshot",
     "analyze_claims",
     "evaluate_eligibility",
+    "derive_margin",
+    "derive_total_debt",
     "compose_claim_verdicts",
     "select_evidence",
     "verify_claim",
