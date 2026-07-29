@@ -5,7 +5,7 @@
       "path": "aapl_companyfacts.json",
       "cik": "0000320193",
       "source_url": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json",
-      "retrieval_date": "2026-07-28",
+      "retrieved_at": "2026-07-28T21:54:18Z",
       "payload_sha256": "31f9ab4398402faabc733178497af89dbf94dd5038c6e36d4c894317de8a4647",
       "fixture_version": "1.0.0"
     },
@@ -13,16 +13,8 @@
       "path": "msft_companyfacts.json",
       "cik": "0000789019",
       "source_url": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000789019.json",
-      "retrieval_date": "2026-07-28",
+      "retrieved_at": "2026-07-28T21:54:18Z",
       "payload_sha256": "352bbb036cbf65b74e126bb7ac040d2a8f9538dc0a85a0363a9a28a22039c4c3",
-      "fixture_version": "1.0.0"
-    },
-    {
-      "path": "quantum_revenue_restatement.json",
-      "cik": "0000709283",
-      "source_url": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000709283.json",
-      "retrieval_date": "2026-07-28",
-      "payload_sha256": "cc996bd30421774ecb9e54486bb059962c1e4a721dfafb5d370daf0b6c39cecd",
       "fixture_version": "1.0.0"
     }
   ]

@@ -32,3 +32,6 @@ quantify_spec.md
 __pycache__/
 *.py[cod]
 .pytest_cache/
+
+.claude/
+.venv/

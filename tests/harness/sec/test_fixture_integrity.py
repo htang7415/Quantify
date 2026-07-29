@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -29,6 +30,7 @@ def test_frozen_raw_company_facts_match_the_manifest() -> None:
         assert entry["source_url"] == (
             f"https://data.sec.gov/api/xbrl/companyfacts/CIK{expected_cik}.json"
         )
+        assert datetime.fromisoformat(entry["retrieved_at"].replace("Z", "+00:00")).tzinfo is timezone.utc
         assert len(payload) > 1_000_000
 
 
