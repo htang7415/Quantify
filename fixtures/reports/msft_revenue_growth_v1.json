@@ -1,0 +1,8 @@
+{
+  "report_fixture_version": "1.0.0",
+  "cik": "0000789019",
+  "as_of_date": "2024-07-30",
+  "forms": ["10-K"],
+  "analysis": "Microsoft revenue increased from fiscal 2023 to fiscal 2024.",
+  "expected_verdict": "verified"
+}

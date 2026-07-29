@@ -57,3 +57,33 @@ def test_curated_microsoft_fundamentals_are_selected_from_the_frozen_raw_payload
 
     assert curated_facts <= raw_facts
     assert len(curated_facts) == 15
+
+
+def test_raw_microsoft_and_apple_normalization_is_deterministic() -> None:
+    for filename, cik in (
+        ("msft_companyfacts.json", "0000789019"),
+        ("aapl_companyfacts.json", "0000320193"),
+    ):
+        raw = json.loads((FIXTURE_ROOT / filename).read_bytes())
+        source_url = f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
+
+        first = normalize_company_facts(company_facts=raw, source_url=source_url)
+        second = normalize_company_facts(company_facts=raw, source_url=source_url)
+        snapshot, _ = freeze_selected_snapshot(
+            snapshot_id=f"{cik}-normalized-facts",
+            evidence=first,
+            policy=RestatementPolicy.LATEST_AVAILABLE_AT_CUTOFF,
+            as_of_date=date(2026, 7, 28),
+            source_type=SourceType.SEC_COMPANY_FACTS,
+        )
+
+        assert first == second
+        assert first
+        assert snapshot.evidence
+        assert {item.entity_cik for item in first} == {cik}
+        assert {item.source_url for item in first} == {source_url}
+        assert any(
+            item.metric == "revenue"
+            and (item.period_end - item.period_start).days < 180
+            for item in first
+        )

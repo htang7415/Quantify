@@ -2,7 +2,12 @@
 
 from .client import SecCompanyFactsClient, SecPayload
 from .filings import SecFiling, resolve_filings
-from .normalize import INITIAL_METRIC_ROUTES, MetricRoute, normalize_company_facts, normalize_revenue_facts
+from .normalize import (
+    INITIAL_METRIC_ROUTES,
+    MetricRoute,
+    normalize_company_facts,
+    normalize_revenue_facts,
+)
 
 __all__ = [
     "INITIAL_METRIC_ROUTES",

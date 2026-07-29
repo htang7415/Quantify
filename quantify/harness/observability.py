@@ -22,6 +22,12 @@ class RequestMetrics:
     human_review_count: int
     empty_result: bool
     total_cost: float
+    llm_input_tokens: int = 0
+    llm_output_tokens: int = 0
+    extraction_latency_seconds: float = 0.0
+    disclosure_latency_seconds: float = 0.0
+    verification_latency_seconds: float = 0.0
+    verification_cache_hit: bool = False
 
 
 def append_jsonl(*, path: Path, metrics: RequestMetrics) -> None:

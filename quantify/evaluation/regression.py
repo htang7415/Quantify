@@ -31,6 +31,19 @@ class EvaluationSummary:
     unclassified_statement_count: int
 
 
+@dataclass(frozen=True, slots=True)
+class FalsePositiveAnalysis:
+    """Category-specific count of unsupported omission accusations."""
+
+    category: str
+    case_count: int
+    false_positive_defeats: tuple[tuple[str, str], ...]
+
+    @property
+    def false_positive_rate(self) -> float:
+        return len(self.false_positive_defeats) / self.case_count
+
+
 def run_cases(*, cases: tuple[RegressionCase, ...]) -> tuple[tuple[str, tuple], ...]:
     """Run cases in canonical order and fail on any verdict-set mismatch."""
 
@@ -81,4 +94,39 @@ def summarize_cases(*, cases: tuple[RegressionCase, ...]) -> EvaluationSummary:
         unclassified_statement_count=sum(
             len(case.expected_unclassified_statement_ids) for case in cases
         ),
+    )
+
+
+def analyze_false_positives(*, cases: tuple[RegressionCase, ...]) -> FalsePositiveAnalysis:
+    """Report DEFEATED claims that are not defeated in frozen reference answers.
+
+    A mechanical false positive is especially serious because it would create a
+    material-omission accusation without support from the frozen reference
+    case. Categories are deliberately not pooled.
+    """
+
+    if not cases:
+        raise ValueError("cannot analyze an empty case set")
+    categories = {case.category for case in cases}
+    if len(categories) != 1:
+        raise ValueError("false-positive analysis must not pool categories")
+    false_positives: list[tuple[str, str]] = []
+    for case in sorted(cases, key=lambda item: item.case_id):
+        report = verify_report(
+            report_text=case.report_text,
+            snapshot=case.snapshot,
+            extraction=case.extraction,
+            disclosure_assessments=case.disclosure_assessments,
+        )
+        expected = dict(case.expected_verdicts)
+        for verdict in report.claim_verdicts:
+            if (
+                verdict.verdict is ClaimVerdict.DEFEATED
+                and expected.get(verdict.claim_id) is not ClaimVerdict.DEFEATED
+            ):
+                false_positives.append((case.case_id, verdict.claim_id))
+    return FalsePositiveAnalysis(
+        category=next(iter(categories)),
+        case_count=len(cases),
+        false_positive_defeats=tuple(false_positives),
     )

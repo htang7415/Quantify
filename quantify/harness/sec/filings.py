@@ -21,7 +21,12 @@ class SecFiling:
 
 
 def resolve_filings(
-    *, submissions: dict, cik: str, forms: tuple[str, ...], as_of_date: date
+    *,
+    submissions: dict,
+    cik: str,
+    forms: tuple[str, ...],
+    as_of_date: date,
+    historical_submissions: tuple[dict, ...] = (),
 ) -> tuple[SecFiling, ...]:
     """Resolve eligible filing records known at a point in time.
 
@@ -29,27 +34,33 @@ def resolve_filings(
     restatement policy decides which normalized facts enter a snapshot later.
     """
 
-    recent = submissions["filings"]["recent"]
+    records = [submissions["filings"]["recent"]]
+    records.extend(
+        historical.get("filings", {}).get("recent", historical)
+        for historical in historical_submissions
+    )
     filings: list[SecFiling] = []
-    for index, form in enumerate(recent["form"]):
-        base_form = form.removesuffix("/A")
-        filing_date = date.fromisoformat(recent["filingDate"][index])
-        if base_form not in forms or filing_date > as_of_date:
-            continue
-        report_date_value = recent.get("reportDate", [""] * len(recent["form"]))[index]
-        filings.append(
-            SecFiling(
-                cik=cik,
-                form=form,
-                accession=recent["accessionNumber"][index],
-                filing_date=filing_date,
-                report_date=(date.fromisoformat(report_date_value) if report_date_value else None),
-                primary_document=recent["primaryDocument"][index],
+    for records_set in records:
+        for index, form in enumerate(records_set["form"]):
+            base_form = form.removesuffix("/A")
+            filing_date = date.fromisoformat(records_set["filingDate"][index])
+            if base_form not in forms or filing_date > as_of_date:
+                continue
+            report_date_value = records_set.get("reportDate", [""] * len(records_set["form"]))[index]
+            filings.append(
+                SecFiling(
+                    cik=cik,
+                    form=form,
+                    accession=records_set["accessionNumber"][index],
+                    filing_date=filing_date,
+                    report_date=(date.fromisoformat(report_date_value) if report_date_value else None),
+                    primary_document=records_set["primaryDocument"][index],
+                )
             )
-        )
+    unique_accessions = {filing.accession: filing for filing in filings}
     return tuple(
         sorted(
-            filings,
+            unique_accessions.values(),
             key=lambda filing: (
                 filing.report_date or date.min,
                 filing.filing_date,

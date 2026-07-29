@@ -34,6 +34,9 @@ class ExtractionResult:
 
     statements: tuple[ExtractedStatement, ...]
     extractor_version: str
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_cost: float = 0.0
 
 
 @dataclass(frozen=True, slots=True)

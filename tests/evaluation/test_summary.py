@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from quantify.evaluation import case_from_json, summarize_cases
+from quantify.evaluation import analyze_false_positives, case_from_json, summarize_cases
 from tests.conftest import load_snapshot
 
 
@@ -53,3 +53,15 @@ def test_summary_rejects_mixed_categories() -> None:
                 _load_cases("judgment_v1.json")[0],
             )
         )
+
+
+def test_false_positive_analysis_is_separate_and_zero_for_frozen_cases() -> None:
+    mechanical = analyze_false_positives(cases=_load_cases("mechanical_v1.json"))
+    judgment = analyze_false_positives(cases=_load_cases("judgment_v1.json"))
+
+    assert mechanical.category == "mechanical"
+    assert mechanical.case_count == 20
+    assert mechanical.false_positive_defeats == ()
+    assert mechanical.false_positive_rate == 0.0
+    assert judgment.category == "judgment"
+    assert judgment.false_positive_defeats == ()

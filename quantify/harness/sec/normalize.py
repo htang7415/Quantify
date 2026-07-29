@@ -33,6 +33,11 @@ INITIAL_METRIC_ROUTES = (
 )
 REVENUE_CONCEPT = INITIAL_METRIC_ROUTES[0].concept
 
+_VALID_FISCAL_PERIODS_BY_FORM = {
+    "10-K": frozenset(("FY",)),
+    "10-Q": frozenset(("Q1", "Q2", "Q3")),
+}
+
 
 def normalize_company_facts(
     *,
@@ -40,20 +45,31 @@ def normalize_company_facts(
     source_url: str,
     forms: tuple[str, ...] = ("10-K", "10-Q"),
     routes: tuple[MetricRoute, ...] = INITIAL_METRIC_ROUTES,
+    accessions: tuple[str, ...] | None = None,
 ) -> tuple[EvidenceValue, ...]:
     """Normalize routed standardized facts with complete SEC provenance.
 
-    Missing standardized concepts are simply absent from the output. Custom tags,
-    debt aggregation, and derived margins remain explicit later policy work.
+    Missing standardized concepts are simply absent from the output. A 10-K
+    contributes ``FY`` facts; a 10-Q contributes ``Q1`` through ``Q3`` facts.
+    SEC-reported start and end dates are preserved, including year-to-date 10-Q
+    durations. Custom tags, debt aggregation, and derived margins remain
+    explicit later policy work.
     """
 
     cik = str(company_facts["cik"]).zfill(10)
     normalized: list[EvidenceValue] = []
     gaap_facts = company_facts["facts"].get("us-gaap", {})
+    allowed_accessions = set(accessions) if accessions is not None else None
     for route in routes:
         units = gaap_facts.get(route.concept, {}).get("units", {}).get(route.unit, ())
         for item in units:
-            if item.get("form") not in forms or item.get("fp") != "FY" or not item.get("accn"):
+            base_form = item.get("form", "").removesuffix("/A")
+            if (
+                base_form not in forms
+                or item.get("fp") not in _VALID_FISCAL_PERIODS_BY_FORM.get(base_form, ())
+                or not item.get("accn")
+                or (allowed_accessions is not None and item["accn"] not in allowed_accessions)
+            ):
                 continue
             if route.requires_duration and not item.get("start"):
                 continue
@@ -82,7 +98,11 @@ def normalize_company_facts(
 
 
 def normalize_revenue_facts(
-    *, company_facts: dict, source_url: str, forms: tuple[str, ...] = ("10-K", "10-Q")
+    *,
+    company_facts: dict,
+    source_url: str,
+    forms: tuple[str, ...] = ("10-K", "10-Q"),
+    accessions: tuple[str, ...] | None = None,
 ) -> tuple[EvidenceValue, ...]:
     """Compatibility wrapper for the first revenue-only snapshot builder."""
 
@@ -91,4 +111,5 @@ def normalize_revenue_facts(
         source_url=source_url,
         forms=forms,
         routes=(INITIAL_METRIC_ROUTES[0],),
+        accessions=accessions,
     )

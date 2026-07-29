@@ -41,6 +41,10 @@ restatement selection. Before snapshot construction, the engine records an
 explicit eligibility result for provenance, entity scope, units, period
 alignment, filing cutoff, and transformation status.
 
+Normalization preserves SEC reporting periods: 10-K facts use `FY`, while
+10-Q facts use `Q1`–`Q3`. Interim start and end dates are retained exactly,
+including year-to-date durations; Quantify does not infer standalone quarters.
+
 Snapshots reject unresolved competing eligible facts by default. The Quantum
 restatement fixture explicitly opts into such a conflict only as a regression
 case for CE1 behavior; normal snapshots apply a restatement policy first.
