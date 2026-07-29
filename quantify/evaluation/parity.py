@@ -39,6 +39,9 @@ class PromptingParityArtifact:
     prompt_hash: str
     temperature: float
     cases: tuple[PromptingParityCase, ...]
+    quantify_model: str | None = None
+    quantify_prompt_hash: str | None = None
+    quantify_temperature: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,20 +58,24 @@ def load_prompting_parity_artifact(path: Path) -> PromptingParityArtifact:
     """Load a manually/scheduled generated artifact; this function never calls a model."""
 
     payload = json.loads(path.read_text())
-    if payload.get("artifact_version") != "1.0.0":
+    artifact_version = payload.get("artifact_version")
+    if artifact_version not in {"1.0.0", "1.1.0"}:
         raise ValueError("unsupported prompting-parity artifact version")
     run = payload.get("run")
     if not isinstance(run, dict):
         raise ValueError("prompting-parity artifact requires run metadata")
-    model = run.get("model")
-    prompt_hash = run.get("prompt_hash")
-    temperature = run.get("temperature")
-    if not isinstance(model, str) or not model:
-        raise ValueError("prompting-parity artifact requires a pinned model")
-    if not isinstance(prompt_hash, str) or not prompt_hash:
-        raise ValueError("prompting-parity artifact requires a prompt hash")
-    if not isinstance(temperature, (int, float)) or isinstance(temperature, bool):
-        raise ValueError("prompting-parity artifact requires numeric temperature")
+    if artifact_version == "1.0.0":
+        prompt_only_run = run
+        quantify_run = run
+    else:
+        prompt_only_run = run.get("prompt_only")
+        quantify_run = run.get("quantify")
+        if not isinstance(prompt_only_run, dict) or not isinstance(quantify_run, dict):
+            raise ValueError("1.1.0 parity artifact requires both path run metadata")
+    model, prompt_hash, temperature = _validate_run_metadata(prompt_only_run)
+    quantify_model, quantify_prompt_hash, quantify_temperature = _validate_run_metadata(
+        quantify_run
+    )
     try:
         cases = tuple(
             PromptingParityCase(
@@ -84,11 +91,14 @@ def load_prompting_parity_artifact(path: Path) -> PromptingParityArtifact:
         raise ValueError("invalid prompting-parity case") from error
     _validate_cases(cases)
     return PromptingParityArtifact(
-        artifact_version=payload["artifact_version"],
+        artifact_version=artifact_version,
         model=model,
         prompt_hash=prompt_hash,
         temperature=float(temperature),
         cases=cases,
+        quantify_model=quantify_model,
+        quantify_prompt_hash=quantify_prompt_hash,
+        quantify_temperature=float(quantify_temperature),
     )
 
 
@@ -154,3 +164,18 @@ def _validate_cases(cases: tuple[PromptingParityCase, ...]) -> None:
             or item.quantify_outcome not in _OUTCOMES
         ):
             raise ValueError("prompting parity contains an unsupported outcome")
+
+
+def _validate_run_metadata(run: object) -> tuple[str, str, float]:
+    if not isinstance(run, dict):
+        raise ValueError("prompting-parity artifact requires run metadata")
+    model = run.get("model")
+    prompt_hash = run.get("prompt_hash")
+    temperature = run.get("temperature")
+    if not isinstance(model, str) or not model:
+        raise ValueError("prompting-parity artifact requires a pinned model")
+    if not isinstance(prompt_hash, str) or not prompt_hash:
+        raise ValueError("prompting-parity artifact requires a prompt hash")
+    if not isinstance(temperature, (int, float)) or isinstance(temperature, bool):
+        raise ValueError("prompting-parity artifact requires numeric temperature")
+    return model, prompt_hash, float(temperature)

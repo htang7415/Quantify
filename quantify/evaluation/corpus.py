@@ -19,6 +19,9 @@ from quantify.engine import (
     Relation,
     ReportSpan,
     StatementClassification,
+    EvidenceSnapshot,
+    EvidenceValue,
+    SourceType,
     build_upper_baseline_calibration,
 )
 from quantify.harness import ExtractedStatement, ExtractionResult
@@ -91,6 +94,52 @@ def load_case_specs(path: Path) -> tuple[CorpusCaseSpec, ...]:
             f"{category} case-set must contain exactly {REQUIRED_CASE_COUNTS[category]} cases"
         )
     return specs
+
+
+def load_frozen_case_set(*, path: Path, snapshot_root: Path) -> tuple[RegressionCase, ...]:
+    """Load one versioned case set and its explicitly named SEC snapshots."""
+
+    payload = json.loads(path.read_text())
+    load_case_specs(path)
+    return tuple(
+        case_from_json(
+            item=item,
+            snapshot=_load_snapshot_fixture(
+                path=snapshot_root / item["snapshot_fixture"],
+                allow_conflicting_evidence=item.get("allow_conflicting_evidence", False),
+            ),
+        )
+        for item in payload["cases"]
+    )
+
+
+def _load_snapshot_fixture(
+    *, path: Path, allow_conflicting_evidence: bool
+) -> EvidenceSnapshot:
+    """Load a frozen fixture without importing test-only helpers."""
+
+    fixture = json.loads(path.read_text())
+    evidence = tuple(
+        EvidenceValue(
+            evidence_id=item["evidence_id"],
+            entity_cik=item["entity_cik"],
+            metric=item["metric"],
+            value=Decimal(item["value"]),
+            unit=item["unit"],
+            period_start=date.fromisoformat(item["period_start"]),
+            period_end=date.fromisoformat(item["period_end"]),
+            accession=item["accession"],
+            filed_at=date.fromisoformat(item["filed_at"]),
+            source_url=item["source_url"],
+        )
+        for item in fixture["evidence"]
+    )
+    return EvidenceSnapshot.freeze(
+        snapshot_id=f"{path.stem}-v1",
+        evidence=evidence,
+        source_type=SourceType.SEC_COMPANY_FACTS,
+        allow_conflicting_evidence=allow_conflicting_evidence,
+    )
 
 
 def case_from_json(*, item: dict, snapshot) -> RegressionCase:

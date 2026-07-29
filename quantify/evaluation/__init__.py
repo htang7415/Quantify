@@ -8,7 +8,7 @@ from .regression import (
     run_cases,
     summarize_cases,
 )
-from .corpus import case_from_json, load_case_specs
+from .corpus import case_from_json, load_case_specs, load_frozen_case_set
 from .parity import (
     PromptingParityArtifact,
     PromptingParityCase,
@@ -24,6 +24,26 @@ from .readiness import (
     ReadinessPolicy,
     assess_readiness,
 )
+from .readiness_run import (
+    OperationalMeasurements,
+    ReadinessRun,
+    load_operational_measurements,
+    readiness_run_as_dict,
+    run_readiness_evaluation,
+)
+from .parity_worklist import (
+    PromptingParityReference,
+    PromptingParityWorkItem,
+    PromptingParityWorklist,
+    build_prompting_parity_worklist,
+    load_prompting_parity_references,
+)
+from .parity_compile import (
+    ModelOutcomeArtifact,
+    compile_prompting_parity_artifact,
+    load_model_outcome_artifact,
+    prompting_parity_artifact_as_dict,
+)
 
 __all__ = [
     "EvaluationSummary",
@@ -32,6 +52,7 @@ __all__ = [
     "case_from_json",
     "analyze_false_positives",
     "load_case_specs",
+    "load_frozen_case_set",
     "run_cases",
     "summarize_cases",
     "PromptingParityArtifact",
@@ -45,4 +66,18 @@ __all__ = [
     "ReadinessInputs",
     "ReadinessPolicy",
     "assess_readiness",
+    "OperationalMeasurements",
+    "ReadinessRun",
+    "load_operational_measurements",
+    "readiness_run_as_dict",
+    "run_readiness_evaluation",
+    "PromptingParityReference",
+    "PromptingParityWorkItem",
+    "PromptingParityWorklist",
+    "build_prompting_parity_worklist",
+    "load_prompting_parity_references",
+    "ModelOutcomeArtifact",
+    "compile_prompting_parity_artifact",
+    "load_model_outcome_artifact",
+    "prompting_parity_artifact_as_dict",
 ]

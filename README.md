@@ -31,6 +31,23 @@ judgment cases using pinned model and prompt metadata. They are loaded and
 scored offline—model execution belongs to a manual or scheduled evaluation,
 not ordinary CI. `assess_readiness(...)` then applies versioned quality, cost,
 latency, SEC-coverage, and parity thresholds to return `proceed` or `pause`.
+`run_readiness_evaluation(...)` joins that artifact with the real frozen corpus
+and explicit scheduled-evaluation measurements; it rejects mismatched case IDs
+or expected outcomes instead of manufacturing a commercial decision.
+
+Run the same gate from files with `python -m quantify.evaluation.readiness_cli`
+and the mechanical/judgment case files, SEC snapshot directory, parity artifact,
+and operational-measurement artifact. Add `--fail-on-pause` when a scheduled
+release gate should return a nonzero status for a `pause` decision.
+
+Before a provider run, `python -m quantify.evaluation.parity_worklist_cli`
+emits only opaque request IDs and report text. Its required separate reference
+mapping contains the frozen outcomes and must remain evaluator-side.
+
+After both provider paths finish, `python -m quantify.evaluation.parity_compile_cli`
+reconciles their opaque outcome files with that private mapping. It rejects
+missing, duplicate, unknown, or mismatched request IDs and writes the versioned
+parity artifact consumed by the readiness CLI.
 
 ## SEC evidence path
 
