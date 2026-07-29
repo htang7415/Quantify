@@ -309,6 +309,53 @@ def interactive_repeated_run_stability_as_dict(
     return {"stability_hash": _canonical_hash(payload), **payload}
 
 
+def load_interactive_repeated_run_stability(*, path: Path) -> InteractiveRepeatedRunStability:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError("invalid interactive stability artifact") from error
+    if not isinstance(payload, dict):
+        raise ValueError("invalid interactive stability artifact")
+    return _interactive_stability_from_artifact(payload=payload)
+
+
+def compile_interactive_runtime_artifact(
+    *, trial: InteractiveRuntimeTrial, stability: InteractiveRepeatedRunStability
+) -> dict:
+    """Compile measured normal-prompt trial and stability into readiness input."""
+
+    _validate_trial(trial=trial)
+    _validate_interactive_stability(stability=stability)
+    authorization = trial.authorization
+    if (
+        stability.model != authorization.model
+        or stability.prompt_hash != authorization.prompt_hash
+        or stability.temperature != authorization.temperature
+    ):
+        raise ValueError("interactive trial and stability metadata do not match")
+    stability_payload = interactive_repeated_run_stability_as_dict(stability=stability)
+    payload = {
+        "artifact_version": "1.2.0",
+        "provenance": {
+            "execution_mode": "interactive_runtime",
+            "sample_count": 30,
+            "latency_kind": "mean_end_to_end_request_seconds",
+            "cost_kind": "observed_provider_usage_per_report",
+        },
+        "authorization": asdict(authorization),
+        "stability_artifact_hash": stability_payload["stability_hash"],
+        "normal_prompt_stability": stability_payload,
+        "cases": [_case_record(item=item) for item in trial.cases],
+        "measurements": {
+            "verified_defeated_flips": stability.mechanical_verified_defeated_flips,
+            "latency_seconds": sum(item.end_to_end_request_seconds for item in trial.cases) / 30,
+            "cost_per_report": sum(item.total_cost_usd for item in trial.cases) / 30,
+            "sec_insufficiency_count": sum(item.sec_insufficient for item in trial.cases),
+        },
+    }
+    return {"run_hash": _canonical_hash(payload), **payload}
+
+
 def validate_interactive_runtime_inputs(
     *,
     mechanical_cases: tuple[RegressionCase, ...],
@@ -401,6 +448,7 @@ def validate_interactive_runtime_artifact(*, payload: object) -> None:
     measurements = payload.get("measurements")
     authorization_payload = payload.get("authorization")
     stability_artifact_hash = payload.get("stability_artifact_hash")
+    normal_stability = payload.get("normal_prompt_stability")
     if (
         not isinstance(cases, list)
         or not isinstance(measurements, dict)
@@ -416,6 +464,18 @@ def validate_interactive_runtime_artifact(*, payload: object) -> None:
         raise ValueError("interactive operations artifact has invalid authorization") from error
     if authorization_payload != asdict(authorization):
         raise ValueError("interactive operations artifact has invalid authorization")
+    stability = None
+    if normal_stability is not None:
+        if not isinstance(normal_stability, dict):
+            raise ValueError("interactive operations artifact has invalid normal stability")
+        stability = _interactive_stability_from_artifact(payload=normal_stability)
+        if (
+            normal_stability.get("stability_hash") != stability_artifact_hash
+            or stability.model != authorization.model
+            or stability.prompt_hash != authorization.prompt_hash
+            or stability.temperature != authorization.temperature
+        ):
+            raise ValueError("interactive operations artifact has invalid normal stability")
     if len(cases) != 30 or any(not isinstance(item, dict) for item in cases):
         raise ValueError("interactive operations artifact requires exactly 30 case records")
     case_ids = [item.get("case_id") for item in cases]
@@ -425,6 +485,8 @@ def validate_interactive_runtime_artifact(*, payload: object) -> None:
         raise ValueError("interactive operations artifact case IDs must be unique")
     _validate_artifact_case_records(cases=cases, authorization=authorization)
     _validate_artifact_measurements(cases=cases, measurements=measurements)
+    if stability is not None and measurements["verified_defeated_flips"] != stability.mechanical_verified_defeated_flips:
+        raise ValueError("interactive operations artifact has inconsistent stability flips")
 
 
 def _validate_case_sets(
@@ -530,6 +592,18 @@ def _validate_interactive_stability(*, stability: InteractiveRepeatedRunStabilit
         ) < 0
     ):
         raise ValueError("interactive repeated-run stability artifact is invalid")
+
+
+def _interactive_stability_from_artifact(*, payload: dict) -> InteractiveRepeatedRunStability:
+    try:
+        unsigned = {"artifact_version": payload["artifact_version"], "stability": payload["stability"]}
+        if payload.get("stability_hash") != _canonical_hash(unsigned):
+            raise ValueError("interactive stability hash is invalid")
+        stability = InteractiveRepeatedRunStability(**payload["stability"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError("interactive stability artifact is invalid") from error
+    _validate_interactive_stability(stability=stability)
+    return stability
 
 
 def _validate_artifact_measurements(*, cases: list[dict], measurements: dict) -> None:

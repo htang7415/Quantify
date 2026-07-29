@@ -9,6 +9,7 @@ import pytest
 
 from quantify.evaluation import (
     InteractiveRuntimeAuthorization,
+    compile_interactive_runtime_artifact,
     RepeatedRunPathStability,
     RepeatedRunStability,
     interactive_runtime_artifact_as_dict,
@@ -244,6 +245,25 @@ def test_interactive_stability_cli_compiles_two_trials(tmp_path: Path) -> None:
         "--first-trial", str(first), "--second-trial", str(second), "--output", str(output)
     ]) == 0
     assert json.loads(output.read_text())["stability"]["mechanical_verified_defeated_flips"] == 0
+
+
+def test_normal_stability_compiles_a_readiness_compatible_operations_artifact(tmp_path: Path) -> None:
+    mechanical, judgment = _cases()
+    first = run_interactive_runtime_trial(
+        mechanical_cases=mechanical, judgment_cases=judgment, extractor=_Extractor(), authorization=_authorization(), clock=_Clock()
+    )
+    second = run_interactive_runtime_trial(
+        mechanical_cases=mechanical, judgment_cases=judgment, extractor=_Extractor(), authorization=_authorization(), clock=_Clock()
+    )
+    payload = compile_interactive_runtime_artifact(
+        trial=first,
+        stability=evaluate_interactive_repeated_run_stability(first_trial=first, second_trial=second),
+    )
+    path = tmp_path / "operations.json"
+    path.write_text(json.dumps(payload))
+    operations = load_operational_measurements(path=path)
+    assert operations.normal_prompt_stability is True
+    assert operations.verified_defeated_flips == 0
 
 
 def test_interactive_trial_cli_preflight_is_no_network(capsys: pytest.CaptureFixture[str]) -> None:

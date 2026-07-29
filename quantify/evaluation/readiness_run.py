@@ -38,6 +38,7 @@ class OperationalMeasurements:
     cost_per_report: float
     sec_insufficiency_count: int
     stability_artifact_hash: str | None = None
+    normal_prompt_stability: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,6 +77,9 @@ def load_operational_measurements(*, path: Path) -> OperationalMeasurements:
                 payload["stability_artifact_hash"]
                 if artifact_version == "1.2.0"
                 else None
+            ),
+            normal_prompt_stability=(
+                artifact_version == "1.2.0" and "normal_prompt_stability" in payload
             ),
         )
     except KeyError as error:
@@ -138,6 +142,8 @@ def run_readiness_evaluation(
             "operational verified-defeated flips must match the scheduled stability artifact"
         )
     if (
+        not operations.normal_prompt_stability
+        and
         operations.stability_artifact_hash is not None
         and operations.stability_artifact_hash
         != repeated_run_stability_hash(stability=stability)
