@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Authenticated smoke checks for an already-created, tagged zero-traffic revision.
+# Authenticated smoke checks for an already-created, tagged private revision.
 set -euo pipefail
 
 if [[ "${QUANTIFY_AUTHORIZE_STAGING_SMOKE:-}" != "1" ]]; then
@@ -9,8 +9,13 @@ fi
 : "${STAGING_URL:?set STAGING_URL to the tagged revision URL}"
 : "${EXPECTED_IMAGE_DIGEST:?set EXPECTED_IMAGE_DIGEST to the deployed sha256 digest}"
 : "${EXPECTED_FIXTURE_MANIFEST_HASH:?set EXPECTED_FIXTURE_MANIFEST_HASH}"
+gcloud_bin="${GCLOUD_BIN:-gcloud}"
+if ! command -v "$gcloud_bin" >/dev/null 2>&1; then
+  echo "gcloud is unavailable; set GCLOUD_BIN to its executable path." >&2
+  exit 2
+fi
 
-token="$(gcloud auth print-identity-token --audiences="$STAGING_URL")"
+token="$("$gcloud_bin" auth print-identity-token --audiences="$STAGING_URL")"
 headers=(-H "Authorization: Bearer $token" -H "Content-Type: application/json")
 health="$(curl --fail-with-body --silent --show-error "${headers[@]}" "$STAGING_URL/healthz")"
 verify="$(curl --fail-with-body --silent --show-error "${headers[@]}" \

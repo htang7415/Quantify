@@ -23,19 +23,22 @@ def test_staging_configuration_pins_immutable_image_secret_and_capacity() -> Non
     assert "containerConcurrency: 1" in template
     assert 'autoscaling.knative.dev/maxScale: "2"' in template
     assert "--no-traffic" in deploy
+    assert "Creating the first IAM-private staging service revision" in deploy
+    assert "run services describe" in deploy
     assert "--no-allow-unauthenticated" in deploy
     assert "--max-instances=2" in deploy
     assert "--concurrency=1" in deploy
     assert "@sha256:[0-9a-f]{64}" in deploy
+    assert 'gcloud_bin="${GCLOUD_BIN:-gcloud}"' in deploy
     assert "latest" not in template.lower()
     assert "latest" not in deploy.lower()
 
 
-def test_cloud_build_pushes_commit_tag_and_never_deploys() -> None:
+def test_cloud_build_pushes_unique_build_tag_and_never_deploys() -> None:
     build = _read("cloudbuild.yaml")
 
     assert "requirements.test.lock" in build
-    assert ":$COMMIT_SHA" in build
+    assert ":$BUILD_ID" in build
     assert "image-digest-ref.txt" in build
     assert "gcloud run deploy" not in build
     assert "gcloud run services" not in build
@@ -48,6 +51,7 @@ def test_smoke_script_checks_auditable_response_and_rejects_internal_routes() ->
     assert "EXPECTED_FIXTURE_MANIFEST_HASH" in smoke
     assert 'audit["deployment_image_digest"]' in smoke
     assert 'audit["evidence_fixture_manifest_hash"]' in smoke
+    assert 'gcloud_bin="${GCLOUD_BIN:-gcloud}"' in smoke
     assert '"/v1/companies/789019/review"' in smoke
     assert '"/v1/companies/789019/resolve"' in smoke
     assert '"/v1/verify/batch"' in smoke

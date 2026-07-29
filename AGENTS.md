@@ -46,11 +46,14 @@ Production application assembly, dynamic container QA, and private staging
 configuration are complete: embedded-fixture-only evidence, semantic-duplicate
 claim collapse, startup validation, enforced route allowlist, locked non-root
 image, immutable image/secret configuration, and authenticated smoke tooling.
-The next work requires explicit authorization to create Google Cloud resources,
-then separately to build, deploy a zero-traffic revision, and call staging.
-Live SEC retrieval must be unreachable from the deployed request path. Do not
-bind secrets, deploy, promote traffic, or publish a release without the
-corresponding explicit user authorization.
+Google Cloud bootstrap and an immutable image build are complete. The next
+work is adding Secret Manager version `1`, then separately authorizing a
+private staging deployment and staging smoke call. The first Cloud Run revision
+is IAM-private staging traffic only; later candidate revisions begin at zero
+traffic. Live SEC retrieval
+must be unreachable from the deployed request path. Do not deploy, promote
+traffic, or publish a release without the corresponding explicit user
+authorization.
 
 ## Working approach
 

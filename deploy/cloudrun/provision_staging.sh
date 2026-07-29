@@ -12,18 +12,23 @@ fi
 : "${ARTIFACT_REPOSITORY:?set ARTIFACT_REPOSITORY}"
 : "${RUNTIME_SERVICE_ACCOUNT:?set RUNTIME_SERVICE_ACCOUNT}"
 : "${GEMINI_SECRET_NAME:?set GEMINI_SECRET_NAME}"
+gcloud_bin="${GCLOUD_BIN:-gcloud}"
+if ! command -v "$gcloud_bin" >/dev/null 2>&1; then
+  echo "gcloud is unavailable; set GCLOUD_BIN to its executable path." >&2
+  exit 2
+fi
 
 service_account_name="${RUNTIME_SERVICE_ACCOUNT%@*}"
-gcloud artifacts repositories describe "$ARTIFACT_REPOSITORY" \
+"$gcloud_bin" artifacts repositories describe "$ARTIFACT_REPOSITORY" \
   --project="$GCP_PROJECT_ID" --location="$GCP_REGION" >/dev/null 2>&1 \
-  || gcloud artifacts repositories create "$ARTIFACT_REPOSITORY" \
+  || "$gcloud_bin" artifacts repositories create "$ARTIFACT_REPOSITORY" \
     --project="$GCP_PROJECT_ID" --location="$GCP_REGION" \
     --repository-format=docker --description="Quantify immutable API images"
-gcloud iam service-accounts describe "$RUNTIME_SERVICE_ACCOUNT" \
+"$gcloud_bin" iam service-accounts describe "$RUNTIME_SERVICE_ACCOUNT" \
   --project="$GCP_PROJECT_ID" >/dev/null 2>&1 \
-  || gcloud iam service-accounts create "$service_account_name" \
+  || "$gcloud_bin" iam service-accounts create "$service_account_name" \
     --project="$GCP_PROJECT_ID" --display-name="Quantify Core runtime"
-gcloud secrets add-iam-policy-binding "$GEMINI_SECRET_NAME" \
+"$gcloud_bin" secrets add-iam-policy-binding "$GEMINI_SECRET_NAME" \
   --project="$GCP_PROJECT_ID" \
   --member="serviceAccount:$RUNTIME_SERVICE_ACCOUNT" \
   --role="roles/secretmanager.secretAccessor"

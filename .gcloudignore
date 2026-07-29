@@ -1,0 +1,13 @@
+.gcloudignore
+.git/
+.venv/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+._*
+
+.env
+.env.*
+.quantify-private/
+
+docs/

@@ -248,7 +248,7 @@ contract, not authorization to create cloud resources.
 source commit + frozen fixtures
 → tested immutable container image
 → Artifact Registry image digest
-→ IAM-authenticated zero-traffic staging revision
+→ IAM-authenticated private staging service
 → frozen Microsoft smoke test
 → immutable production revision or rollback
 ```
@@ -293,7 +293,7 @@ min instances:      0
 max instances:      2
 concurrency:        1
 authentication:     Cloud Run IAM
-release:            immutable revisions with zero-traffic smoke testing
+release:            immutable private staging; later candidates start zero-traffic
 ```
 
 The image must pin Python and dependencies, run as non-root, honor `PORT`, use
@@ -340,19 +340,21 @@ creation are separate ship actions requiring explicit user authorization.
 The production application factory, enforced route allowlist, fixture-only
 evidence provider, typed unavailable-model response, duplicate collapse,
 locked non-root container, and digest-pinned private staging configuration are
-implemented and covered by focused tests. No Google Cloud resource has been
-created and no staging request has been sent.
+implemented and covered by focused tests. The Google Cloud bootstrap and one
+Cloud Build image build are complete; no Cloud Run service or staging request
+has been created.
 
 Complete private Cloud Run staging without expanding product scope:
 
 ```text
-1. After explicit bootstrap authorization, create the named Artifact Registry,
-   dedicated runtime identity, and least-privilege Secret Manager access.
-2. After explicit build authorization, run the reproducible Cloud Build job and
-   record its resulting immutable image digest.
-3. After explicit deployment authorization, create the IAM-authenticated,
-   zero-traffic tagged staging revision using that digest and secret version.
-4. After explicit staging-smoke authorization, run authenticated staging smoke
+1. Add the Gemini credential directly to Secret Manager as numbered version
+   `1`; the secret name and runtime accessor binding already exist.
+2. After explicit deployment authorization, create the IAM-authenticated,
+   tagged staging service using that digest and secret version. Its first
+   revision is private and receives staging-service traffic because Cloud Run
+   cannot create a zero-traffic service; later candidate revisions start at
+   zero traffic and are reached through their tags.
+3. After explicit staging-smoke authorization, run authenticated staging smoke
    tests, review telemetry, then decide whether to promote.
 ```
 
