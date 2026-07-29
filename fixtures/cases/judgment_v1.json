@@ -1,0 +1,17 @@
+{
+  "case_set_version": "1.1.0",
+  "review_policy_version": "1.0.0",
+  "default_reviewer_rationale": "The statement is interpretive and has no closed factual relation in the current verifier; it must remain unclassified without claiming external finance review.",
+  "cases": [
+    {"case_id":"judgment-msft-durable-advantage-v1","category":"judgment","reviewer_status":"not_required","snapshot_fixture":"msft_fundamentals_regression.json","report_text":"Microsoft has a durable competitive advantage.","expected_classification":"unclassified"},
+    {"case_id":"judgment-msft-operating-performance-v1","category":"judgment","reviewer_status":"not_required","snapshot_fixture":"msft_fundamentals_regression.json","report_text":"Microsoft operating performance improved materially.","expected_classification":"unclassified"},
+    {"case_id":"judgment-msft-growth-quality-v1","category":"judgment","reviewer_status":"not_required","snapshot_fixture":"msft_fundamentals_regression.json","report_text":"Microsoft growth quality strengthened.","expected_classification":"unclassified"},
+    {"case_id":"judgment-msft-financial-position-v1","category":"judgment","reviewer_status":"not_required","snapshot_fixture":"msft_fundamentals_regression.json","report_text":"Microsoft financial position strengthened.","expected_classification":"unclassified"},
+    {"case_id":"judgment-msft-capital-allocation-v1","category":"judgment","reviewer_status":"not_required","snapshot_fixture":"msft_fundamentals_regression.json","report_text":"Microsoft made disciplined capital-allocation choices.","expected_classification":"unclassified"},
+    {"case_id":"judgment-aapl-growth-quality-v1","category":"judgment","reviewer_status":"not_required","snapshot_fixture":"aapl_revenue_regression.json","report_text":"Apple revenue growth quality deteriorated.","expected_classification":"unclassified"},
+    {"case_id":"judgment-aapl-franchise-v1","category":"judgment","reviewer_status":"not_required","snapshot_fixture":"aapl_revenue_regression.json","report_text":"Apple has an exceptionally resilient franchise.","expected_classification":"unclassified"},
+    {"case_id":"judgment-aapl-valuation-v1","category":"judgment","reviewer_status":"not_required","snapshot_fixture":"aapl_revenue_regression.json","report_text":"Apple stock is undervalued.","expected_classification":"unclassified"},
+    {"case_id":"judgment-quantum-management-v1","category":"judgment","reviewer_status":"not_required","snapshot_fixture":"quantum_revenue_restatement.json","allow_conflicting_evidence":true,"report_text":"Quantum management is concealing weakness.","expected_classification":"unclassified"},
+    {"case_id":"judgment-quantum-cash-quality-v1","category":"judgment","reviewer_status":"not_required","snapshot_fixture":"quantum_revenue_restatement.json","allow_conflicting_evidence":true,"report_text":"Quantum cash-generation quality deteriorated.","expected_classification":"unclassified"}
+  ]
+}

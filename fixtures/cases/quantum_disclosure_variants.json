@@ -1,12 +1,12 @@
 {
-  "case_set_version": "1.0.0",
+  "case_set_version": "1.1.0",
   "snapshot_fixture": "quantum_revenue_restatement.json",
-  "report_text": "Quantum revenue was under $415 million.",
   "variants": [
-    {"case_id": "qtm-not-disclosed", "disclosure_status": "not_disclosed", "expected_verdict": "defeated", "expects_material_omission": true},
-    {"case_id": "qtm-disclosed-same-sentence", "disclosure_status": "disclosed_same_sentence", "expected_verdict": "qualified", "expects_material_omission": false},
-    {"case_id": "qtm-disclosed-elsewhere", "disclosure_status": "disclosed_elsewhere", "expected_verdict": "qualified", "expects_material_omission": false},
-    {"case_id": "qtm-ambiguous", "disclosure_status": "ambiguous", "expected_verdict": "requires_human_review", "expects_material_omission": false},
-    {"case_id": "qtm-missing-assessment", "disclosure_status": null, "expected_verdict": "requires_human_review", "expects_material_omission": false}
+    {"case_id":"qtm-not-disclosed","report_text":"Quantum revenue was under $415 million.","claim_sentence":"Quantum revenue was under $415 million.","disclosure_status":"not_disclosed","expected_verdict":"defeated","expects_material_omission":true},
+    {"case_id":"qtm-disclosed-same-sentence","report_text":"Quantum revenue was under $415 million, but the later restatement reported a higher figure.","claim_sentence":"Quantum revenue was under $415 million, but the later restatement reported a higher figure.","disclosure_status":"disclosed_same_sentence","expected_verdict":"qualified","expects_material_omission":false},
+    {"case_id":"qtm-disclosed-elsewhere","report_text":"Quantum revenue was under $415 million. The later restatement reported a higher figure.","claim_sentence":"Quantum revenue was under $415 million.","disclosure_status":"disclosed_elsewhere","expected_verdict":"qualified","expects_material_omission":false},
+    {"case_id":"qtm-paraphrased-disclosure","report_text":"Quantum revenue was under $415 million. The amended filing revised prior-year sales upward.","claim_sentence":"Quantum revenue was under $415 million.","disclosure_status":"disclosed_elsewhere","expected_verdict":"qualified","expects_material_omission":false,"scenario":"paraphrased"},
+    {"case_id":"qtm-ambiguous","report_text":"Quantum revenue was under $415 million. The amended filing discussed a possible revision.","claim_sentence":"Quantum revenue was under $415 million.","disclosure_status":"ambiguous","expected_verdict":"requires_human_review","expects_material_omission":false},
+    {"case_id":"qtm-missing-assessment","report_text":"Quantum revenue was under $415 million.","claim_sentence":"Quantum revenue was under $415 million.","disclosure_status":null,"expected_verdict":"requires_human_review","expects_material_omission":false}
   ]
 }

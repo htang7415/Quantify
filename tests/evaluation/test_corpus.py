@@ -22,4 +22,6 @@ def test_loads_and_runs_versioned_frozen_mechanical_cases() -> None:
     )
 
     assert [spec.case_id for spec in specs] == [case.case_id for case in cases]
+    assert len(specs) == 20
+    assert {spec.category for spec in specs} == {"mechanical"}
     assert run_cases(cases=cases) == run_cases(cases=tuple(reversed(cases)))

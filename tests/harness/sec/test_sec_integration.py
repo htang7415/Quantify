@@ -5,7 +5,7 @@ import json
 
 import pytest
 
-from quantify.engine import RestatementPolicy
+from quantify.engine import RestatementPolicy, SourceType, freeze_selected_snapshot
 from quantify.harness import build_revenue_snapshot
 from quantify.harness.audit import build_audit_manifest
 from quantify.harness.sec import SecCompanyFactsClient, normalize_company_facts, normalize_revenue_facts
@@ -165,3 +165,35 @@ def test_normalizes_the_initial_metric_routes_and_excludes_unrouted_values() -> 
         ("revenue", 245122000000),
         ("operating_income", 109433000000),
     }
+
+
+def test_normalizer_distinguishes_annual_and_quarterly_facts_in_one_filing() -> None:
+    payload = _microsoft_company_facts()
+    payload["facts"]["us-gaap"][
+        "RevenueFromContractWithCustomerExcludingAssessedTax"
+    ]["units"]["USD"].append(
+        {
+            "start": "2024-04-01",
+            "end": "2024-06-30",
+            "val": 64700000000,
+            "form": "10-K",
+            "fp": "FY",
+            "filed": "2024-07-30",
+            "accn": "0000950170-24-087843",
+        }
+    )
+    facts = normalize_company_facts(
+        company_facts=payload,
+        source_url="https://data.sec.gov/example",
+    )
+
+    snapshot, _ = freeze_selected_snapshot(
+        snapshot_id="mixed-duration-facts",
+        evidence=facts,
+        policy=RestatementPolicy.LATEST_AVAILABLE_AT_CUTOFF,
+        as_of_date=date(2024, 7, 30),
+        source_type=SourceType.SEC_COMPANY_FACTS,
+    )
+
+    revenue_ids = [item.evidence_id for item in snapshot.evidence if item.metric == "revenue"]
+    assert len(revenue_ids) == len(set(revenue_ids)) == 3

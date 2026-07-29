@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from quantify.engine.schemas import (
     EvidenceSnapshot,
+    MetricBaselineClaim,
     MetricComparisonClaim,
     MetricThresholdClaim,
     ReportSpan,
@@ -16,7 +17,7 @@ from quantify.engine.schemas import (
 
 from .grounding import validate_claim_references, validate_report_span
 
-TypedClaim = MetricThresholdClaim | MetricComparisonClaim
+TypedClaim = MetricThresholdClaim | MetricComparisonClaim | MetricBaselineClaim
 
 
 @dataclass(frozen=True, slots=True)

@@ -64,7 +64,8 @@ def normalize_company_facts(
             normalized.append(
                 EvidenceValue(
                     evidence_id=(
-                        f"{cik}-{route.metric}-{item['end']}-{item['accn'].replace('-', '')}"
+                        f"{cik}-{route.metric}-{period_start.isoformat()}-"
+                        f"{period_end.isoformat()}-{item['accn'].replace('-', '')}"
                     ),
                     entity_cik=cik,
                     metric=route.metric,

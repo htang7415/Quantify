@@ -6,9 +6,12 @@ import pytest
 
 from quantify.engine import (
     ClaimVerdict,
+    ClaimAnalysisResult,
+    CounterevidencePair,
     DisclosureAssessment,
     DisclosureStatus,
     MetricThresholdClaim,
+    LocalWarrantResult,
     Relation,
     analyze_claims,
     compose_claim_verdicts,
@@ -70,3 +73,41 @@ def test_rejects_assessment_for_non_ce1_pair() -> None:
                 ),
             ),
         )
+
+
+def test_mixed_disclosure_remains_qualified_without_an_omission_accusation() -> None:
+    analysis = ClaimAnalysisResult(
+        local_warrants=(
+            LocalWarrantResult(
+                claim_id="mixed",
+                passed=True,
+                cited_evidence_ids=("cited",),
+            ),
+        ),
+        counterevidence_pairs=(
+            CounterevidencePair(claim_id="mixed", evidence_id="defeating-disclosed"),
+            CounterevidencePair(claim_id="mixed", evidence_id="defeating-undisclosed"),
+        ),
+    )
+
+    result = compose_claim_verdicts(
+        analysis=analysis,
+        disclosure_assessments=(
+            DisclosureAssessment(
+                claim_id="mixed",
+                defeating_evidence_id="defeating-disclosed",
+                status=DisclosureStatus.DISCLOSED_ELSEWHERE,
+            ),
+            DisclosureAssessment(
+                claim_id="mixed",
+                defeating_evidence_id="defeating-undisclosed",
+                status=DisclosureStatus.NOT_DISCLOSED,
+            ),
+        ),
+    )
+
+    assert result[0].verdict is ClaimVerdict.QUALIFIED
+    assert [detail.disclosure_status for detail in result[0].counterevidence_detail] == [
+        DisclosureStatus.DISCLOSED_ELSEWHERE,
+        DisclosureStatus.NOT_DISCLOSED,
+    ]

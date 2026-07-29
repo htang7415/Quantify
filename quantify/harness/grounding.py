@@ -6,6 +6,7 @@ import re
 
 from quantify.engine.schemas import (
     EvidenceSnapshot,
+    MetricBaselineClaim,
     MetricComparisonClaim,
     MetricThresholdClaim,
     ReportSpan,
@@ -66,7 +67,7 @@ def validate_report_span(*, report_text: str, span: ReportSpan) -> ReviewItem | 
 def validate_claim_references(
     *,
     snapshot: EvidenceSnapshot,
-    claim: MetricThresholdClaim | MetricComparisonClaim,
+    claim: MetricThresholdClaim | MetricComparisonClaim | MetricBaselineClaim,
 ) -> ReviewItem | None:
     """Route missing cited evidence IDs to review before engine analysis."""
 
