@@ -9,6 +9,7 @@ from decimal import Decimal
 
 from quantify.engine import (
     ClaimVerdict,
+    CounterevidencePair,
     MetricThresholdClaim,
     Relation,
     ReportSpan,
@@ -16,6 +17,7 @@ from quantify.engine import (
     StatementClassification,
 )
 from quantify.harness import (
+    DisclosureContext,
     ExtractedStatement,
     ExtractionResult,
     GeminiDisclosureConfig,
@@ -36,11 +38,15 @@ class _Transport:
         self.url = ""
         self.headers: dict[str, str] = {}
         self.body: dict = {}
+        self.timeout_seconds = 0.0
 
-    def post_json(self, *, url: str, headers: dict[str, str], body: dict) -> dict:
+    def post_json(
+        self, *, url: str, headers: dict[str, str], body: dict, timeout_seconds: float
+    ) -> dict:
         self.url = url
         self.headers = headers
         self.body = body
+        self.timeout_seconds = timeout_seconds
         return self.response
 
 
@@ -51,8 +57,7 @@ def test_gemini_extractor_proposes_a_grounded_claim_for_deterministic_verificati
                 "statements": [
                     {
                         "classification": "classified",
-                        "sentence_text": REPORT,
-                        "claim_fragment": "Microsoft revenue increased",
+                        "report_span_id": "report-s1",
                         "claim_type": "comparison",
                         "relation": "greater_than",
                         "left_evidence_id": "msft-revenue-fy2024",
@@ -82,12 +87,14 @@ def test_gemini_extractor_proposes_a_grounded_claim_for_deterministic_verificati
     assert transport.url.endswith("models/gemini-3.1-flash-lite:generateContent")
     assert transport.headers["x-goog-api-key"] == "test-key"
     assert len(config.prompt_hash) == 64
+    assert transport.timeout_seconds == 4.0
     assert len(facts) == 2
     assert "expected_verdict" not in serialized
     assert "case_id" not in serialized
     assert extraction.input_tokens == 100
     assert extraction.output_tokens == 20
     assert extraction.total_cost == pytest.approx(0.000055)
+    assert extraction.failure_reason is None
     assert result.claim_verdicts[0].verdict is ClaimVerdict.VERIFIED
 
 
@@ -102,6 +109,7 @@ def test_malformed_gemini_output_fails_closed_to_agent_resolution() -> None:
     )
 
     assert extraction.statements[0].statement_id == "gemini-schema-failure"
+    assert extraction.failure_reason == "model_output_invalid"
     assert result.claim_verdicts == ()
     assert result.review_items[0].reason is ReviewReason.EXTRACTION_SCHEMA_FAILURE
 
@@ -226,6 +234,56 @@ def test_invalid_gemini_disclosure_result_stays_agent_resolvable() -> None:
     )
 
     assert result.claim_verdicts[0].verdict is ClaimVerdict.REQUIRES_AGENT_RESOLUTION
+
+
+def test_gemini_timeout_fails_closed_without_retrying_or_publishing() -> None:
+    class _TimeoutTransport:
+        def post_json(self, **kwargs):
+            raise RuntimeError("Gemini extraction request exceeded its latency budget")
+
+    extraction = GeminiStructuredExtractor(
+        api_key="test-key", transport=_TimeoutTransport()
+    ).extract(report_text=REPORT, snapshot=load_snapshot("msft_revenue_regression.json"))
+
+    assert extraction.statements[0].classification is StatementClassification.REQUIRES_AGENT_RESOLUTION
+    assert extraction.input_tokens == 0
+    assert extraction.total_cost == 0.0
+    assert extraction.failure_reason == "transport_failure"
+
+
+def test_disclosure_timeout_becomes_ambiguous_instead_of_an_omission() -> None:
+    class _TimeoutTransport:
+        def post_json(self, **kwargs):
+            raise RuntimeError("Gemini extraction request exceeded its latency budget")
+
+    detector = GeminiDisclosureDetector(api_key="test-key", transport=_TimeoutTransport())
+    snapshot = load_snapshot(
+        "quantum_revenue_restatement.json", allow_conflicting_evidence=True
+    )
+    claim = MetricThresholdClaim(
+        claim_id="claim",
+        cited_evidence_id="qtm-revenue-fy2023-as-filed",
+        relation=Relation.LESS_THAN,
+        threshold=Decimal("415000000"),
+    )
+    assessment = detector.assess(
+        report_text="report",
+        counterevidence_pairs=(
+            CounterevidencePair(
+                claim_id="claim", evidence_id="qtm-revenue-fy2023-restated"
+            ),
+        ),
+        contexts=(
+            DisclosureContext(
+                claim=claim,
+                defeating_evidence=snapshot.evidence_by_id(
+                    "qtm-revenue-fy2023-restated"
+                ),
+            ),
+        ),
+    )
+
+    assert assessment[0].status.value == "ambiguous"
 
 
 def _response(payload: dict) -> dict:

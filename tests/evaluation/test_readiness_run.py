@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import json
 from pathlib import Path
 
@@ -152,4 +153,15 @@ def test_readiness_run_refuses_an_unlinked_instability_measurement() -> None:
             parity_artifact=_artifact(),
             stability=stability,
             operations=_operations(),
+        )
+
+
+def test_readiness_run_refuses_an_interactive_artifact_from_another_stability_run() -> None:
+    with pytest.raises(ValueError, match="do not match the scheduled stability artifact"):
+        run_readiness_evaluation(
+            mechanical_cases=_load_cases("mechanical_v1.json"),
+            judgment_cases=_load_cases("judgment_v1.json"),
+            parity_artifact=_artifact(),
+            stability=_stability(),
+            operations=replace(_operations(), stability_artifact_hash="a" * 64),
         )

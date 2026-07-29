@@ -1,4 +1,4 @@
-"""Write readiness measurements from a completed scheduled-evaluation ledger."""
+"""Write Batch-quality measurements from a completed scheduled-evaluation ledger."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from .stability import load_repeated_run_stability
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Compile completed campaign timing/cost into readiness input."
+        description="Compile completed campaign timing/cost into Batch-quality input."
     )
     parser.add_argument("--campaign", type=Path, required=True)
     parser.add_argument("--ledger", type=Path, required=True)

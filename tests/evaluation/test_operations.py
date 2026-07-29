@@ -109,10 +109,8 @@ def test_operations_are_derived_from_all_completed_authorized_batches(
     payload = scheduled_operational_measurements_as_dict(measurements=measurements)
     path = tmp_path / "operations.json"
     path.write_text(json.dumps(payload))
-    assert load_operational_measurements(path=path).cost_per_report == pytest.approx(
-        0.000704
-    )
-
+    with pytest.raises(ValueError, match="cannot satisfy interactive latency"):
+        load_operational_measurements(path=path)
 
 def test_operations_refuse_incomplete_campaigns(tmp_path: Path) -> None:
     campaign = plan_scheduled_evaluation_campaign(

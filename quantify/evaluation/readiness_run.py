@@ -23,6 +23,10 @@ from .readiness import (
 )
 from .regression import RegressionCase, run_cases
 from .stability import RepeatedRunStability
+from .interactive import (
+    repeated_run_stability_hash,
+    validate_interactive_runtime_artifact,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,6 +37,7 @@ class OperationalMeasurements:
     latency_seconds: float
     cost_per_report: float
     sec_insufficiency_count: int
+    stability_artifact_hash: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,10 +55,14 @@ def load_operational_measurements(*, path: Path) -> OperationalMeasurements:
 
     payload = json.loads(path.read_text())
     artifact_version = payload.get("artifact_version")
-    if artifact_version not in {"1.0.0", "1.1.0"}:
+    if artifact_version not in {"1.0.0", "1.1.0", "1.2.0"}:
         raise ValueError("unsupported operational-measurements artifact version")
     if artifact_version == "1.1.0":
-        _validate_scheduled_operations_provenance(payload=payload)
+        raise ValueError(
+            "Batch quality measurements cannot satisfy interactive latency readiness"
+        )
+    if artifact_version == "1.2.0":
+        validate_interactive_runtime_artifact(payload=payload)
     measurements = payload.get("measurements")
     if not isinstance(measurements, dict):
         raise ValueError("operational-measurements artifact requires measurements")
@@ -63,31 +72,25 @@ def load_operational_measurements(*, path: Path) -> OperationalMeasurements:
             latency_seconds=measurements["latency_seconds"],
             cost_per_report=measurements["cost_per_report"],
             sec_insufficiency_count=measurements["sec_insufficiency_count"],
+            stability_artifact_hash=(
+                payload["stability_artifact_hash"]
+                if artifact_version == "1.2.0"
+                else None
+            ),
         )
     except KeyError as error:
         raise ValueError("operational-measurements artifact is incomplete") from error
-    if any(isinstance(value, bool) for value in asdict(values).values()):
+    numeric_values = (
+        values.verified_defeated_flips,
+        values.latency_seconds,
+        values.cost_per_report,
+        values.sec_insufficiency_count,
+    )
+    if any(isinstance(value, bool) for value in numeric_values):
         raise ValueError("operational measurements must be numeric")
-    if not all(isinstance(value, (int, float)) for value in asdict(values).values()):
+    if not all(isinstance(value, (int, float)) for value in numeric_values):
         raise ValueError("operational measurements must be numeric")
     return values
-
-
-def _validate_scheduled_operations_provenance(*, payload: object) -> None:
-    if not isinstance(payload, dict):
-        raise ValueError("scheduled operations artifact must be an object")
-    campaign_hash = payload.get("campaign_hash")
-    provenance = payload.get("provenance")
-    if not isinstance(campaign_hash, str) or len(campaign_hash) != 64:
-        raise ValueError("scheduled operations artifact requires campaign provenance")
-    if not isinstance(provenance, dict):
-        raise ValueError("scheduled operations artifact requires provenance")
-    if provenance != {
-        "completed_batch_count": 4,
-        "latency_kind": "mean_submitted_to_collected_batch_elapsed_seconds",
-        "cost_kind": "quantify_maximum_token_envelope_per_report",
-    }:
-        raise ValueError("scheduled operations artifact has unsupported provenance")
 
 
 def readiness_run_as_dict(*, run: ReadinessRun) -> dict:
@@ -100,7 +103,7 @@ def readiness_run_as_dict(*, run: ReadinessRun) -> dict:
     assessment = asdict(run.assessment)
     assessment["decision"] = run.assessment.decision.value
     return {
-        "readiness_run_version": "1.0.0",
+        "readiness_run_version": "1.1.0",
         "parity": parity,
         "stability": asdict(run.stability),
         "inputs": inputs,
@@ -134,6 +137,12 @@ def run_readiness_evaluation(
         raise ValueError(
             "operational verified-defeated flips must match the scheduled stability artifact"
         )
+    if (
+        operations.stability_artifact_hash is not None
+        and operations.stability_artifact_hash
+        != repeated_run_stability_hash(stability=stability)
+    ):
+        raise ValueError("interactive operations do not match the scheduled stability artifact")
     first_pass = run_cases(cases=mechanical_cases) + run_cases(cases=judgment_cases)
     second_pass = run_cases(cases=mechanical_cases) + run_cases(cases=judgment_cases)
     if first_pass != second_pass:

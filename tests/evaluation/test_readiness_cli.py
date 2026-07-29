@@ -123,11 +123,11 @@ def test_cli_emits_a_machine_readable_proceed_decision(tmp_path: Path, capsys) -
 
     output = json.loads(capsys.readouterr().out)
     assert exit_code == 0
-    assert output["readiness_run_version"] == "1.0.0"
+    assert output["readiness_run_version"] == "1.1.0"
     assert output["assessment"] == {
         "blockers": [],
         "decision": "proceed",
-        "policy_version": "1.0.0",
+        "policy_version": "1.1.0",
     }
 
 

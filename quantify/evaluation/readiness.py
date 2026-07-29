@@ -17,7 +17,7 @@ class ReadinessDecision(StrEnum):
 class ReadinessPolicy:
     """Explicit acceptance criteria; adjust only through a versioned policy change."""
 
-    policy_version: str = "1.0.0"
+    policy_version: str = "1.1.0"
     max_mechanical_false_positive_rate: float = 0.0
     max_verified_defeated_flips: int = 0
     max_judgment_false_positive_rate: float = 0.05

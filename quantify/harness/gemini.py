@@ -8,7 +8,7 @@ from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 import json
 from typing import Protocol
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from quantify.engine import (
@@ -34,13 +34,27 @@ _GENERATE_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{m
 
 
 class JsonTransport(Protocol):
-    def post_json(self, *, url: str, headers: dict[str, str], body: dict) -> dict: ...
+    def post_json(
+        self,
+        *,
+        url: str,
+        headers: dict[str, str],
+        body: dict,
+        timeout_seconds: float,
+    ) -> dict: ...
 
 
 class UrllibJsonTransport:
     """Production HTTPS transport; credentials are never placed in the URL."""
 
-    def post_json(self, *, url: str, headers: dict[str, str], body: dict) -> dict:
+    def post_json(
+        self,
+        *,
+        url: str,
+        headers: dict[str, str],
+        body: dict,
+        timeout_seconds: float,
+    ) -> dict:
         request = Request(
             url,
             data=json.dumps(body, separators=(",", ":")).encode(),
@@ -48,13 +62,15 @@ class UrllibJsonTransport:
             method="POST",
         )
         try:
-            with urlopen(request, timeout=30) as response:  # noqa: S310 - fixed HTTPS host
+            with urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310 - fixed HTTPS host
                 return json.loads(response.read())
         except HTTPError as error:
             detail = error.read().decode(errors="replace")[:1000]
             raise RuntimeError(
                 f"Gemini extraction request failed with HTTP {error.code}: {detail}"
             ) from error
+        except (TimeoutError, URLError) as error:
+            raise RuntimeError("Gemini extraction request exceeded its latency budget") from error
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,7 +82,9 @@ class GeminiExtractionConfig:
     input_price_per_million_usd: float = 0.0
     output_price_per_million_usd: float = 0.0
     max_output_tokens: int = 2048
-    schema_version: str = "1.0.0"
+    max_input_payload_bytes: int = 6144
+    request_timeout_seconds: float = 4.0
+    schema_version: str = "1.1.0"
 
     def __post_init__(self) -> None:
         if not self.model or not 0.0 <= self.temperature <= 2.0:
@@ -75,6 +93,8 @@ class GeminiExtractionConfig:
             self.input_price_per_million_usd < 0
             or self.output_price_per_million_usd < 0
             or self.max_output_tokens <= 0
+            or self.max_input_payload_bytes <= 0
+            or not 0.1 <= self.request_timeout_seconds <= 30.0
         ):
             raise ValueError("Gemini extraction config has invalid limits or pricing")
 
@@ -86,6 +106,7 @@ class GeminiExtractionConfig:
                     "model": self.model,
                     "temperature": self.temperature,
                     "max_output_tokens": self.max_output_tokens,
+                    "max_input_payload_bytes": self.max_input_payload_bytes,
                     "schema_version": self.schema_version,
                     "instruction": _SYSTEM_INSTRUCTION,
                     "schema": _RESPONSE_SCHEMA,
@@ -115,16 +136,25 @@ class GeminiStructuredExtractor:
     def extract(
         self, *, report_text: str, snapshot: EvidenceSnapshot
     ) -> ExtractionResult:
-        response = self._transport.post_json(
-            url=_GENERATE_ENDPOINT.format(model=self.config.model),
-            headers={
-                "Content-Type": "application/json",
-                "x-goog-api-key": self._api_key,
-            },
-            body=_request_body(
-                report_text=report_text, snapshot=snapshot, config=self.config
-            ),
-        )
+        body = _request_body(report_text=report_text, snapshot=snapshot, config=self.config)
+        if len(json.dumps(body, separators=(",", ":")).encode()) > self.config.max_input_payload_bytes:
+            return _failed_extraction(
+                report_text=report_text, config=self.config, reason="input_payload_limit"
+            )
+        try:
+            response = self._transport.post_json(
+                url=_GENERATE_ENDPOINT.format(model=self.config.model),
+                headers={
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": self._api_key,
+                },
+                body=body,
+                timeout_seconds=self.config.request_timeout_seconds,
+            )
+        except (RuntimeError, TimeoutError, OSError):
+            return _failed_extraction(
+                report_text=report_text, config=self.config, reason="transport_failure"
+            )
         return _extraction_from_response(
             response=response,
             report_text=report_text,
@@ -140,9 +170,14 @@ class GeminiDisclosureConfig:
     model: str = "gemini-3.1-flash-lite"
     temperature: float = 0.0
     schema_version: str = "1.0.0"
+    request_timeout_seconds: float = 1.0
 
     def __post_init__(self) -> None:
-        if not self.model or not 0.0 <= self.temperature <= 2.0:
+        if (
+            not self.model
+            or not 0.0 <= self.temperature <= 2.0
+            or not 0.1 <= self.request_timeout_seconds <= 30.0
+        ):
             raise ValueError("Gemini disclosure config has an invalid model or temperature")
 
     @property
@@ -193,16 +228,22 @@ class GeminiDisclosureDetector:
             return ()
         if len(contexts) != len(counterevidence_pairs):
             raise ValueError("Gemini disclosure assessment requires every pair context")
-        response = self._transport.post_json(
-            url=_GENERATE_ENDPOINT.format(model=self.config.model),
-            headers={
-                "Content-Type": "application/json",
-                "x-goog-api-key": self._api_key,
-            },
-            body=_disclosure_request_body(
-                report_text=report_text, contexts=contexts, config=self.config
-            ),
-        )
+        try:
+            response = self._transport.post_json(
+                url=_GENERATE_ENDPOINT.format(model=self.config.model),
+                headers={
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": self._api_key,
+                },
+                body=_disclosure_request_body(
+                    report_text=report_text, contexts=contexts, config=self.config
+                ),
+                timeout_seconds=self.config.request_timeout_seconds,
+            )
+        except (RuntimeError, TimeoutError, OSError):
+            return _ambiguous_disclosure_assessments(
+                counterevidence_pairs=counterevidence_pairs, config=self.config
+            )
         try:
             return _disclosure_assessments_from_response(
                 response=response,
@@ -210,15 +251,8 @@ class GeminiDisclosureDetector:
                 config=self.config,
             )
         except (KeyError, TypeError, ValueError, json.JSONDecodeError):
-            return tuple(
-                DisclosureAssessment(
-                    claim_id=pair.claim_id,
-                    defeating_evidence_id=pair.evidence_id,
-                    status=DisclosureStatus.AMBIGUOUS,
-                    detector_version=self.config.detector_version,
-                    prompt_hash=self.config.prompt_hash,
-                )
-                for pair in counterevidence_pairs
+            return _ambiguous_disclosure_assessments(
+                counterevidence_pairs=counterevidence_pairs, config=self.config
             )
 
 
@@ -226,7 +260,8 @@ _SYSTEM_INSTRUCTION = (
     "Extract closed factual financial claims from the report using only the "
     "provided frozen SEC facts and their evidence IDs. Do not decide whether a "
     "claim is true, do not invent facts, and classify interpretation or unclear "
-    "language conservatively. Copy each report sentence and claim fragment exactly."
+    "language conservatively. Select only a supplied report_span_id; never copy "
+    "or reconstruct report text."
 )
 
 _DISCLOSURE_SYSTEM_INSTRUCTION = (
@@ -254,8 +289,7 @@ _RESPONSE_SCHEMA = {
                             "requires_agent_resolution",
                         ],
                     },
-                    "sentence_text": {"type": "STRING"},
-                    "claim_fragment": {"type": "STRING"},
+                    "report_span_id": {"type": "STRING"},
                     "claim_type": {
                         "type": "STRING",
                         "enum": ["threshold", "comparison", "baseline", "none"],
@@ -278,7 +312,7 @@ _RESPONSE_SCHEMA = {
                     },
                     "historical_cutoff": {"type": "STRING"},
                 },
-                "required": ["classification", "sentence_text", "claim_type"],
+                "required": ["classification", "report_span_id", "claim_type"],
             },
         }
     },
@@ -336,7 +370,10 @@ def _request_body(
                 "parts": [
                     {
                         "text": json.dumps(
-                            {"report_text": report_text, "frozen_facts": facts},
+                            {
+                                "report_spans": [{"report_span_id": "report-s1", "text": report_text}],
+                                "frozen_facts": facts,
+                            },
                             sort_keys=True,
                             separators=(",", ":"),
                         )
@@ -421,6 +458,9 @@ def _extraction_from_response(
         )
     except (KeyError, TypeError, ValueError, json.JSONDecodeError, InvalidOperation):
         extracted = (_resolution_statement(report_text=report_text),)
+        failure_reason = "model_output_invalid"
+    else:
+        failure_reason = None
     input_tokens, output_tokens = _usage_tokens(response)
     return ExtractionResult(
         statements=extracted,
@@ -431,6 +471,19 @@ def _extraction_from_response(
             input_tokens / 1_000_000 * config.input_price_per_million_usd
             + output_tokens / 1_000_000 * config.output_price_per_million_usd
         ),
+        failure_reason=failure_reason,
+    )
+
+
+def _failed_extraction(
+    *, report_text: str, config: GeminiExtractionConfig, reason: str
+) -> ExtractionResult:
+    """Fail closed when the bounded interactive request cannot complete."""
+
+    return ExtractionResult(
+        statements=(_resolution_statement(report_text=report_text),),
+        extractor_version=f"gemini-{config.model}-{config.schema_version}",
+        failure_reason=reason,
     )
 
 
@@ -440,19 +493,17 @@ def _statement_from_payload(
     if not isinstance(item, dict):
         raise ValueError("Gemini statement must be an object")
     classification = StatementClassification(_string(item, "classification"))
-    sentence_text = _string(item, "sentence_text")
-    claim_fragment = _string(item, "claim_fragment", default=sentence_text)
-    sentence_start = _unique_offset(text=report_text, fragment=sentence_text)
-    fragment_offset = _unique_offset(text=sentence_text, fragment=claim_fragment)
+    if _string(item, "report_span_id") != "report-s1":
+        raise ValueError("Gemini report span ID is unknown")
     statement_id = f"gemini-s{index}"
     span = ReportSpan(
         span_id=f"{statement_id}-span",
-        sentence_text=sentence_text,
-        sentence_start=sentence_start,
-        sentence_end=sentence_start + len(sentence_text),
-        claim_fragment=claim_fragment,
-        fragment_start=sentence_start + fragment_offset,
-        fragment_end=sentence_start + fragment_offset + len(claim_fragment),
+        sentence_text=report_text,
+        sentence_start=0,
+        sentence_end=len(report_text),
+        claim_fragment=report_text,
+        fragment_start=0,
+        fragment_end=len(report_text),
     )
     if classification is not StatementClassification.CLASSIFIED:
         return ExtractedStatement(
@@ -567,6 +618,25 @@ def _disclosure_assessments_from_response(
             claim_id=pair.claim_id,
             defeating_evidence_id=pair.evidence_id,
             status=by_pair[(pair.claim_id, pair.evidence_id)],
+            detector_version=config.detector_version,
+            prompt_hash=config.prompt_hash,
+        )
+        for pair in counterevidence_pairs
+    )
+
+
+def _ambiguous_disclosure_assessments(
+    *,
+    counterevidence_pairs: tuple[CounterevidencePair, ...],
+    config: GeminiDisclosureConfig,
+) -> tuple[DisclosureAssessment, ...]:
+    """Timeouts and malformed responses remain agent-resolvable, never omissions."""
+
+    return tuple(
+        DisclosureAssessment(
+            claim_id=pair.claim_id,
+            defeating_evidence_id=pair.evidence_id,
+            status=DisclosureStatus.AMBIGUOUS,
             detector_version=config.detector_version,
             prompt_hash=config.prompt_hash,
         )

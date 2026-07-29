@@ -29,7 +29,7 @@ def test_readiness_proceeds_only_when_every_gate_is_green() -> None:
 
     assert assessment.decision is ReadinessDecision.PROCEED
     assert assessment.blockers == ()
-    assert assessment.policy_version == "1.0.0"
+    assert assessment.policy_version == "1.1.0"
 
 
 def test_readiness_pauses_for_material_blockers() -> None:

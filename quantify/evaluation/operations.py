@@ -1,4 +1,4 @@
-"""Compile completed campaign records into readiness operational measurements."""
+"""Compile completed campaign records into offline Batch quality measurements."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ def compile_scheduled_operational_measurements(
     stability: RepeatedRunStability,
     sec_insufficiency_count: int,
 ) -> ScheduledOperationalMeasurements:
-    """Produce ready-to-load measurements only from a complete authorized run.
+    """Produce Batch quality measurements only from a complete authorized run.
 
     Gemini Batch does not provide a billing receipt in the Batch result used by
     this adapter.  Cost is therefore recorded as the pinned maximum token-price
@@ -83,7 +83,7 @@ def compile_scheduled_operational_measurements(
 def scheduled_operational_measurements_as_dict(
     *, measurements: ScheduledOperationalMeasurements
 ) -> dict[str, Any]:
-    """Return the strict v1.1 readiness input without provider credentials."""
+    """Return the strict v1.1 Batch-quality artifact without credentials."""
 
     return {
         "artifact_version": measurements.artifact_version,

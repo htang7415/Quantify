@@ -37,6 +37,7 @@ class ExtractionResult:
     input_tokens: int = 0
     output_tokens: int = 0
     total_cost: float = 0.0
+    failure_reason: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

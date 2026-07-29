@@ -90,6 +90,23 @@ from .operations import (
     compile_scheduled_operational_measurements,
     scheduled_operational_measurements_as_dict,
 )
+from .interactive import (
+    InteractiveRuntimeAuthorization,
+    InteractiveRuntimeCaseMeasurement,
+    InteractiveRuntimeMeasurement,
+    InteractiveRuntimeTrial,
+    InteractiveRepeatedRunStability,
+    evaluate_interactive_repeated_run_stability,
+    interactive_runtime_artifact_as_dict,
+    interactive_runtime_trial_as_dict,
+    interactive_repeated_run_stability_as_dict,
+    load_interactive_runtime_trial,
+    repeated_run_stability_hash,
+    run_interactive_runtime_evaluation,
+    run_interactive_runtime_trial,
+    validate_interactive_runtime_inputs,
+    validate_interactive_runtime_artifact,
+)
 
 __all__ = [
     "EvaluationSummary",
@@ -162,4 +179,19 @@ __all__ = [
     "ScheduledOperationalMeasurements",
     "compile_scheduled_operational_measurements",
     "scheduled_operational_measurements_as_dict",
+    "InteractiveRuntimeAuthorization",
+    "InteractiveRuntimeCaseMeasurement",
+    "InteractiveRuntimeMeasurement",
+    "InteractiveRuntimeTrial",
+    "InteractiveRepeatedRunStability",
+    "evaluate_interactive_repeated_run_stability",
+    "interactive_runtime_artifact_as_dict",
+    "interactive_runtime_trial_as_dict",
+    "interactive_repeated_run_stability_as_dict",
+    "load_interactive_runtime_trial",
+    "repeated_run_stability_hash",
+    "run_interactive_runtime_evaluation",
+    "run_interactive_runtime_trial",
+    "validate_interactive_runtime_inputs",
+    "validate_interactive_runtime_artifact",
 ]
