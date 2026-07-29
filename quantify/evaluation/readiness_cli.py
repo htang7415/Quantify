@@ -15,6 +15,7 @@ from .readiness_run import (
     readiness_run_as_dict,
     run_readiness_evaluation,
 )
+from .stability import load_repeated_run_stability
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -25,6 +26,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--judgment-cases", type=Path, required=True)
     parser.add_argument("--snapshot-root", type=Path, required=True)
     parser.add_argument("--parity-artifact", type=Path, required=True)
+    parser.add_argument("--stability-artifact", type=Path, required=True)
     parser.add_argument("--operations-artifact", type=Path, required=True)
     parser.add_argument(
         "--fail-on-pause",
@@ -40,6 +42,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             path=args.judgment_cases, snapshot_root=args.snapshot_root
         ),
         parity_artifact=load_prompting_parity_artifact(args.parity_artifact),
+        stability=load_repeated_run_stability(path=args.stability_artifact),
         operations=load_operational_measurements(path=args.operations_artifact),
     )
     print(json.dumps(readiness_run_as_dict(run=run), sort_keys=True))

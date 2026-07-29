@@ -9,7 +9,7 @@ from tests.conftest import load_snapshot
 
 class FixtureDetector:
     def __init__(self, assessments): self.assessments, self.calls = assessments, []
-    def assess(self, *, report_text, counterevidence_pairs):
+    def assess(self, *, report_text, counterevidence_pairs, contexts):
         self.calls.append(counterevidence_pairs)
         return self.assessments
 

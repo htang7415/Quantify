@@ -16,6 +16,7 @@ from .schemas import (
     EvidenceValue,
     MetricComparisonClaim,
     MetricThresholdClaim,
+    PersistenceDirection,
     LocalWarrantResult,
     Relation,
     MeasurementMode,
@@ -29,6 +30,7 @@ from .schemas import (
     SourceType,
     VerificationOutcome,
     VerificationResult,
+    TemporalPersistence,
 )
 from .analysis import analyze_claims
 from .eligibility import evaluate_eligibility
@@ -37,6 +39,7 @@ from .measurement import build_upper_baseline_calibration
 from .verdicts import compose_claim_verdicts
 from .policy import freeze_selected_snapshot, select_evidence
 from .verifier import verify_claim
+from .persistence import annotate_temporal_persistence
 
 __all__ = [
     "EvidenceSnapshot",
@@ -55,6 +58,7 @@ __all__ = [
     "MetricComparisonClaim",
     "MetricBaselineClaim",
     "MetricThresholdClaim",
+    "PersistenceDirection",
     "LocalWarrantResult",
     "Relation",
     "MeasurementMode",
@@ -67,6 +71,7 @@ __all__ = [
     "SourceType",
     "VerificationOutcome",
     "VerificationResult",
+    "TemporalPersistence",
     "freeze_selected_snapshot",
     "analyze_claims",
     "evaluate_eligibility",
@@ -76,4 +81,5 @@ __all__ = [
     "compose_claim_verdicts",
     "select_evidence",
     "verify_claim",
+    "annotate_temporal_persistence",
 ]

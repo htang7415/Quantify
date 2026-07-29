@@ -11,14 +11,16 @@ from quantify.engine import (
     DisclosureAssessment,
     DisclosureStatus,
     EvidenceSnapshot,
+    TemporalPersistence,
     ReviewItem,
     ReviewReason,
     analyze_claims,
+    annotate_temporal_persistence,
     compose_claim_verdicts,
 )
 
 from .extraction import ExtractionResult, validate_extraction
-from .disclosure import DisclosureDetector
+from .disclosure import DisclosureContext, DisclosureDetector
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,6 +37,7 @@ class VerificationReport:
     unclassified_statement_ids: tuple[str, ...]
     non_factual_statement_ids: tuple[str, ...]
     material_omissions: tuple[MaterialOmission, ...]
+    temporal_persistence: tuple[TemporalPersistence, ...]
 
 
 def verify_report(
@@ -54,8 +57,22 @@ def verify_report(
     if disclosure_detector is not None:
         if disclosure_assessments:
             raise ValueError("provide disclosure assessments or a detector, not both")
+        claims_by_id = {claim.claim_id: claim for claim in validated.claims}
+        contexts = tuple(
+            DisclosureContext(
+                claim=claims_by_id[pair.claim_id],
+                defeating_evidence=snapshot.evidence_by_id(pair.evidence_id),
+            )
+            for pair in analysis.counterevidence_pairs
+            if pair.claim_id in claims_by_id
+            and snapshot.evidence_by_id(pair.evidence_id) is not None
+        )
+        if len(contexts) != len(analysis.counterevidence_pairs):
+            raise AssertionError("counterevidence context could not be reconstructed")
         disclosure_assessments = disclosure_detector.assess(
-            report_text=report_text, counterevidence_pairs=analysis.counterevidence_pairs
+            report_text=report_text,
+            counterevidence_pairs=analysis.counterevidence_pairs,
+            contexts=contexts,
         )
     verdicts = compose_claim_verdicts(
         analysis=analysis, disclosure_assessments=disclosure_assessments
@@ -92,4 +109,5 @@ def verify_report(
         unclassified_statement_ids=validated.unclassified_statement_ids,
         non_factual_statement_ids=validated.non_factual_statement_ids,
         material_omissions=omissions,
+        temporal_persistence=annotate_temporal_persistence(snapshot=snapshot),
     )

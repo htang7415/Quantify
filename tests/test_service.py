@@ -143,6 +143,18 @@ def test_frozen_microsoft_report_runs_through_sec_service_api_and_replay_cache(t
         }
     ]
     assert first_payload["evidence_scope"]["forms"] == ["10-K"]
+    assert first_payload["temporal_persistence"] == [
+        {
+            "metric_name": "revenue",
+            "consecutive_periods": 3,
+            "direction": "positive",
+            "period_ids": [
+                "0000789019-revenue-2021-07-01-2022-06-30-000095017024087843",
+                "0000789019-revenue-2022-07-01-2023-06-30-000095017024087843",
+                "0000789019-revenue-2023-07-01-2024-06-30-000095017024087843",
+            ],
+        }
+    ]
     assert first_payload["audit_manifest"]["extraction_model"] == (
         "fixture-msft-model-2026-07"
     )
@@ -160,6 +172,9 @@ def test_frozen_microsoft_report_runs_through_sec_service_api_and_replay_cache(t
     assert metrics[1].total_cost == 0.0
     assert metrics[0].extraction_latency_seconds >= 0.0
     assert metrics[0].verification_latency_seconds >= 0.0
+    assert metrics[0].classified_statement_count == 1
+    assert metrics[0].classified_fraction == 1.0
+    assert metrics[0].unclassified_fraction == 0.0
 
     uncached = ApplicationService(
         snapshot_provider=SecSnapshotProvider(client=client),
@@ -227,7 +242,7 @@ class OmissionDetector:
     def __init__(self) -> None:
         self.pairs = ()
 
-    def assess(self, *, report_text: str, counterevidence_pairs):
+    def assess(self, *, report_text: str, counterevidence_pairs, contexts):
         self.pairs = counterevidence_pairs
         return tuple(
             DisclosureAssessment(
@@ -305,3 +320,5 @@ def test_service_runs_ce1_disclosure_and_final_verdict_composition() -> None:
     assert metrics[0].defeated_count == 1
     assert metrics[0].agent_resolution_count == 0
     assert metrics[0].disclosure_latency_seconds >= 0.0
+    assert metrics[0].agent_resolution_action_count == 1
+    assert metrics[0].agent_resolution_resolved_count == 1

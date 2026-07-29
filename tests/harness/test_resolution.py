@@ -53,7 +53,7 @@ def _extraction() -> ExtractionResult:
 
 
 class _NotDisclosedDetector:
-    def assess(self, *, report_text: str, counterevidence_pairs):
+    def assess(self, *, report_text: str, counterevidence_pairs, contexts):
         return tuple(
             DisclosureAssessment(
                 claim_id=pair.claim_id,

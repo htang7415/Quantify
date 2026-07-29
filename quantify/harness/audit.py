@@ -38,6 +38,7 @@ class AuditManifest:
     eligibility_policy_version: str = "1.0.0"
     relation_policy_version: str = "1.0.0"
     counterevidence_policy_version: str = "1.0.0"
+    persistence_policy_version: str = "1.0.0"
     restatement_policy_version: str = "1.0.0"
     agent_resolution_policy_version: str = "1.0.0"
     disclosure_detector_version: str = "unconfigured"
@@ -94,7 +95,7 @@ def build_audit_manifest(
         )
     )
     return AuditManifest(
-        manifest_version="1.3.0",
+        manifest_version="1.4.0",
         analysis_as_of_date=selection.as_of_date,
         snapshot_id=snapshot.snapshot_id,
         snapshot_manifest_hash=snapshot.manifest_hash,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, replace
 from datetime import date
+from collections import Counter
 from time import perf_counter
 from typing import Callable, Protocol
 
@@ -269,6 +270,17 @@ class ApplicationService:
         if self._metrics_sink is None:
             return
         verdicts = [item["verdict"] for item in response["claim_results"]]
+        statement_counts = response["statement_counts"]
+        total_statements = sum(statement_counts.values())
+        reason_counts = Counter(
+            decision.reason.value
+            for decision in build.selection.eligibility_decisions
+            if decision.reason.value != "eligible"
+        )
+        action_outcomes = [
+            outcome
+            for _, outcome in response["audit_manifest"]["agent_resolution_records"]
+        ]
         self._metrics_sink(
             RequestMetrics(
                 cache_hit=build.audit_manifest.cache_hit,
@@ -305,6 +317,27 @@ class ApplicationService:
                 agent_resolution_queue_count=len(response["agent_resolution_queue"]),
                 batch_size=batch_size,
                 company_cik=cik,
+                rejected_evidence_reasons=tuple(sorted(reason_counts.items())),
+                classified_statement_count=statement_counts["classified"],
+                unclassified_statement_count=statement_counts["unclassified"],
+                non_factual_statement_count=statement_counts["non_factual"],
+                classified_fraction=(
+                    statement_counts["classified"] / total_statements
+                    if total_statements
+                    else 0.0
+                ),
+                unclassified_fraction=(
+                    statement_counts["unclassified"] / total_statements
+                    if total_statements
+                    else 0.0
+                ),
+                agent_resolution_action_count=len(action_outcomes),
+                agent_resolution_resolved_count=sum(
+                    outcome.endswith(":resolved") for outcome in action_outcomes
+                ),
+                agent_resolution_unresolved_count=sum(
+                    outcome.endswith(":unresolved") for outcome in action_outcomes
+                ),
             )
         )
 
@@ -359,7 +392,15 @@ class ApplicationService:
                 {"claim_id": omission.claim_id, "evidence_id": omission.evidence_id}
                 for omission in report.material_omissions
             ],
-            "temporal_persistence": [],
+            "temporal_persistence": [
+                {
+                    "metric_name": item.metric_name,
+                    "consecutive_periods": item.consecutive_periods,
+                    "direction": item.direction.value,
+                    "period_ids": list(item.period_ids),
+                }
+                for item in report.temporal_persistence
+            ],
             "evidence_scope": {
                 "source": "SEC EDGAR",
                 "forms": list(forms),
@@ -367,6 +408,24 @@ class ApplicationService:
                 "snapshot_manifest_hash": snapshot.manifest_hash,
             },
             "audit_manifest": audit,
+            "statement_counts": {
+                "classified": sum(
+                    item.classification.value == "classified"
+                    for item in extraction.statements
+                ),
+                "unclassified": sum(
+                    item.classification.value == "unclassified"
+                    for item in extraction.statements
+                ),
+                "non_factual": sum(
+                    item.classification.value == "non_factual"
+                    for item in extraction.statements
+                ),
+                "requires_agent_resolution": sum(
+                    item.classification.value == "requires_agent_resolution"
+                    for item in extraction.statements
+                ),
+            },
         }
         response["agent_resolution_queue"] = ApplicationService._agent_resolution_queue(
             response

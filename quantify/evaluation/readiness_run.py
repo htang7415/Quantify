@@ -22,6 +22,7 @@ from .readiness import (
     assess_readiness,
 )
 from .regression import RegressionCase, run_cases
+from .stability import RepeatedRunStability
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +40,7 @@ class ReadinessRun:
     """Replayable Week 6 decision report with its source metrics exposed."""
 
     parity: PromptingParitySummary
+    stability: RepeatedRunStability
     inputs: ReadinessInputs
     assessment: ReadinessAssessment
 
@@ -47,8 +49,11 @@ def load_operational_measurements(*, path: Path) -> OperationalMeasurements:
     """Load recorded operational measurements from a versioned artifact."""
 
     payload = json.loads(path.read_text())
-    if payload.get("artifact_version") != "1.0.0":
+    artifact_version = payload.get("artifact_version")
+    if artifact_version not in {"1.0.0", "1.1.0"}:
         raise ValueError("unsupported operational-measurements artifact version")
+    if artifact_version == "1.1.0":
+        _validate_scheduled_operations_provenance(payload=payload)
     measurements = payload.get("measurements")
     if not isinstance(measurements, dict):
         raise ValueError("operational-measurements artifact requires measurements")
@@ -68,6 +73,23 @@ def load_operational_measurements(*, path: Path) -> OperationalMeasurements:
     return values
 
 
+def _validate_scheduled_operations_provenance(*, payload: object) -> None:
+    if not isinstance(payload, dict):
+        raise ValueError("scheduled operations artifact must be an object")
+    campaign_hash = payload.get("campaign_hash")
+    provenance = payload.get("provenance")
+    if not isinstance(campaign_hash, str) or len(campaign_hash) != 64:
+        raise ValueError("scheduled operations artifact requires campaign provenance")
+    if not isinstance(provenance, dict):
+        raise ValueError("scheduled operations artifact requires provenance")
+    if provenance != {
+        "completed_batch_count": 4,
+        "latency_kind": "mean_submitted_to_collected_batch_elapsed_seconds",
+        "cost_kind": "quantify_maximum_token_envelope_per_report",
+    }:
+        raise ValueError("scheduled operations artifact has unsupported provenance")
+
+
 def readiness_run_as_dict(*, run: ReadinessRun) -> dict:
     """Canonical JSON-ready result; callers decide whether and where to persist it."""
 
@@ -80,6 +102,7 @@ def readiness_run_as_dict(*, run: ReadinessRun) -> dict:
     return {
         "readiness_run_version": "1.0.0",
         "parity": parity,
+        "stability": asdict(run.stability),
         "inputs": inputs,
         "assessment": assessment,
     }
@@ -90,6 +113,7 @@ def run_readiness_evaluation(
     mechanical_cases: tuple[RegressionCase, ...],
     judgment_cases: tuple[RegressionCase, ...],
     parity_artifact: PromptingParityArtifact,
+    stability: RepeatedRunStability,
     operations: OperationalMeasurements,
     policy: ReadinessPolicy = ReadinessPolicy(),
 ) -> ReadinessRun:
@@ -103,6 +127,13 @@ def run_readiness_evaluation(
     """
 
     _validate_case_sets(mechanical_cases, judgment_cases)
+    if (
+        operations.verified_defeated_flips
+        != stability.quantify.mechanical_verified_defeated_flips
+    ):
+        raise ValueError(
+            "operational verified-defeated flips must match the scheduled stability artifact"
+        )
     first_pass = run_cases(cases=mechanical_cases) + run_cases(cases=judgment_cases)
     second_pass = run_cases(cases=mechanical_cases) + run_cases(cases=judgment_cases)
     if first_pass != second_pass:
@@ -149,6 +180,7 @@ def run_readiness_evaluation(
     )
     return ReadinessRun(
         parity=parity,
+        stability=stability,
         inputs=inputs,
         assessment=assess_readiness(inputs=inputs, policy=policy),
     )

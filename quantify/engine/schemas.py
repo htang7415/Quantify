@@ -323,6 +323,24 @@ class ClaimVerdict(StrEnum):
     REQUIRES_AGENT_RESOLUTION = "requires_agent_resolution"
 
 
+class PersistenceDirection(StrEnum):
+    """Direction of a comparable sequence; never a counterevidence weight."""
+
+    POSITIVE = "positive"
+    NEGATIVE = "negative"
+    MIXED = "mixed"
+
+
+@dataclass(frozen=True, slots=True)
+class TemporalPersistence:
+    """A deterministic, descriptive trend annotation for one frozen metric run."""
+
+    metric_name: str
+    consecutive_periods: int
+    direction: PersistenceDirection
+    period_ids: tuple[str, ...]
+
+
 @dataclass(frozen=True, slots=True)
 class DisclosureAssessment:
     """One harness-supplied assessment for a typed claim × CE1 pair."""

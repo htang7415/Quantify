@@ -10,6 +10,7 @@ from quantify.evaluation import (
     PromptingParityArtifact,
     PromptingParityCase,
     ReadinessDecision,
+    evaluate_repeated_run_stability,
     run_readiness_evaluation,
 )
 from quantify.evaluation import case_from_json
@@ -73,11 +74,18 @@ def _operations() -> OperationalMeasurements:
     )
 
 
+def _stability():
+    return evaluate_repeated_run_stability(
+        first_trial=_artifact(), second_trial=_artifact()
+    )
+
+
 def test_readiness_run_joins_real_frozen_cases_to_pinned_parity_artifact() -> None:
     run = run_readiness_evaluation(
         mechanical_cases=_load_cases("mechanical_v1.json"),
         judgment_cases=_load_cases("judgment_v1.json"),
         parity_artifact=_artifact(),
+        stability=_stability(),
         operations=_operations(),
     )
 
@@ -113,6 +121,7 @@ def test_readiness_run_fails_closed_when_artifact_mismatches_the_frozen_corpus()
             mechanical_cases=_load_cases("mechanical_v1.json"),
             judgment_cases=_load_cases("judgment_v1.json"),
             parity_artifact=bad_artifact,
+            stability=_stability(),
             operations=_operations(),
         )
 
@@ -122,9 +131,25 @@ def test_readiness_run_turns_a_model_path_false_accusation_into_a_pause() -> Non
         mechanical_cases=_load_cases("mechanical_v1.json"),
         judgment_cases=_load_cases("judgment_v1.json"),
         parity_artifact=_artifact(false_positive=True),
+        stability=_stability(),
         operations=_operations(),
     )
 
     assert run.inputs.mechanical_false_positive_rate == pytest.approx(1 / 20)
     assert run.assessment.decision is ReadinessDecision.PAUSE
     assert "mechanical_false_positive_rate" in run.assessment.blockers
+
+
+def test_readiness_run_refuses_an_unlinked_instability_measurement() -> None:
+    stability = evaluate_repeated_run_stability(
+        first_trial=_artifact(), second_trial=_artifact(false_positive=True)
+    )
+
+    with pytest.raises(ValueError, match="must match the scheduled stability artifact"):
+        run_readiness_evaluation(
+            mechanical_cases=_load_cases("mechanical_v1.json"),
+            judgment_cases=_load_cases("judgment_v1.json"),
+            parity_artifact=_artifact(),
+            stability=stability,
+            operations=_operations(),
+        )

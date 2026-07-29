@@ -11,7 +11,9 @@ CASE_ROOT = ROOT / "fixtures" / "cases"
 SNAPSHOT_ROOT = ROOT / "fixtures" / "sec"
 
 
-def _write_artifacts(tmp_path: Path, *, false_positive: bool = False) -> tuple[Path, Path]:
+def _write_artifacts(
+    tmp_path: Path, *, false_positive: bool = False
+) -> tuple[Path, Path, Path]:
     payloads = [
         json.loads((CASE_ROOT / filename).read_text())
         for filename in ("mechanical_v1.json", "judgment_v1.json")
@@ -62,10 +64,42 @@ def _write_artifacts(tmp_path: Path, *, false_positive: bool = False) -> tuple[P
             }
         )
     )
-    return parity_path, operations_path
+    stability_path = tmp_path / "stability.json"
+    stability_path.write_text(
+        json.dumps(
+            {
+                "artifact_version": "1.0.0",
+                "case_count": 30,
+                "trial_count": 2,
+                "prompt_only": {
+                    "model": "pinned-fixture-v1",
+                    "prompt_hash": "fixture-prompt-v1",
+                    "temperature": 0.0,
+                    "exact_report_level_agreement": True,
+                    "statement_level_agreement": 1.0,
+                    "classified_unclassified_transitions": 0,
+                    "verified_defeated_flips": 0,
+                    "mechanical_verified_defeated_flips": 0,
+                },
+                "quantify": {
+                    "model": "pinned-fixture-v1",
+                    "prompt_hash": "fixture-prompt-v1",
+                    "temperature": 0.0,
+                    "exact_report_level_agreement": True,
+                    "statement_level_agreement": 1.0,
+                    "classified_unclassified_transitions": 0,
+                    "verified_defeated_flips": 0,
+                    "mechanical_verified_defeated_flips": 0,
+                },
+            }
+        )
+    )
+    return parity_path, stability_path, operations_path
 
 
-def _arguments(parity_path: Path, operations_path: Path) -> list[str]:
+def _arguments(
+    parity_path: Path, stability_path: Path, operations_path: Path
+) -> list[str]:
     return [
         "--mechanical-cases",
         str(CASE_ROOT / "mechanical_v1.json"),
@@ -75,15 +109,17 @@ def _arguments(parity_path: Path, operations_path: Path) -> list[str]:
         str(SNAPSHOT_ROOT),
         "--parity-artifact",
         str(parity_path),
+        "--stability-artifact",
+        str(stability_path),
         "--operations-artifact",
         str(operations_path),
     ]
 
 
 def test_cli_emits_a_machine_readable_proceed_decision(tmp_path: Path, capsys) -> None:
-    parity_path, operations_path = _write_artifacts(tmp_path)
+    parity_path, stability_path, operations_path = _write_artifacts(tmp_path)
 
-    exit_code = main(_arguments(parity_path, operations_path))
+    exit_code = main(_arguments(parity_path, stability_path, operations_path))
 
     output = json.loads(capsys.readouterr().out)
     assert exit_code == 0
@@ -96,9 +132,13 @@ def test_cli_emits_a_machine_readable_proceed_decision(tmp_path: Path, capsys) -
 
 
 def test_cli_can_fail_a_release_gate_for_a_pause_decision(tmp_path: Path, capsys) -> None:
-    parity_path, operations_path = _write_artifacts(tmp_path, false_positive=True)
+    parity_path, stability_path, operations_path = _write_artifacts(
+        tmp_path, false_positive=True
+    )
 
-    exit_code = main([*_arguments(parity_path, operations_path), "--fail-on-pause"])
+    exit_code = main(
+        [*_arguments(parity_path, stability_path, operations_path), "--fail-on-pause"]
+    )
 
     output = json.loads(capsys.readouterr().out)
     assert exit_code == 2
