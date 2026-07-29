@@ -49,6 +49,10 @@ reconciles their opaque outcome files with that private mapping. It rejects
 missing, duplicate, unknown, or mismatched request IDs and writes the versioned
 parity artifact consumed by the readiness CLI.
 
+The pinned scheduled-evaluation profile is Gemini 3.1 Flash-Lite Batch at
+temperature `0`, with a $0.05 total token-cost cap for the 60-request run.
+`estimate_evaluation_cost(...)` must pass before any provider work is started.
+
 ## SEC evidence path
 
 `SecCompanyFactsClient` retrieves SEC Company Facts cache-first, preserves the

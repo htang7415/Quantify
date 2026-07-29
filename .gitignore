@@ -36,3 +36,9 @@ __pycache__/
 .claude/
 .venv/
 *.egg-info/
+docs/
+
+# Local credentials and evaluator-side artifacts must never enter Git.
+.env
+.env.*
+.quantify-private/

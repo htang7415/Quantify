@@ -44,6 +44,14 @@ from .parity_compile import (
     load_model_outcome_artifact,
     prompting_parity_artifact_as_dict,
 )
+from .model_profiles import (
+    EvaluationCostEstimate,
+    EvaluationExecutionMode,
+    EvaluationModelProfile,
+    estimate_evaluation_cost,
+    load_evaluation_model_profile,
+    require_cost_within_budget,
+)
 
 __all__ = [
     "EvaluationSummary",
@@ -80,4 +88,10 @@ __all__ = [
     "compile_prompting_parity_artifact",
     "load_model_outcome_artifact",
     "prompting_parity_artifact_as_dict",
+    "EvaluationCostEstimate",
+    "EvaluationExecutionMode",
+    "EvaluationModelProfile",
+    "estimate_evaluation_cost",
+    "load_evaluation_model_profile",
+    "require_cost_within_budget",
 ]
