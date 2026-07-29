@@ -299,5 +299,9 @@ def test_service_runs_ce1_disclosure_and_final_verdict_composition() -> None:
     assert response["audit_manifest"]["disclosure_detector_version"] == (
         "fixture-disclosure-v1"
     )
+    assert response["audit_manifest"]["agent_resolution_records"] == (
+        ("assess_disclosure", "missing_disclosure_assessment:resolved"),
+    )
     assert metrics[0].defeated_count == 1
+    assert metrics[0].agent_resolution_count == 0
     assert metrics[0].disclosure_latency_seconds >= 0.0

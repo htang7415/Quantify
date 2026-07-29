@@ -10,7 +10,7 @@ threshold or period-comparison claims. It provides:
 
 - deterministic evidence selection under a named restatement policy;
 - local-warrant and CE1 counterevidence analysis as separate audit outputs;
-- final `verified`, `unsupported`, `defeated`, `qualified`, or human-review
+- final `verified`, `unsupported`, `defeated`, `qualified`, or agent-resolution
   verdict composition after disclosure assessment; and
 - exact report-span and evidence-reference validation for future model output.
 
@@ -18,6 +18,19 @@ The offline `verify_report(...)` workflow connects those steps end to end for
 frozen inputs. A provider-specific extractor may supply an `ExtractionResult`,
 but it cannot bypass deterministic grounding, reference validation, or verdict
 composition.
+
+## Week 6 evaluation gates
+
+`AutonomousResolutionLoop` can make one auditable disclosure-assessment attempt
+for a fail-closed agent-resolution item. It never changes a claim, snapshot, or
+verification policy; unresolved items stay unresolved. Its action record is
+included in the replay manifest.
+
+Prompting-parity artifacts compare the exact frozen 20 mechanical and 10
+judgment cases using pinned model and prompt metadata. They are loaded and
+scored offline—model execution belongs to a manual or scheduled evaluation,
+not ordinary CI. `assess_readiness(...)` then applies versioned quality, cost,
+latency, SEC-coverage, and parity thresholds to return `proceed` or `pause`.
 
 ## SEC evidence path
 

@@ -21,7 +21,7 @@ def compose_claim_verdicts(
 ) -> tuple[ComposedClaimVerdict, ...]:
     """Compose final verdicts using the conservative V1 decision table.
 
-    Missing or ambiguous disclosure assessment fails closed to human review.
+    Missing or ambiguous disclosure assessment fails closed to agent resolution.
     An assessment for a pair that CE1 did not produce is invalid input because
     it would break auditability.
     """
@@ -83,7 +83,7 @@ def compose_claim_verdicts(
                 if assessment is not None
             )
         ):
-            verdict = ClaimVerdict.REQUIRES_HUMAN_REVIEW
+            verdict = ClaimVerdict.REQUIRES_AGENT_RESOLUTION
         elif all(
             assessment.status is DisclosureStatus.NOT_DISCLOSED
             for assessment in assessments

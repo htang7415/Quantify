@@ -36,7 +36,7 @@ def _countered_analysis():
         (DisclosureStatus.NOT_DISCLOSED, ClaimVerdict.DEFEATED),
         (DisclosureStatus.DISCLOSED_SAME_SENTENCE, ClaimVerdict.QUALIFIED),
         (DisclosureStatus.DISCLOSED_ELSEWHERE, ClaimVerdict.QUALIFIED),
-        (DisclosureStatus.AMBIGUOUS, ClaimVerdict.REQUIRES_HUMAN_REVIEW),
+        (DisclosureStatus.AMBIGUOUS, ClaimVerdict.REQUIRES_AGENT_RESOLUTION),
     ],
 )
 def test_composes_counterevidence_using_disclosure_status(status, expected) -> None:
@@ -55,10 +55,10 @@ def test_composes_counterevidence_using_disclosure_status(status, expected) -> N
     assert results[0].counterevidence_detail[0].disclosure_status is status
 
 
-def test_missing_disclosure_assessment_requires_human_review() -> None:
+def test_missing_disclosure_assessment_requires_agent_resolution() -> None:
     assert compose_claim_verdicts(
         analysis=_countered_analysis(), disclosure_assessments=()
-    )[0].verdict is ClaimVerdict.REQUIRES_HUMAN_REVIEW
+    )[0].verdict is ClaimVerdict.REQUIRES_AGENT_RESOLUTION
 
 
 def test_rejects_assessment_for_non_ce1_pair() -> None:

@@ -11,12 +11,14 @@ from quantify.api import VerifyRequest
 from quantify.engine import ClaimVerdict, EvidenceSnapshot
 from quantify.harness import (
     DisclosureDetector,
+    AutonomousResolutionLoop,
     RequestMetrics,
     SnapshotBuild,
     StructuredExtractor,
     VerificationCache,
     VerificationReport,
-    verify_report,
+    approve_acquisition_requests,
+    assess_coverage,
 )
 
 
@@ -58,6 +60,7 @@ class ApplicationService:
         prompt_hash: str | None = None,
         temperature: float | None = None,
         disclosure_detector_version: str = "unconfigured",
+        agent_resolution_loop: AutonomousResolutionLoop | None = None,
         clock: Callable[[], float] = perf_counter,
         sec_network_call_count: Callable[[], int] | None = None,
     ) -> None:
@@ -75,10 +78,67 @@ class ApplicationService:
         self._prompt_hash = prompt_hash
         self._temperature = temperature
         self._disclosure_detector_version = disclosure_detector_version
+        self._agent_resolution_loop = agent_resolution_loop or AutonomousResolutionLoop()
         self._clock = clock
         self._sec_network_call_count = sec_network_call_count
 
     def verify(self, *, cik: str, request: VerifyRequest) -> dict:
+        return self._verify(cik=cik, request=request, batch_size=1)
+
+    def verify_batch(
+        self, *, items: tuple[tuple[str, VerifyRequest], ...]
+    ) -> tuple[dict, ...]:
+        """Verify independent requests in canonical order with isolated errors."""
+
+        batch_size = len(items)
+        results: list[dict] = []
+        for cik, request in sorted(
+            items,
+            key=lambda item: (
+                item[0],
+                item[1].analysis,
+                item[1].as_of_date,
+                item[1].forms,
+                item[1].evidence_requests,
+            ),
+        ):
+            try:
+                results.append(
+                    {
+                        "cik": cik,
+                        "result": self._verify(
+                            cik=cik, request=request, batch_size=batch_size
+                        ),
+                    }
+                )
+            except ValueError as error:
+                results.append(
+                    {
+                        "cik": cik,
+                        "error": {"type": "invalid_request", "message": str(error)},
+                    }
+                )
+        return tuple(results)
+
+    def review(self, *, cik: str, request: VerifyRequest) -> dict:
+        """Compatibility alias for the former review endpoint."""
+
+        return self.resolve(cik=cik, request=request)
+
+    def resolve(self, *, cik: str, request: VerifyRequest) -> dict:
+        """Return a deterministic agent-resolution queue without changing verification."""
+
+        response = self.verify(cik=cik, request=request)
+        return {
+            "agent_resolution_queue": response["agent_resolution_queue"],
+            "review_queue": response["review_queue"],
+            "audit_manifest": response["audit_manifest"],
+            "verification_cache_hit": response["verification_cache_hit"],
+        }
+
+    def _verify(
+        self, *, cik: str, request: VerifyRequest, batch_size: int
+    ) -> dict:
         if self._legacy_verify is not None:
             return self._legacy_verify(
                 cik=cik,
@@ -94,6 +154,22 @@ class ApplicationService:
         build = self._snapshot_provider.build(
             cik=cik, as_of_date=request.as_of_date, forms=request.forms
         )
+        acquisition_records = approve_acquisition_requests(
+            snapshot=build.snapshot, requested=request.evidence_requests
+        )
+        if acquisition_records:
+            build = self._snapshot_provider.build(
+                cik=cik,
+                as_of_date=request.as_of_date,
+                forms=request.forms,
+                acquisition_records=acquisition_records,
+            )
+            still_uncovered = set(assess_coverage(snapshot=build.snapshot))
+            if any(
+                record.request_type in still_uncovered
+                for record in acquisition_records
+            ):
+                raise ValueError("evidence acquisition did not improve the requested coverage")
         network_calls = self._network_call_count() - network_calls_before
         audit_manifest = replace(
             build.audit_manifest,
@@ -129,18 +205,26 @@ class ApplicationService:
                 if self._disclosure_detector is not None
                 else None
             )
-            report = verify_report(
+            resolution = self._agent_resolution_loop.resolve(
                 report_text=request.analysis,
                 snapshot=build.snapshot,
                 extraction=extraction,
                 disclosure_detector=timed_detector,
             )
             disclosure_elapsed = timed_detector.elapsed_seconds if timed_detector else 0.0
+            resolved_audit_manifest = replace(
+                audit_manifest,
+                agent_resolution_policy_version=self._agent_resolution_loop.policy_version,
+                agent_resolution_records=tuple(
+                    record.manifest_entry() for record in resolution.records
+                ),
+            )
             return self._response(
-                report=report,
+                report=resolution.report,
                 snapshot=build.snapshot,
-                audit_manifest=audit_manifest,
-                forms=request.forms,
+                audit_manifest=resolved_audit_manifest,
+                forms=build.audit_manifest.requested_forms,
+                extraction=extraction,
             )
 
         response, verification_cache_hit = self._cache.get_or_compute(
@@ -158,6 +242,8 @@ class ApplicationService:
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             total_cost=total_cost,
+            batch_size=batch_size,
+            cik=cik,
         )
         return response
 
@@ -177,6 +263,8 @@ class ApplicationService:
         input_tokens: int,
         output_tokens: int,
         total_cost: float,
+        batch_size: int,
+        cik: str,
     ) -> None:
         if self._metrics_sink is None:
             return
@@ -197,8 +285,8 @@ class ApplicationService:
                 unsupported_count=verdicts.count(ClaimVerdict.UNSUPPORTED.value),
                 defeated_count=verdicts.count(ClaimVerdict.DEFEATED.value),
                 qualified_count=verdicts.count(ClaimVerdict.QUALIFIED.value),
-                human_review_count=(
-                    verdicts.count(ClaimVerdict.REQUIRES_HUMAN_REVIEW.value)
+                agent_resolution_count=(
+                    verdicts.count(ClaimVerdict.REQUIRES_AGENT_RESOLUTION.value)
                     + len(response["review_items"])
                 ),
                 empty_result=not response["claim_results"],
@@ -209,6 +297,14 @@ class ApplicationService:
                 disclosure_latency_seconds=disclosure_elapsed,
                 verification_latency_seconds=verification_elapsed,
                 verification_cache_hit=verification_cache_hit,
+                acquisition_rounds=len(build.audit_manifest.acquisition_records),
+                acquisition_request_types=tuple(
+                    request_type
+                    for request_type, _ in build.audit_manifest.acquisition_records
+                ),
+                agent_resolution_queue_count=len(response["agent_resolution_queue"]),
+                batch_size=batch_size,
+                company_cik=cik,
             )
         )
 
@@ -219,6 +315,7 @@ class ApplicationService:
         snapshot: EvidenceSnapshot,
         audit_manifest,
         forms: tuple[str, ...],
+        extraction,
     ) -> dict:
         audit = asdict(audit_manifest)
         audit["analysis_as_of_date"] = audit_manifest.analysis_as_of_date.isoformat()
@@ -238,7 +335,7 @@ class ApplicationService:
             }
             for verdict in report.claim_verdicts
         ]
-        return {
+        response = {
             "claim_results": claim_results,
             "unclassified_statements": list(report.unclassified_statement_ids),
             "non_factual_statements": list(report.non_factual_statement_ids),
@@ -271,3 +368,60 @@ class ApplicationService:
             },
             "audit_manifest": audit,
         }
+        response["agent_resolution_queue"] = ApplicationService._agent_resolution_queue(
+            response
+        )
+        # Retain the V1 field until clients move to agent_resolution_queue.
+        response["review_queue"] = response["agent_resolution_queue"]
+        span_by_owner = {}
+        for statement in extraction.statements:
+            span = statement.report_span
+            serialized_span = {
+                "span_id": span.span_id,
+                "sentence_text": span.sentence_text,
+                "sentence_start": span.sentence_start,
+                "sentence_end": span.sentence_end,
+                "claim_fragment": span.claim_fragment,
+                "fragment_start": span.fragment_start,
+                "fragment_end": span.fragment_end,
+            }
+            span_by_owner[statement.statement_id] = serialized_span
+            span_by_owner[span.span_id] = serialized_span
+            for claim in statement.claims:
+                span_by_owner[claim.claim_id] = serialized_span
+        for queue_item in response["agent_resolution_queue"]:
+            owner = queue_item["claim_id"] or queue_item["statement_id"]
+            span = span_by_owner.get(owner)
+            queue_item["report_spans"] = [span] if span is not None else []
+        return response
+
+    @staticmethod
+    def _agent_resolution_queue(response: dict) -> list[dict]:
+        """Project review items into agent actions and linked evidence details."""
+
+        counterevidence_by_claim: dict[str, list[dict]] = {}
+        for detail in response["counterevidence_detail"]:
+            counterevidence_by_claim.setdefault(detail["claim_id"], []).append(detail)
+        actions = {
+            "disclosure_ambiguous": "assess_disclosure",
+            "missing_disclosure_assessment": "assess_disclosure",
+            "report_span_not_grounded": "correct_grounding",
+            "partial_contrastive_extraction": "extract_full_contrastive_sentence",
+            "invalid_evidence_reference": "correct_evidence_reference",
+            "extraction_schema_failure": "repair_extraction",
+        }
+        return [
+            {
+                "statement_id": item["statement_id"],
+                "reason": item["reason"],
+                "required_action": actions.get(item["reason"], "review"),
+                "message": item["message"],
+                "claim_id": item["claim_id"],
+                "report_span_ids": item["report_span_ids"],
+                "evidence_ids": item["evidence_ids"],
+                "counterevidence": counterevidence_by_claim.get(
+                    item["claim_id"], []
+                ),
+            }
+            for item in response["review_items"]
+        ]

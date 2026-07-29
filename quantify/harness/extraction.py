@@ -73,12 +73,12 @@ def validate_extraction(
         if statement.classification is StatementClassification.NON_FACTUAL:
             non_factual.append(statement.statement_id)
             continue
-        if statement.classification is StatementClassification.REQUIRES_HUMAN_REVIEW:
+        if statement.classification is StatementClassification.REQUIRES_AGENT_RESOLUTION:
             reviews.append(
                 ReviewItem(
                     statement_id=statement.statement_id,
                     reason=ReviewReason.EXTRACTION_SCHEMA_FAILURE,
-                    message="Extraction routed this statement to human review.",
+                    message="Extraction routed this statement to agent resolution.",
                     report_span_ids=(statement.report_span.span_id,),
                 )
             )

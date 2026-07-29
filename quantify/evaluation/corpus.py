@@ -26,19 +26,19 @@ from quantify.harness import ExtractedStatement, ExtractionResult
 from .regression import RegressionCase
 
 
-SUPPORTED_CASE_SET_VERSIONS = {"1.0.0", "1.1.0"}
+SUPPORTED_CASE_SET_VERSIONS = {"1.0.0", "1.1.0", "1.2.0"}
 REQUIRED_CASE_COUNTS = {"mechanical": 20, "judgment": 10}
-JUDGMENT_REVIEW_STATUSES = {"not_required", "finance_reviewed"}
+JUDGMENT_RESOLUTION_STATUSES = {"not_required", "agent_resolved"}
 
 
 @dataclass(frozen=True, slots=True)
 class CorpusCaseSpec:
     case_id: str
     category: str
-    reviewer_status: str
-    reviewer_rationale: str | None = None
-    reviewed_at: date | None = None
-    reviewer_role: str | None = None
+    resolution_status: str
+    resolution_rationale: str | None = None
+    resolved_at: date | None = None
+    resolution_agent: str | None = None
 
 
 def load_case_specs(path: Path) -> tuple[CorpusCaseSpec, ...]:
@@ -48,33 +48,35 @@ def load_case_specs(path: Path) -> tuple[CorpusCaseSpec, ...]:
     specs: list[CorpusCaseSpec] = []
     for item in payload["cases"]:
         category = item["category"]
-        status = item["reviewer_status"]
-        rationale = item.get("reviewer_rationale") or payload.get(
-            "default_reviewer_rationale"
+        status = item.get("resolution_status", "not_required")
+        rationale = item.get("resolution_rationale") or payload.get(
+            "default_resolution_rationale"
         )
-        reviewed_at = (
-            date.fromisoformat(item["reviewed_at"])
-            if item.get("reviewed_at")
+        resolved_at = (
+            date.fromisoformat(item["resolved_at"])
+            if item.get("resolved_at")
             else None
         )
-        reviewer_role = item.get("reviewer_role")
+        resolution_agent = item.get("resolution_agent")
         if category == "judgment":
-            if status not in JUDGMENT_REVIEW_STATUSES:
-                raise ValueError("judgment cases have an unsupported review status")
+            if status not in JUDGMENT_RESOLUTION_STATUSES:
+                raise ValueError("judgment cases have an unsupported resolution status")
             if not rationale:
-                raise ValueError("judgment cases require a review rationale")
-            if status == "finance_reviewed" and (reviewed_at is None or not reviewer_role):
-                raise ValueError("finance_reviewed cases require date and reviewer role")
-            if status == "not_required" and (reviewed_at is not None or reviewer_role):
-                raise ValueError("not_required cases cannot claim reviewer provenance")
+                raise ValueError("judgment cases require a resolution rationale")
+            if status == "agent_resolved" and (
+                resolved_at is None or not resolution_agent
+            ):
+                raise ValueError("agent_resolved cases require date and agent version")
+            if status == "not_required" and (resolved_at is not None or resolution_agent):
+                raise ValueError("not_required cases cannot claim agent-resolution provenance")
         specs.append(
             CorpusCaseSpec(
                 case_id=item["case_id"],
                 category=category,
-                reviewer_status=status,
-                reviewer_rationale=rationale,
-                reviewed_at=reviewed_at,
-                reviewer_role=reviewer_role,
+                resolution_status=status,
+                resolution_rationale=rationale,
+                resolved_at=resolved_at,
+                resolution_agent=resolution_agent,
             )
         )
     specs = tuple(specs)

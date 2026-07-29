@@ -31,12 +31,15 @@ class AuditManifest:
     superseded_evidence_ids: tuple[str, ...]
     selection_rationale: str
     request_timestamp: str
+    acquisition_records: tuple[tuple[str, str], ...] = ()
+    agent_resolution_records: tuple[tuple[str, str], ...] = ()
     normalizer_version: str = "1.1.0"
     adapter_version: str = "1.0.0"
     eligibility_policy_version: str = "1.0.0"
     relation_policy_version: str = "1.0.0"
     counterevidence_policy_version: str = "1.0.0"
     restatement_policy_version: str = "1.0.0"
+    agent_resolution_policy_version: str = "1.0.0"
     disclosure_detector_version: str = "unconfigured"
     extraction_model: str = "unconfigured"
     structured_output_schema_version: str = "1.0.0"
@@ -69,6 +72,7 @@ def build_audit_manifest(
     resolved_filing_accessions: tuple[str, ...] = (),
     request_timestamp: str | None = None,
     normalized_evidence: tuple[EvidenceValue, ...] | None = None,
+    acquisition_records: tuple[tuple[str, str], ...] = (),
 ) -> AuditManifest:
     selected_accessions = tuple(sorted({item.accession for item in snapshot.evidence}))
     evidence_by_id = {
@@ -90,7 +94,7 @@ def build_audit_manifest(
         )
     )
     return AuditManifest(
-        manifest_version="1.1.0",
+        manifest_version="1.3.0",
         analysis_as_of_date=selection.as_of_date,
         snapshot_id=snapshot.snapshot_id,
         snapshot_manifest_hash=snapshot.manifest_hash,
@@ -117,6 +121,7 @@ def build_audit_manifest(
             f"superseded accessions {superseded_accessions}"
         ),
         request_timestamp=request_timestamp or source.retrieved_at,
+        acquisition_records=tuple(sorted(acquisition_records)),
         extraction_model=extraction_model,
         disclosure_detector_version=disclosure_detector_version,
         prompt_hash=prompt_hash,

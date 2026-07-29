@@ -19,7 +19,7 @@ class RequestMetrics:
     unsupported_count: int
     defeated_count: int
     qualified_count: int
-    human_review_count: int
+    agent_resolution_count: int
     empty_result: bool
     total_cost: float
     llm_input_tokens: int = 0
@@ -28,6 +28,11 @@ class RequestMetrics:
     disclosure_latency_seconds: float = 0.0
     verification_latency_seconds: float = 0.0
     verification_cache_hit: bool = False
+    acquisition_rounds: int = 0
+    acquisition_request_types: tuple[str, ...] = ()
+    agent_resolution_queue_count: int = 0
+    batch_size: int = 1
+    company_cik: str = "unconfigured"
 
 
 def append_jsonl(*, path: Path, metrics: RequestMetrics) -> None:

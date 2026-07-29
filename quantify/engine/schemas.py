@@ -320,7 +320,7 @@ class ClaimVerdict(StrEnum):
     UNSUPPORTED = "unsupported"
     DEFEATED = "defeated"
     QUALIFIED = "qualified"
-    REQUIRES_HUMAN_REVIEW = "requires_human_review"
+    REQUIRES_AGENT_RESOLUTION = "requires_agent_resolution"
 
 
 @dataclass(frozen=True, slots=True)
@@ -354,7 +354,7 @@ class ComposedClaimVerdict:
 
 
 class ReviewReason(StrEnum):
-    """Reasons that require a reviewer rather than a negative accusation."""
+    """Reasons that require bounded agent resolution, never an accusation."""
 
     REPORT_SPAN_NOT_GROUNDED = "report_span_not_grounded"
     PARTIAL_CONTRASTIVE_EXTRACTION = "partial_contrastive_extraction"
@@ -370,7 +370,7 @@ class StatementClassification(StrEnum):
     CLASSIFIED = "classified"
     UNCLASSIFIED = "unclassified"
     NON_FACTUAL = "non_factual"
-    REQUIRES_HUMAN_REVIEW = "requires_human_review"
+    REQUIRES_AGENT_RESOLUTION = "requires_agent_resolution"
 
 
 @dataclass(frozen=True, slots=True)
