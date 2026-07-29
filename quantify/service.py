@@ -21,6 +21,7 @@ from quantify.harness import (
     approve_acquisition_requests,
     assess_coverage,
 )
+from quantify.runtime import ModelUnavailableError
 
 
 class SnapshotProvider(Protocol):
@@ -64,6 +65,8 @@ class ApplicationService:
         agent_resolution_loop: AutonomousResolutionLoop | None = None,
         clock: Callable[[], float] = perf_counter,
         sec_network_call_count: Callable[[], int] | None = None,
+        evidence_fixture_manifest_hash: str | None = None,
+        deployment_image_digest: str | None = None,
     ) -> None:
         if verify is not None and (snapshot_provider is not None or extractor is not None):
             raise ValueError("legacy verify callback cannot be combined with V1 adapters")
@@ -82,6 +85,8 @@ class ApplicationService:
         self._agent_resolution_loop = agent_resolution_loop or AutonomousResolutionLoop()
         self._clock = clock
         self._sec_network_call_count = sec_network_call_count
+        self._evidence_fixture_manifest_hash = evidence_fixture_manifest_hash
+        self._deployment_image_digest = deployment_image_digest
 
     def verify(self, *, cik: str, request: VerifyRequest) -> dict:
         return self._verify(cik=cik, request=request, batch_size=1)
@@ -178,6 +183,8 @@ class ApplicationService:
             prompt_hash=self._prompt_hash,
             temperature=self._temperature,
             disclosure_detector_version=self._disclosure_detector_version,
+            evidence_fixture_manifest_hash=self._evidence_fixture_manifest_hash,
+            deployment_image_digest=self._deployment_image_digest,
         )
         cache_key = self._cache.key(
             report_text=request.analysis,
@@ -198,6 +205,10 @@ class ApplicationService:
                 report_text=request.analysis, snapshot=build.snapshot
             )
             extraction_elapsed = self._clock() - extraction_started_at
+            if extraction.failure_reason == "transport_failure":
+                raise ModelUnavailableError(
+                    "The pinned Gemini extraction contract is unavailable."
+                )
             input_tokens = extraction.input_tokens
             output_tokens = extraction.output_tokens
             total_cost = extraction.total_cost
@@ -219,6 +230,7 @@ class ApplicationService:
                 agent_resolution_records=tuple(
                     record.manifest_entry() for record in resolution.records
                 ),
+                canonical_claim_source_spans=resolution.report.canonical_claim_source_spans,
             )
             return self._response(
                 report=resolution.report,

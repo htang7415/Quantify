@@ -46,6 +46,9 @@ class AuditManifest:
     structured_output_schema_version: str = "1.0.0"
     prompt_hash: str | None = None
     temperature: float | None = None
+    evidence_fixture_manifest_hash: str | None = None
+    deployment_image_digest: str | None = None
+    canonical_claim_source_spans: tuple[tuple[str, tuple[str, ...]], ...] = ()
 
     @property
     def manifest_hash(self) -> str:
@@ -95,7 +98,7 @@ def build_audit_manifest(
         )
     )
     return AuditManifest(
-        manifest_version="1.4.0",
+        manifest_version="1.5.0",
         analysis_as_of_date=selection.as_of_date,
         snapshot_id=snapshot.snapshot_id,
         snapshot_manifest_hash=snapshot.manifest_hash,

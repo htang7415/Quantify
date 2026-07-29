@@ -1,0 +1,35 @@
+# This configuration builds and pushes an immutable image only. It never deploys.
+substitutions:
+  _REGION: us-central1
+  _REPOSITORY: quantify
+  _IMAGE_NAME: quantify-core-api
+
+steps:
+  - name: python:3.12.6-slim
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        pip install --no-cache-dir -r requirements.test.lock
+        pip install --no-deps -e .
+        pytest -q
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --tag
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$COMMIT_SHA
+      - .
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$COMMIT_SHA
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: sh
+    args:
+      - -ceu
+      - |
+        image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$COMMIT_SHA"
+        docker inspect --format='{{index .RepoDigests 0}}' "$image" | tee /workspace/image-digest-ref.txt
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$COMMIT_SHA

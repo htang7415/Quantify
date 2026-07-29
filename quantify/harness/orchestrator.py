@@ -38,6 +38,7 @@ class VerificationReport:
     non_factual_statement_ids: tuple[str, ...]
     material_omissions: tuple[MaterialOmission, ...]
     temporal_persistence: tuple[TemporalPersistence, ...]
+    canonical_claim_source_spans: tuple[tuple[str, tuple[str, ...]], ...]
 
 
 def verify_report(
@@ -110,4 +111,5 @@ def verify_report(
         non_factual_statement_ids=validated.non_factual_statement_ids,
         material_omissions=omissions,
         temporal_persistence=annotate_temporal_persistence(snapshot=snapshot),
+        canonical_claim_source_spans=validated.canonical_claim_source_spans,
     )

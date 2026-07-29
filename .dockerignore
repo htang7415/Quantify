@@ -1,0 +1,15 @@
+.git/
+.venv/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+._*
+
+.env
+.env.*
+.quantify-private/
+
+tests/
+docs/
+AGENTS.md
+quantify_spec.md

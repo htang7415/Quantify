@@ -6,9 +6,13 @@ from datetime import date
 from typing import Protocol
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from quantify.harness.coverage import EvidenceRequestType
+from quantify.runtime import ModelUnavailableError
+
+
+MAX_BRIEF_WORDS = 250
 
 
 class VerifyRequest(BaseModel):
@@ -16,6 +20,13 @@ class VerifyRequest(BaseModel):
     as_of_date: date
     forms: tuple[str, ...] = ("10-K", "10-Q")
     evidence_requests: tuple[EvidenceRequestType, ...] = ()
+
+    @field_validator("analysis")
+    @classmethod
+    def enforce_brief_word_limit(cls, value: str) -> str:
+        if len(value.split()) > MAX_BRIEF_WORDS:
+            raise ValueError(f"analysis must contain at most {MAX_BRIEF_WORDS} words")
+        return value
 
 
 class BatchVerifyItem(BaseModel):
@@ -31,12 +42,43 @@ class VerificationService(Protocol):
     def verify(self, *, cik: str, request: VerifyRequest) -> dict: ...
 
 
-def create_app(service: VerificationService) -> FastAPI:
-    app = FastAPI(title="Quantify Research Referee", version="0.1.0")
+def create_app(
+    service: VerificationService,
+    *,
+    include_internal_routes: bool = True,
+    include_documentation: bool = True,
+) -> FastAPI:
+    """Create an injected API surface.
+
+    Development may expose internal resolution adapters.  The production
+    factory passes ``include_internal_routes=False`` so its route allowlist is
+    enforced by construction rather than deployment convention.
+    """
+
+    app = FastAPI(
+        title="Quantify Research Referee",
+        version="0.1.0",
+        docs_url="/docs" if include_documentation else None,
+        redoc_url="/redoc" if include_documentation else None,
+        openapi_url="/openapi.json" if include_documentation else None,
+    )
+
+    @app.get("/healthz")
+    def healthz() -> dict[str, str]:
+        return {"status": "ok"}
 
     @app.post("/v1/companies/{cik}/verify")
     def verify_company(cik: str, request: VerifyRequest) -> dict:
-        return service.verify(cik=cik, request=request)
+        try:
+            return service.verify(cik=cik, request=request)
+        except ModelUnavailableError as error:
+            raise HTTPException(
+                status_code=503,
+                detail={"code": error.code, "message": str(error)},
+            ) from error
+
+    if not include_internal_routes:
+        return app
 
     @app.post("/v1/companies/{cik}/review")
     def review_company(cik: str, request: VerifyRequest) -> dict:

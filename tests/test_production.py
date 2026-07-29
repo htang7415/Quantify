@@ -1,0 +1,222 @@
+from __future__ import annotations
+
+from decimal import Decimal
+import json
+
+import pytest
+from fastapi.testclient import TestClient
+
+from quantify.engine import MetricThresholdClaim, Relation, ReportSpan, StatementClassification
+from quantify.harness import ExtractedStatement, ExtractionResult, validate_extraction
+from quantify.harness.sec.client import SecCompanyFactsClient
+from quantify.production import (
+    DEFAULT_FIXTURES_DIRECTORY,
+    ProductionConfigurationError,
+    create_production_app,
+)
+from tests.conftest import load_snapshot
+
+
+class _Transport:
+    def __init__(self, *, unavailable: bool = False) -> None:
+        self.calls = 0
+        self.unavailable = unavailable
+
+    def post_json(self, *, url, headers, body, timeout_seconds):  # type: ignore[no-untyped-def]
+        self.calls += 1
+        if self.unavailable:
+            raise RuntimeError("pinned model is unavailable")
+        return {
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [
+                            {
+                                "text": json.dumps(
+                                    {
+                                        "statements": [
+                                            {
+                                                "classification": "non_factual",
+                                                "report_span_id": "report-s1",
+                                            }
+                                        ]
+                                    }
+                                )
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+
+
+def _app(*, transport: _Transport) -> TestClient:
+    return TestClient(
+        create_production_app(
+            api_key="test-key",
+            image_digest="sha256:test-image",
+            transport=transport,
+        )
+    )
+
+
+def _request() -> dict[str, object]:
+    return {
+        "analysis": "Microsoft reports financial results.",
+        "as_of_date": "2024-07-30",
+        "forms": ["10-K"],
+    }
+
+
+def test_production_factory_enforces_the_private_route_allowlist() -> None:
+    api = _app(transport=_Transport())
+
+    assert {route.path for route in api.app.routes} == {
+        "/healthz",
+        "/v1/companies/{cik}/verify",
+    }
+    assert api.get("/healthz").json() == {"status": "ok"}
+    assert api.post("/v1/companies/789019/review", json=_request()).status_code == 404
+    assert api.post("/v1/verify/batch", json={"items": []}).status_code == 404
+
+
+def test_production_factory_requires_key_and_image_digest() -> None:
+    with pytest.raises(ProductionConfigurationError, match="GEMINI_API_KEY"):
+        create_production_app(image_digest="sha256:test-image")
+    with pytest.raises(ProductionConfigurationError, match="IMAGE_DIGEST"):
+        create_production_app(api_key="test-key")
+
+
+def test_embedded_fixture_hash_failure_blocks_factory(tmp_path) -> None:
+    (tmp_path / "aapl_companyfacts.json").write_text("{}")
+    (tmp_path / "manifest.json").write_text(
+        json.dumps(
+            {
+                "fixtures": [
+                    {
+                        "path": "aapl_companyfacts.json",
+                        "cik": "0000320193",
+                        "source_url": "https://data.sec.gov/example",
+                        "retrieved_at": "2026-07-28T21:54:18Z",
+                        "payload_sha256": "0" * 64,
+                    }
+                ]
+            }
+        )
+    )
+
+    with pytest.raises(ProductionConfigurationError, match="hash mismatch"):
+        create_production_app(
+            fixtures_directory=tmp_path,
+            api_key="test-key",
+            image_digest="sha256:test-image",
+        )
+
+
+def test_production_request_uses_one_model_call_and_embedded_evidence_only(monkeypatch) -> None:
+    transport = _Transport()
+    api = _app(transport=transport)
+
+    def _unexpected_live_fetch(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise AssertionError("production must not fetch live SEC data")
+
+    monkeypatch.setattr(SecCompanyFactsClient, "fetch_company_facts", _unexpected_live_fetch)
+    first = api.post("/v1/companies/789019/verify", json=_request())
+    second = api.post("/v1/companies/789019/verify", json=_request())
+
+    assert first.status_code == second.status_code == 200
+    assert transport.calls == 1
+    assert first.json()["audit_manifest"]["deployment_image_digest"] == "sha256:test-image"
+    assert first.json()["audit_manifest"]["evidence_fixture_manifest_hash"] == (
+        __import__("hashlib").sha256(
+            (DEFAULT_FIXTURES_DIRECTORY / "manifest.json").read_bytes()
+        ).hexdigest()
+    )
+
+
+def test_unavailable_pinned_model_returns_typed_503() -> None:
+    response = _app(transport=_Transport(unavailable=True)).post(
+        "/v1/companies/789019/verify", json=_request()
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "pinned_model_unavailable"
+
+
+def test_production_rejects_oversized_reports_before_model_extraction() -> None:
+    transport = _Transport()
+    response = _app(transport=transport).post(
+        "/v1/companies/789019/verify",
+        json={**_request(), "analysis": "word " * 251},
+    )
+
+    assert response.status_code == 422
+    assert transport.calls == 0
+
+
+def _statement(*, statement_id: str, span_id: str, claim_id: str, threshold: str) -> ExtractedStatement:
+    report = "Microsoft revenue exceeded the stated threshold."
+    return ExtractedStatement(
+        statement_id=statement_id,
+        classification=StatementClassification.CLASSIFIED,
+        report_span=ReportSpan(
+            span_id=span_id,
+            sentence_text=report,
+            sentence_start=0,
+            sentence_end=len(report),
+            claim_fragment="Microsoft revenue exceeded the stated threshold",
+            fragment_start=0,
+            fragment_end=len("Microsoft revenue exceeded the stated threshold"),
+        ),
+        claims=(
+            MetricThresholdClaim(
+                claim_id=claim_id,
+                cited_evidence_id="msft-revenue-fy2024",
+                relation=Relation.GREATER_THAN,
+                threshold=Decimal(threshold),
+            ),
+        ),
+    )
+
+
+def test_semantic_duplicates_collapse_and_retain_all_source_spans() -> None:
+    report = "Microsoft revenue exceeded the stated threshold."
+    validated = validate_extraction(
+        report_text=report,
+        snapshot=load_snapshot("msft_revenue_regression.json"),
+        extraction=ExtractionResult(
+            extractor_version="fixture",
+            statements=(
+                _statement(statement_id="s-a", span_id="span-a", claim_id="claim-a", threshold="1.0"),
+                _statement(statement_id="s-b", span_id="span-b", claim_id="claim-b", threshold="1.00"),
+            ),
+        ),
+    )
+
+    assert [claim.claim_id for claim in validated.claims] == ["claim-a"]
+    assert validated.canonical_claim_source_spans == (("claim-a", ("span-a", "span-b")),)
+
+
+def test_more_than_six_distinct_claims_fails_closed() -> None:
+    report = "Microsoft revenue exceeded the stated threshold."
+    validated = validate_extraction(
+        report_text=report,
+        snapshot=load_snapshot("msft_revenue_regression.json"),
+        extraction=ExtractionResult(
+            extractor_version="fixture",
+            statements=tuple(
+                _statement(
+                    statement_id=f"s-{index}",
+                    span_id=f"span-{index}",
+                    claim_id=f"claim-{index}",
+                    threshold=str(index),
+                )
+                for index in range(7)
+            ),
+        ),
+    )
+
+    assert validated.claims == ()
+    assert [item.statement_id for item in validated.review_items] == [
+        "extraction-claim-limit"
+    ]
