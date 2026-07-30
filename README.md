@@ -1,198 +1,127 @@
 # Quantify
 
-Quantify Research Referee audits factual company-analysis claims against a
-declared, frozen evidence pool.
+## Evidence-first AI agent for public-company analysis
 
-## Current deterministic foundation
+Quantify is an AI research agent for investors, analysts, and institutions that
+need to know whether a company-analysis claim can stand behind its evidence.
 
-The implemented engine accepts an immutable SEC evidence snapshot and typed
-threshold or period-comparison claims. It provides:
+It does not simply generate a persuasive answer. It tests factual statements
+against a declared, frozen evidence release, surfaces relevant qualifications and
+counterevidence, and returns an auditable conclusion.
 
-- deterministic evidence selection under a named restatement policy;
-- local-warrant and CE1 counterevidence analysis as separate audit outputs;
-- final `verified`, `unsupported`, `defeated`, `qualified`, or agent-resolution
-  verdict composition after disclosure assessment; and
-- exact report-span and evidence-reference validation for future model output.
+[Use Quantify](https://d3ljopjg1qmt4.cloudfront.net/)
 
-The offline `verify_report(...)` workflow connects those steps end to end for
-frozen inputs. A provider-specific extractor may supply an `ExtractionResult`,
-but it cannot bypass deterministic grounding, reference validation, or verdict
-composition.
+## What Quantify can do
 
-## Private AWS staging
+### Verify factual company claims
 
-The deployment contract lives in [`deploy/aws/`](deploy/aws/). It packages the
-existing fixture-only FastAPI production factory as a digest-pinned AWS Lambda
-container image, exposes only the two V1 routes through API Gateway HTTP API,
-and requires AWS IAM SigV4 authentication. The Gemini API key is read only from
-one immutable AWS Secrets Manager version at Lambda initialization. All scripts
-refuse external actions unless their operation-specific authorization variable
-is set; AWS CLI v2 deploys the CloudFormation stack directly, so no SAM CLI is
-required. The repository currently has one IAM-authenticated private staging
-stack; production creation, promotion, and access expansion remain separate
-decisions.
+Give Quantify a short company analysis or a specific claim. It identifies
+eligible factual assertions and determines whether the declared evidence
+supports them.
 
-## Public production candidate
+Examples:
 
-The public release candidate is intentionally a narrow agent API, not an
-anonymous verifier or investment chatbot:
+- “Is this revenue-growth statement supported by the available filings?”
+- “Can this period-comparison claim be published as written?”
+- “Which facts in this company note need review before publication?”
 
-```text
-Cognito OAuth access token with verify scope
-→ POST /v1/agent/verify
-→ private IAM-authenticated Quantify core
-```
+### Find what changes the conclusion
 
-The public Lambda validates a bounded `cik`, `analysis`, and `as_of_date`, then
-returns only verdicts, frozen evidence scope, audit hash, and the required
-non-investment-advice limitation. It cannot expose the core verifier response,
-read the Gemini key, retrieve new evidence, or perform extra model calls.
+Quantify does more than locate supporting passages. It evaluates compatible
+counterevidence and important disclosed qualifications, so users can see when a
+claim is incomplete, overstated, or defeated.
 
-[`deploy/aws/production.env.example`](deploy/aws/production.env.example),
-[`deploy/aws/deploy_production_core.sh`](deploy/aws/deploy_production_core.sh),
-and [`deploy/aws/deploy_public_agent.sh`](deploy/aws/deploy_public_agent.sh)
-prepare separate production-core and public-edge stacks. The scripts require
-explicit production authorization variables and are not deployment
-instructions by themselves. A unique Cognito domain prefix and a separate
-production Gemini key are required before any public ship.
+### Make AI-generated research safer
 
-The first authenticated production release is deployed. The authenticated public endpoint
-requires a Cognito access token carrying the configured `verify` scope; a
-missing token is rejected before Lambda runs. Keep the OAuth client secret
-outside the repository and use the public smoke script only from a trusted
-operator environment.
+Use Quantify as a publication gate for analyst work or AI-generated company
+research. It turns a draft claim into a clear evidence decision before that
+claim is shared with an investment committee, client, research team, or wider
+audience.
 
-### Private browser preview
+### Preserve an audit trail
 
-[`web/`](web/) is the React/TypeScript browser client. The preview deployment
-creates a separate no-secret Cognito authorization-code + PKCE client, permits
-only its exact CloudFront and local callback URLs, and adds that client ID to
-the existing API JWT audience. The static application is delivered from a
-private S3 bucket through CloudFront. Its only API origins are the scoped
-`POST /v1/agent/verify` route and, when explicitly enabled, a no-sign-up
-`POST /v1/trial/verify` route. It has no direct core origin or
-browser-visible credentials.
+Every result identifies its evidence scope and includes an audit reference. A
+reader can understand what release, policy, and verification context produced
+the conclusion.
 
-For the current no-sign-up agent, the anonymous route is deliberately separate
-from the Cognito route. CloudFront supplies a private origin header, Lambda
-rejects direct calls without it, and DynamoDB atomically caps hashed-viewer-IP,
-daily request, and reserved model-cost use before the private core runs. The
-route is fail-closed and must be explicitly renewed at `TRIAL_EXPIRES_AT`.
-Report text is not put in browser
-storage or public API/Lambda logs.
+## What you receive
 
-Use [`web/.env.example`](web/.env.example) for local public configuration, run
-`npm --prefix web run dev`, and use `npm --prefix web test -- --run` before a
-preview deploy. The guarded [`deploy/aws/deploy_web_preview.sh`](deploy/aws/deploy_web_preview.sh)
-builds the app, uploads it, and invalidates CloudFront only when both web-preview
-and public-agent deployment authorizations are supplied. To publish the open
-no-sign-up agent after its backend and CloudFront configuration are deployed,
-use the asset script with `TRIAL_ENABLED=true`. The frontend receives only the
-relative trial path; the expiry, keys, and limits remain server-side.
+| Outcome | Meaning |
+| --- | --- |
+| **Verified** | The declared evidence warrants the claim and compatible evidence does not defeat it. |
+| **Qualified** | The claim is supportable only with an important disclosed limitation. |
+| **Unsupported** | The declared evidence does not establish the claim. |
+| **Defeated** | Compatible counterevidence defeats the claim. |
+| **Review required** | The evidence or grounding is too ambiguous to publish safely. |
 
-After a public-edge or trial configuration update, exercise the anonymous path
-through CloudFront before sharing the preview URL. This controlled smoke call
-consumes one bounded trial request and prints no report text:
+Quantify also separates:
 
-```bash
-QUANTIFY_AUTHORIZE_AWS_ANONYMOUS_TRIAL_SMOKE=1 \
-WEB_PREVIEW_URL=https://your-preview.cloudfront.net \
-deploy/aws/smoke_anonymous_trial.sh
-```
+- verified facts;
+- qualifications;
+- counterevidence;
+- agent inferences;
+- open research questions; and
+- items that need human review.
 
-Monitor the trial's expiry, daily request use, and reserved model cost without
-reading report text:
+This makes it clear what has been proven, what is interpretation, and what
+still needs work.
 
-```bash
-QUANTIFY_AUTHORIZE_AWS_ANONYMOUS_TRIAL_MONITOR=1 \
-AWS_REGION=us-east-2 \
-PUBLIC_AGENT_STACK_NAME=quantify-public-agent \
-deploy/aws/monitor_anonymous_trial.sh
-```
+## How Quantify earns trust
 
-For a UI-only update after the preview stack exists, use the separately guarded
-[`deploy/aws/deploy_web_preview_assets.sh`](deploy/aws/deploy_web_preview_assets.sh).
-To invite one named tester, set `TESTER_EMAIL` and use
-[`deploy/aws/invite_web_preview_user.sh`](deploy/aws/invite_web_preview_user.sh);
-the script does not print the email or temporary credentials.
+~~~
+Your claim or analysis
+        ↓
+AI identifies structured candidate claims
+        ↓
+Evidence grounding and counterevidence checks
+        ↓
+Deterministic verdict, scope, and audit trail
+~~~
 
-For a local external-agent integration on macOS, provision the existing client
-secret once into the login Keychain, then invoke the narrow public adapter. The
-secret is never written to the repository, shell output, or an environment file:
+The AI agent can organize the work and explain the result. It cannot decide
+that a claim is verified. Quantify’s deterministic verification layer is the
+only authority that can issue a verified outcome.
 
-```bash
-QUANTIFY_AUTHORIZE_PUBLIC_AGENT_KEYCHAIN_PROVISION=1 \
-  deploy/aws/provision_public_agent_keychain.sh
+This means Quantify is designed to be:
 
-deploy/aws/public_agent_verify.sh \
-  --cik 0000789019 \
-  --analysis-file ./analysis.txt \
-  --as-of-date 2024-07-30 \
-  --format human
-```
+- **Source-constrained** — conclusions stay inside a named evidence release.
+- **Counterevidence-aware** — support and defeating evidence are treated
+  separately.
+- **Audit-ready** — results retain the context needed to understand the
+  conclusion.
+- **Conservative by default** — missing, ambiguous, or unavailable information
+  produces a safe review state, not an invented answer.
 
-The adapter can call only `POST /v1/agent/verify` and prints only the safe
-Quantify response contract. Use `--format human` for a fixed user-facing
-summary or leave the default `--format json` for another agent to consume. It
-does not receive AWS administrator credentials, the private core URL, or the
-Gemini key.
+## Built for serious research workflows
 
-## Controlled public beta monitoring
+Quantify is designed for people and teams who need disciplined public-company
+research:
 
-Run the read-only health gate while the first agent is operating. It checks both
-CloudFormation stacks, all configured alarms, private audit-manifest presence,
-and the current DynamoDB model-cost reservation without printing request or
-audit content:
+- self-directed investors who want to check a thesis;
+- research analysts preparing a company note;
+- investment teams reviewing factual assertions;
+- AI products that need an evidence-verification layer; and
+- institutions that require clear provenance and reviewability.
 
-```bash
-QUANTIFY_AUTHORIZE_AWS_PRODUCTION_BETA_CHECK=1 \
-  deploy/aws/check_production_beta.sh
-```
+The current experience is open to use without sign-up and is deliberately
+bounded to maintain reliability and responsible access.
 
-## Local agent tool
+## Clear boundaries
 
-After loading the private staging environment values, a local agent can assume
-`QuantifyCallerRole` and invoke the private verifier without storing report text:
+Quantify is a research-verification product. It does not:
 
-```bash
-python deploy/aws/agent_verify.py --cik 0000789019 \
-  --analysis-file ./analysis.txt --as-of-date 2024-07-30
-```
+- predict prices or market movements;
+- make buy, sell, hold, allocation, or position-size recommendations;
+- execute trades or manage a portfolio;
+- claim that no contrary information exists outside the declared evidence; or
+- replace a user’s judgment, diligence process, or professional advice.
 
-For a reproducible staging test, use `--analysis-fixture
-fixtures/reports/msft_revenue_growth_v1.json` instead.
+## The goal
 
-The output contains only verified claim verdicts, frozen evidence scope, audit
-hash, and the required non-investment-advice limitation.
+Quantify makes research more publishable, reviewable, and trustworthy.
 
-## Interactive latency control
+Instead of asking, “Can an AI write this?”
 
-The normal Gemini harness uses a four-second extraction request deadline and a
-one-second bounded disclosure-assessment deadline. It performs no automatic
-model retries: a timeout becomes an agent-resolution item or an ambiguous
-disclosure assessment, never a published claim or omission accusation.
+Ask, “Can this claim be proven?”
 
-Gemini Batch is retained for offline prompting-parity and stability evaluation.
-Its queue time is an auditable throughput metric, not interactive latency, and
-Batch artifacts cannot satisfy the commercial readiness latency gate. That gate
-requires a versioned `interactive_runtime` measurement from the normal
-one-call extraction path.
-
-The Batch Quantify parity path must use the same versioned extraction
-instruction, response schema, model, temperature, and input/output envelope as
-the deployed extractor. A compact or separately worded Batch prompt is not
-comparable production evidence. The prompt-only comparator remains a distinct
-model-visible baseline by design.
-
-## Interactive readiness evaluation
-
-`quantify.evaluation.interactive_cli` is the only path that produces the
-versioned `interactive_runtime` artifact accepted by the readiness gate. It
-requires the fixed 20 mechanical plus 10 judgment cases, a matching repeated-
-run stability artifact, a pinned model/prompt profile, explicit per-request
-and total cost caps, and `--execute`. It uses the normal one-call extractor;
-it never uses Batch latency, retries a model call, or saves credentials.
-
-Run it only after separately authorizing the standard-provider spend. Store
-the resulting no-secret artifact under `.quantify-private/` and pass it to the
-readiness CLI together with the parity and stability artifacts.
+[Start with Quantify](https://d3ljopjg1qmt4.cloudfront.net/)

@@ -2,173 +2,107 @@
 
 ## Purpose
 
-This repository builds **Quantify Research Referee**: a system that audits
-AI-generated or human-written public-company analysis against a declared pool
-of evidence. The authoritative product specification is
-[quantify_spec.md](quantify_spec.md).
+This repository builds **Quantify Research Referee**, a user-first AI research
+agent for public-company analysis. Its authoritative product semantics,
+architecture, API plan, policy rules, release lifecycle, and UI direction live
+only in [quantify_spec.md](quantify_spec.md). Do not duplicate or reinterpret
+those rules here; update the specification first when they change.
 
-Quantify's central promise is deliberately conservative:
+Quantify is not a stock-prediction, trading, brokerage, portfolio-management,
+or personalized-investment-advice product. Do not add price predictions, buy,
+sell, hold, allocation, position sizing, suitability, or trade execution.
 
-> A claim may be published only when its cited evidence warrants it and
-> compatible evidence in the same declared frozen pool does not defeat it.
+## Agent harness
 
-The system is an evidence verifier, not a stock-prediction, trading, brokerage,
-or personalized-investment-advice product.
+Work inside the boundaries defined in specification sections 1, 3–7, and 10.
+The essential invariant is:
 
-## Current system and next plan
+~~~
+model proposes structured work
+→ deterministic code validates grounding, type, warrant, and counterevidence
+→ deterministic verifier alone composes the publication verdict
+~~~
 
-Quantify Core is complete and has passed its frozen-corpus technical readiness
-gate. The production design is a **single-turn AI verification harness**:
+Only exact structured facts from the declared release can feed a verdict.
+Narrative retrieval is context-only and must never establish a fact, broaden
+evidence scope, or alter a verdict. Treat model output and external data as
+untrusted until validated. Every result must state scope; an empty verified set
+is valid. Do not invent facts, confidence intervals, citations, provenance, or
+evidence IDs.
 
-```text
-one bounded structured extraction call
-→ deterministic grounding and typed-claim validation
-→ deterministic warrant and CE1 counterevidence verification
-→ fail-closed verdict composition and audit manifest
-```
+The existing AutonomousResolutionLoop is the local pattern for any bounded
+agent capability: an explicitly permitted action is capped, replay-visible, and
+followed by deterministic composition. In production it is currently configured
+for zero actions; do not enable it or add a new action without the specification
+contract, focused tests, and explicit authorization where required.
 
-It is not a multi-agent research system. Private staging is model-enabled:
-each uncached verify request makes one pinned Gemini extraction call, supplied
-from AWS Secrets Manager at runtime. The production profile has no secondary
-model path; ambiguity becomes `REQUIRES_AGENT_RESOLUTION`. Model unavailability
-fails closed and must not cause an unrecorded model fallback.
+## Current operational boundary
 
-The current engineering plan is §14 of `quantify_spec.md`: retain the AWS
-IAM-authenticated Lambda core with immutable embedded SEC fixtures and prepare
-an authenticated public agent edge. The core deployed allowlist is only:
+This section intentionally restates the deployed route and release boundary.
+It is a non-bypassable operational check for every agent action; all other
+architecture and product semantics remain specification-only.
 
-```text
+The deployed V1 private core permits only:
+
+~~~
 GET  /healthz
 POST /v1/companies/{cik}/verify
-```
+~~~
 
-Production application assembly, dynamic container QA, and AWS private staging
-configuration are complete: embedded-fixture-only evidence, semantic-duplicate
-claim collapse, startup validation, enforced route allowlist, immutable ECR
-image/secret configuration, and authenticated SigV4 smoke tooling. One
-IAM-authenticated private staging stack is deployed in `us-east-2`; it uses the
-account's unreserved Lambda pool because the initial account concurrency quota
-cannot support a reservation. A public production candidate may expose only
-`POST /v1/agent/verify` behind Cognito JWT scope enforcement and may return only
-the safe agent contract. It must not expose the core verifier, become
-unauthenticated, retrieve live SEC data, or introduce a multi-agent workflow.
-The authenticated production core and public edge are deployed in `us-east-2`.
-Keep their scope and routes unchanged without fresh explicit user authorization;
-do not add an unauthenticated endpoint, a public core route, live SEC retrieval,
-or multi-agent workflow.
+The public edge has the safe POST /v1/agent/verify contract and a separately
+bounded CloudFront-origin-protected no-sign-up trial route. Neither exposes the
+core, performs live SEC retrieval, or can alter a verdict. Deployed systems are
+single-region us-east-2 Lambda/API Gateway/Cognito/IAM/DynamoDB/S3 systems.
 
-## Working approach
+Treat future architecture in the specification as a plan, not an implicit
+deployment authorization. Do not add public endpoints, live sources, providers,
+accounts, data purchases, or deployments without explicit user authorization.
 
-Use sound engineering judgment to develop, improve, and extend the product.
-Choose appropriate architecture, tools, dependencies, tests, and implementation
-order for the task at hand. Prefer small, understandable changes, but do not
-let an earlier prototype or this guide prevent necessary construction,
-refactoring, or integration work.
-
-When requirements are incomplete, make reasonable, reversible assumptions and
-state material ones in the handoff. Ask for direction only when a choice would
-meaningfully change product behavior, user-facing policy, cost, security, or
-external commitments.
-
-Do not make external releases, deployments, purchases, customer contact, or
-destructive data changes without explicit authorization.
-
-## Authority
+## Authority and working approach
 
 Resolve conflicts in this order:
 
 1. The user's explicit request.
-2. This `AGENTS.md`.
-3. `quantify_spec.md`.
+2. This AGENTS.md.
+3. quantify_spec.md.
 4. Versioned schemas, policies, manifests, fixtures, and evaluation cases.
 5. Existing code and tests.
 
-The specification owns product semantics. If code, a request, or a proposed
-implementation conflicts with a core safety or verification rule, explain the
-conflict and preserve the stronger rule unless the user explicitly changes it.
+Make reasonable, reversible assumptions and state material ones in the
+handoff. Ask before a decision changes user-facing policy, security, cost, data
+rights, or external commitments. Do not make releases, deployments, purchases,
+customer contact, or destructive data changes without explicit authorization.
 
-## Product principles
+## Engineering and change discipline
 
-- Treat evidence scope honestly. Verdicts apply to the declared snapshot or
-  corpus; they do not establish that no contrary evidence exists elsewhere.
-- Preserve an auditable separation between evidence acquisition/interpretation
-  and deterministic verification. The verifier, not a model, decides whether a
-  factual claim is eligible for publication.
-- Keep local support and counterevidence distinct. Defeating evidence remains
-  visible even when a report acknowledges it.
-- Be conservative with ambiguity. Invalid grounding, unsupported claim types,
-  uncertain disclosure, or incomplete information should produce a clear review
-  path rather than an overconfident negative finding.
-- Do not invent financial observations, confidence intervals, provenance, or
-  evidence IDs. Preserve the source, time, scope, transformation, and policy
-  context needed to interpret an observation.
-- Make point-in-time and restatement choices explicit and reproducible.
-- Preserve deterministic replay wherever deterministic verdicts are claimed:
-  freeze relevant inputs, version policies and schemas, and record manifest
-  information sufficient to explain a result.
-- Keep user-visible conclusions proportional to the available evidence. An empty
-  verified-result set is valid.
-
-## Engineering expectations
-
-- Design clear boundaries between domain semantics, deterministic verification,
-  external adapters, orchestration, and presentation. Avoid letting provider or
-  interface concerns silently redefine verification behavior.
-- Treat model output and external data as untrusted until validated. Validate
-  structured output, report grounding, and references before relying on them.
-- Use real, attributable source data for financial assertions and frozen
-  fixtures for reproducible tests when suitable.
-- Test behavior in proportion to risk. Include regression coverage for semantic
-  changes and generative/property tests where invariants benefit from them.
-- Keep evaluation categories distinct when they measure different behavior (for
-  example, mechanical versus judgment cases, or deterministic engine behavior
-  versus model extraction quality).
-- Do not claim tests, checks, or guarantees that were not actually performed.
-- Protect credentials, private report content, and sensitive operational data in
-  logs, fixtures, commits, and handoffs.
-- Before every handoff, remove any macOS AppleDouble metadata files (`._*`)
-  created in the repository; they are never project artifacts.
-
-## Change discipline
-
-For changes that alter claim semantics, evidence eligibility, restatement
-handling, counterevidence, verdict composition, or disclosure policy, update
-the relevant versioned contract and add focused tests. Record replay-relevant
-versions and hashes in audit output when applicable.
-
-For routine implementation work, avoid ceremony that does not improve the
-outcome. Leave the repository clearer, safer, and easier to evolve than you
-found it.
+- Preserve boundaries between presentation, orchestration, adapters,
+  deterministic verification, evidence acquisition, and policy enforcement.
+- Follow the contracts and controls in quantify_spec.md rather than copying
+  them here. Changes to claim semantics, evidence eligibility,
+  counterevidence, disclosure, model/tool contract, source use, policy,
+  release gates, or cache/revocation behavior require a specification update,
+  versioned contract update, and focused tests.
+- Preserve deterministic replay: record the release, policy hashes, model and
+  prompt contract, schemas, engine version, and relevant input hashes.
+- Fail closed for malformed model output, invalid grounding, unavailable model,
+  missing required audit storage, invalid policy, expired release, or exhausted
+  capacity. Never add an unrecorded fallback model.
+- Test in proportion to risk. Include the negative and failure cases the
+  specification calls for; do not claim checks that did not run.
+- Protect credentials, user text, private reports, private sources, and
+  evaluation artifacts from logs, fixtures, commits, and handoffs.
+- Before every handoff, remove macOS AppleDouble metadata files (._*) created
+  in the repository; they are never project artifacts.
 
 ## Delivery lifecycle
 
-Use this lifecycle as a shared framework for moving work from idea to release:
-
-```text
+~~~
 DEFINE → PLAN → BUILD → VERIFY → REVIEW → SHIP
  idea     spec    code    test     QA      go live
-```
+~~~
 
-Enter at the stage appropriate to the request and preserve work already done.
-The `/spec`, `/plan`, `/build`, `/test`, `/review`, and `/ship` labels describe
-the intent of each stage; they do not require a particular command, document,
-or level of ceremony.
-
-- **Define:** establish the problem, scope, constraints, and success criteria.
-- **Plan:** choose a viable approach, interfaces, risks, and verification.
-- **Build:** implement the agreed outcome.
-- **Verify:** run relevant tests, checks, and practical validation.
-- **Review:** assess correctness, quality, safety, and readiness.
-- **Ship:** commit, release, deploy, or otherwise hand off only with the
-  required authority.
-
-Use feedback naturally: a failed test returns work to Build; a review finding
-may return it to Build or Plan; a scope conflict returns it to Define. This is a
-guide for clear collaboration, not a constraint against direct, iterative work.
-
-## Completion
-
-Complete work with a concise handoff covering the outcome, important decisions,
-verification performed, and any remaining risks or follow-up. A change is ready
-when it fulfills the requested outcome without undermining the product
-principles above.
+Use the appropriate stage, preserve completed work, and return to an earlier
+stage when evidence requires it. A handoff states the outcome, key decisions,
+verification actually performed, and remaining risks. A change is ready only
+when it meets its requested outcome without weakening the specification or this
+harness.

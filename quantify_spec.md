@@ -1,186 +1,305 @@
 # Quantify AI Agent System Design
 
-## 1. Purpose
+## 1. Purpose and boundary
 
-Quantify is an AI-powered **evidence verification agent** for factual claims
-in public-company analysis. It is a publication gate, not a research writer or
-an investment adviser.
+Quantify is a user-first AI research companion for public-company analysis. It
+helps people and external AI agents test factual claims, surface
+counterevidence, and follow an auditable research trail against a declared,
+frozen evidence release.
 
-```text
-quantify_verify(company, analysis, as_of_date, evidence_release)
-    → claim verdicts + evidence scope + audit reference
-```
+> A claim may be published only when its cited evidence warrants it and
+> compatible evidence in the same declared frozen pool does not defeat it.
 
-Its single job is to decide whether each extracted factual claim may be
-published under a declared, frozen evidence release. A claim is publishable
-only when the cited evidence warrants it and compatible evidence in that same
-release does not defeat it.
+Quantify is not a stock-prediction, trading, brokerage, portfolio-management,
+or personalized-investment-advice product. It must not make buy, sell, hold,
+allocation, position-size, suitability, or trade-execution recommendations.
 
-Quantify does not predict prices, recommend trades, manage portfolios, browse
-for extra evidence, or make investment decisions.
+The agent may plan research and draft explanations. Only the deterministic
+verifier may mark a factual claim VERIFIED. This is non-negotiable.
 
-## 2. Product Model
+## 2. Current baseline and target
 
-```text
-Human analyst or external AI agent
-  → bounded company analysis
-  → one structured LLM extraction
-  → deterministic evidence verification
-  → safe verdicts and audit record
-```
+### Current V1
 
-The LLM identifies candidate claims and supplied evidence references. It never
-decides truth. Deterministic code owns evidence eligibility, claim semantics,
-counterevidence, and final verdict composition.
+The deployed core is a bounded verification harness with one primary structured
+extraction call:
+
+~~~
+one pinned structured extraction call
+→ deterministic grounding and typed-claim validation
+→ deterministic warrant and CE1 counterevidence verification
+→ fail-closed verdict composition and immutable audit manifest
+~~~
+
+The codebase also contains `AutonomousResolutionLoop`, the V1 precedent for a
+policy-bounded agent step: it can make at most one disclosure-assessment action
+and then re-run deterministic composition; remaining ambiguity is
+REQUIRES_AGENT_RESOLUTION. The production assembly currently configures that
+loop with zero actions, so it is a tested safety contract and implementation
+precedent, not a live second model call. Future tools must retain its boundary:
+bounded action first, deterministic composition last.
+
+The private IAM-authenticated core exposes only:
+
+~~~
+GET  /healthz
+POST /v1/companies/{cik}/verify
+~~~
+
+The safe public edge exposes POST /v1/agent/verify with Cognito scope
+enforcement. A separately bounded no-sign-up trial route may serve the same
+safe contract through CloudFront. It is not a public core route: it is
+origin-header protected, admission-controlled, time-limited, and fails closed.
+
+V1 uses immutable embedded SEC fixtures, Lambda containers, API Gateway,
+Cognito/IAM, DynamoDB, encrypted S3 audit storage, KMS, Secrets Manager, ECR,
+and CloudWatch in us-east-2. It is not yet a multi-tool research agent, a
+live-data terminal, or an async task platform.
+
+The target fact index does not create a second verifier. Initially, the async
+path will use the existing deterministic engine through an indexed evidence
+snapshot adapter that has replay parity with the approved embedded release.
+The V1 routes continue reading their embedded fixtures until dual-read replay
+tests prove identical verdicts, qualifications, counterevidence, and audit
+inputs for that release. Only then may the same versioned snapshot-provider
+interface be adopted by V1; its behavior and public contract remain unchanged.
+
+### Target state
+
+The next product is a scalable, no-sign-up research agent with deliberately
+bounded capability. It adds policy-governed planning, efficient retrieval,
+asynchronous tasks, and a sustainable evidence-release factory while retaining
+the V1 verifier as the only verdict authority. Identity, private documents,
+workspaces, and enterprise RBAC are later capabilities, not prerequisites for
+the user-first product.
+
+## 3. High-level system design
+
+Quantify has three deliberately separated planes:
+
+~~~
+Public delivery plane
+  Browser / SDK
+    → CloudFront + WAF
+    → static, versioned release catalog and watchlist manifests in S3
+    → bounded public verification and research-task APIs
+
+Online research plane
+  API admission → DynamoDB task and cost state → SQS → bounded Lambda worker
+    → pinned planner model and typed tools
+    → exact fact retrieval / scoped narrative retrieval
+    → deterministic verifier → safe response + encrypted audit object
+
+Offline evidence factory
+  approved source acquisition → normalization → evaluation → release gate
+    → immutable evidence release and compiled indexes → S3/CDN publication
+~~~
+
+The public plane never receives model or AWS credentials. The online plane
+never fetches live SEC or web content for a user request. The factory is not
+reachable from an online request. A control decision may admit, throttle, or
+reject work, but it may never alter a verdict.
+
+### 3.1 Two retrieval paths
+
+Structured fact retrieval handles numeric and typed factual claims. Its
+compiled key is:
+
+~~~
+evidence_release_manifest_hash + CIK + metric + fiscal_period + unit
+~~~
+
+It returns exact fact and evidence identifiers and is the only retrieval path
+that can feed deterministic verification.
+
+Narrative retrieval is semantic search over normalized disclosure text, such as
+MD&A and risk-factor passages. It may provide context for an explanation or
+identify a research question. It is filtered to the exact
+evidence_release_manifest_hash selected when the task begins. It can never
+change a verdict, establish a numeric fact, or expand the release.
+
+### 3.2 Data and delivery
+
+| Need | Primary mechanism | Rule |
+| --- | --- | --- |
+| Immutable evidence, manifests, evaluations, and audit objects | Versioned encrypted S3 | Address by content hash; retain replay inputs. |
+| Public catalog and watchlist refresh | CloudFront-cached S3 JSON | Browsers poll a short-cached index, never Lambda. |
+| Facts | Compiled exact fact index | Exact typed lookup, never vector similarity. |
+| Narrative context | Release-scoped vector index | Context-only, with source span and chunk hash. |
+| Tasks, admission, idempotency, release metadata | DynamoDB | Model access patterns first; reassess relational storage only when justified. |
+| Work execution | SQS, Lambda workers, DLQ | Reserved concurrency and bounded failure handling. |
+
+Browser watchlists are local-only CIK and release-ID lists. Quantify does not
+collect holdings, risk tolerance, portfolio composition, or behavioral profiles.
+Abuse-protection identifiers are HMAC-derived, short-lived, and may not be
+joined with feedback or watchlist telemetry.
+
+## 4. Evidence, policy, and audit contracts
+
+Evidence, runtime policy, and release-gate policy are independent, immutable
+artifacts with separate publish and approval paths. An urgent policy restriction
+must not wait for an evidence release.
+
+Every task and response records three hashes:
+
+~~~
+evidence_release_manifest_hash
+runtime_policy_bundle_hash
+release_gate_policy_hash
+~~~
+
+An approved policy bundle is signed, content-addressed, encrypted at rest, and
+has a status registry: active, deprecated, revoked, or emergency_disabled. It
+defines the pinned planner model/provider/version, secret version, prompt hash,
+call and token budgets, tool and source allowlists, prohibited actions,
+admission and cache rules, and release-gate thresholds.
+
+A policy-pointer change may tighten controls or disable a tool without a Lambda
+deployment. A task reauthorizes policy before every side effect. New work
+cannot use revoked policy; queued/running work stops safely; side effects made
+by revoked tools stop firing while their audit trail remains. Planner output
+from a revoked model/tool policy is never served. A cached deterministic verdict
+is served only if the evidence release and current serving policy remain valid.
+Revoked evidence is not publicly served, though protected audit records remain.
+
+Audit records preserve source, time, scope, transformation, model, policy,
+schema, engine, prompt, and manifest versions needed to explain a result. They
+must not include raw user text, credentials, or private operational secrets.
+
+## 5. Agent and task model
+
+The current synchronous POST /v1/agent/verify remains a tight V1 contract. The
+scalable agent adds a separate asynchronous surface:
+
+~~~
+POST /v1/research-tasks       → 202 Accepted + task_id
+GET  /v1/research-tasks/{id}  → state and safe result
+POST /v1/research-tasks/{id}/retry
+POST /v1/research-tasks/{id}/cancel
+~~~
+
+The API canonicalizes requests before admission. One idempotency record maps an
+idempotency key, canonical request hash, task, and reservation. Reusing a key
+with the same request returns the existing task. Reusing it with different
+content returns 409 Conflict and creates no work or cost reservation.
+
+~~~
+accepted → admitted → queued → running → completed
+                       ↘ requires_review | unavailable | failed_unresolved
+~~~
+
+SQS and Lambda workers provide bounded execution. A DLQ captures exhausted
+messages. Before an uncached model call, the service atomically reserves
+worst-case capacity using deterministically sharded daily/monthly counters.
+Public traffic must not bypass admission.
+
+Provider uncertainty is fail-closed but fair:
+
+1. If the provider did not start, reuse or release the reservation as policy permits.
+2. If state is ambiguous, run delayed adapter reconciliation where attributable usage/result lookup exists.
+3. Recover result/cost when completed, or reservation when not started.
+4. If unresolved, never auto-retry or switch model; record failed_unresolved.
+5. A user or operator may request one controlled retry linked to the original task and reservation. It is separately admitted and audited.
+
+The first implementation slice has one typed tool, verify_claims. Add tools only
+after narrow contracts and evaluations pass: search_approved_evidence_release,
+create_review_task, release-scoped narrative context, then watchlist alerts.
+The planner cannot call arbitrary URLs, inspect private documents, alter policy,
+write a verdict, trade, or access live filings.
+
+## 6. Safe results and provenance
+
+Every visible statement is labelled verified fact, qualification,
+counterevidence, agent inference, open question, or review required.
+
+A structured fact citation carries source_type structured_fact, verification_role
+verdict_evidence, release hash, filing/accession, fact ID, and evidence ID. A
+narrative citation carries source_type narrative_disclosure, verification_role
+context_only, release hash, filing/accession, chunk hash, and source span. It is
+visibly issuer-disclosure context, not independent verification.
+
+Every agent inference and open question includes derived_from citation IDs. This
+allows users to trace reasoning inputs without turning an inference into a
+verdict.
 
 | Verdict | Meaning |
 | --- | --- |
-| VERIFIED | Evidence warrants the claim and no compatible evidence defeats it. |
-| UNSUPPORTED | The declared evidence does not warrant the claim. |
+| VERIFIED | Exact declared evidence warrants the claim and no compatible evidence defeats it. |
+| UNSUPPORTED | Declared evidence does not warrant the claim. |
 | DEFEATED | Compatible counterevidence defeats the claim. |
-| QUALIFIED | A supported claim requires an important disclosed qualification. |
-| REQUIRES_AGENT_RESOLUTION | Ambiguity, invalid grounding, or system failure prevents publication. |
+| QUALIFIED | The claim is supported only with an important disclosed qualification. |
+| REQUIRES_AGENT_RESOLUTION | Ambiguity, invalid grounding, or unavailable information prevents publication. |
 
-Every result is limited to its named evidence release. No result claims that
-contrary evidence does not exist elsewhere.
+No conclusion asserts that contrary evidence does not exist outside the named
+release.
 
-## 3. High-Level AWS Architecture
+## 7. Evidence-release factory and coverage
 
-```text
-Customer or external AI agent
-  → Cognito / IAM identity, WAF, API Gateway, admission control
-  → stateless regional Quantify verification cell
-      → one pinned model adapter
-      → deterministic verifier using an approved frozen evidence release
-      → atomic cost reservation and encrypted audit manifest
-  → safe, non-advisory verification response
+An issuer becomes available only through a controlled factory:
 
-Independent offline plane
-  → source acquisition and normalization
-  → evidence-policy review, evaluation, and immutable release publication
+~~~
+licensed/approved sources → normalize and validate
+→ compile facts and narrative chunks → evaluation corpus
+→ release gate → immutable manifest → CDN catalog
+~~~
 
-Control and assurance plane
-  → tenant limits, release registry, audit retention, observability,
-    incident response, and model-quality measurement
-```
+The factory, not Lambda concurrency, is the real scalability constraint. It
+measures issuer coverage, automated pass rate, review exceptions, correction
+rate, source freshness, and reviewer throughput. These same explicit metrics
+are both the release gate and the operating dashboard.
 
-The online path is synchronous, bounded, and horizontally scalable. The
-offline plane creates approved evidence releases but is never reachable from a
-customer verification request. The control plane may admit or reject a request
-but may not change a verdict.
+- Lane A — routine release: existing issuer/schema and all policy thresholds pass, with automated checks and approved spot review.
+- Lane B — full review: new issuer, source/type, restatement, failed critical evaluation, or threshold breach; explicit reviewer approval is required.
 
-The deployed V1 uses Lambda containers, API Gateway, Cognito/IAM, DynamoDB,
-encrypted S3 audit storage, KMS, Secrets Manager, ECR, and CloudWatch. Future
-regional cells must preserve the same versioned evidence, policy, model, and
-response contract.
+Sources must be licensed or public and frozen into a release before public use.
+Live retrieval belongs only to the offline factory, never the verifier or
+planner request path.
 
-## 4. Non-Negotiable Controls
+## 8. Implementation plan
 
-- One bounded model extraction call per uncached request; no silent fallback,
-  retry, or second model agent.
-- Immutable evidence releases with explicit policy, source, and manifest
-  versions; no live SEC retrieval in the verification path.
-- Deterministic verification and counterevidence analysis; models cannot alter
-  evidence, policy, or verdict rules.
-- Fail closed: malformed output, unavailable model, missing audit storage,
-  invalid grounding, or exhausted capacity results in a typed unavailable or
-  resolution outcome—not a publication decision.
-- Tenant isolation for customer reports, credentials, audit records, usage, and
-  quotas. Shared public evidence may be deduplicated.
-- Atomic server-side admission and worst-case model-cost reservation before an
-  uncached model invocation. API throttles and client keys are not sufficient
-  spending controls.
-- Audit records include the evidence, policy, engine, prompt, schema, and model
-  versions needed to explain a result; they exclude submitted report text.
+This is an ordered plan, not a timing promise. Build and test each step before
+relying on the next.
 
-## 5. Current V1 Scope
+1. Publish signed policy-bundle, status-registry, release-gate schemas, independent pointers, revocation behavior, and three-hash audit fields. Test emergency tool disable without code deployment.
+2. Compile the exact fact and release-scoped narrative indexes for one approved release. Test exact matching, manifest filtering, and that narrative output cannot enter verdict evaluation.
+3. Build the minimum async vertical slice for verify_claims: canonical hashing, idempotency collision rejection, sharded admission, SQS, bounded worker, DLQ, task status, and safe audit output. It uses the existing deterministic engine through the indexed snapshot adapter; keep V1 on embedded fixtures until dual-read replay parity passes.
+4. Prove failure/recovery semantics: provider-not-started, completed, ambiguous, reconciliation-unavailable, manual retry, cancellation, and reservation reconciliation. No automatic model retry or fallback.
+5. Load and abuse test public access: sharded hard caps, burst behavior, queue saturation, WAF/rate enforcement, cache behavior, and telemetry separation.
+6. Operationalize the factory: source validation, normalization, evaluations, Lane A/B gate records, immutable manifests, CDN catalog publication, rollback/revocation tests, and reviewer workflow.
+7. Add approved-release search, review tasks, and narrative context one at a time. Each needs a typed contract, policy allowlist, evaluation, provenance, and revocation test.
+8. Expand issuer coverage according to measured release-factory throughput; maintain SDK/tool adapters that preserve the safe contract. Reassess storage only from observed query patterns.
+9. Treat accounts, uploads, workspaces, RBAC, retention, legal hold, and private-data classification as a separate institutional program.
 
-V1 verifies a closed set of factual claim types against frozen SEC evidence for
-Microsoft and Apple. It supports a private IAM-authenticated core and a narrow
-public agent endpoint protected by Cognito scope. The public contract returns
-only verdicts, evidence scope, audit reference, and a non-investment-advice
-limitation.
+## 9. Web experience
 
-For a temporary no-signup test, V1 may additionally expose the same safe
-contract at a separate anonymous trial route. It is not a public core route:
-CloudFront adds a private origin header, Lambda rejects requests lacking that
-header, and admission occurs before the private core call. Admission is
-time-bounded, hashes the viewer IP with a deployment secret rather than storing
-the raw address, and atomically enforces per-IP, daily-request, and reserved
-cost caps. A disabled, expired, malformed, or unavailable ledger fails closed.
-The trial must be removed or explicitly renewed before its configured expiry.
+The visual direction describes the target public experience. The deployed web
+already uses the soft-white and Quantify-purple direction; task-progress UI,
+release selection, and the richer citation presentation arrive with the async
+task work above.
 
-V1 is a verification service, not a multi-agent research system, a live-data
-terminal, a general chatbot, or a trading system.
+The web asks one question: “Is this company-analysis claim supported by the
+declared evidence?” It shows task progress or a bounded result, evidence scope,
+qualifications, counterevidence, citations, and an audit ID.
 
-## 6. Delivery Plan
+Use a soft-white canvas with the Quantify purple gradient as the primary brand
+color, large clear type, and a calm technology-product layout. Show scope and
+review-required states as prominently as favorable outcomes. Avoid
+market-terminal imagery and price-prediction cues; never use color alone to
+convey a verdict.
 
-| Phase | Outcome | Required gate |
-| --- | --- | --- |
-| 1. Trust foundation — current | Bounded verifier, frozen evidence, deterministic verdicts, audit manifests, authenticated API. | Safety, replay, container, and controlled-beta checks pass. |
-| 2. Commercial control plane | Tenant identity, hard quota/cost admission, usage metering, support, and enterprise audit retention. | Isolation, overload, spend-cap, and security-review tests pass. |
-| 3. Evidence-release factory | Controlled issuer expansion through immutable snapshots, provenance validation, policy versions, and evaluation corpora. | Each new issuer/category has explicit policy, fixtures, evaluation, and replay evidence. |
-| 4. Regional scale | Independent AWS verification cells, capacity budgets, same-release failover, and recovery testing. | Load, provider-outage, storage-failure, and failover tests preserve the contract. |
-| 5. Ecosystem integration | SDKs and tool adapters for enterprise AI and analyst workflows. | Integrations preserve every verdict, scope limitation, and audit reference. |
+No-sign-up access is intentional for this phase but remains bounded by policy,
+WAF, sharded admission, and cost caps. Controls fail closed. Future accounts
+must not change the evidence or safety contract.
 
-Phases are sequential. More tenants, evidence, or regions are valuable only
-when the previous trust boundary is proven. A roadmap item does not authorize a
-new public route, live evidence retrieval, model provider, or deployment.
+## 10. Governance
 
-## 7. Web Application Experience
+The user request, AGENTS.md, and this specification govern in that order.
+Changes to claim semantics, evidence eligibility, counterevidence, verdict
+composition, disclosure, model contract, source use, policy behavior, or release
+gates require versioned contract updates, focused tests, and replay-aware audit
+fields.
 
-The public web application is a React and TypeScript single-page application.
-The normal mode authenticates human users with Cognito authorization-code flow
-and PKCE, and calls only the narrow scoped public agent API. The temporary test
-mode does not require sign-in and instead calls only the separately bounded
-anonymous trial route through CloudFront. It never contains an AWS credential,
-model credential, private-core URL, OAuth client secret, or the CloudFront
-origin header.
-
-The private preview uses a separate no-secret browser client. Its callback and
-logout URLs are pinned to the preview origin and `http://127.0.0.1:5173/`; the
-authenticated API independently enforces the `verify` scope. Submitted
-analysis stays in memory for the request and is never added to browser storage,
-history, or UI logs. The browser retains an access token only in session
-storage when the authenticated mode is used.
-
-```text
-Sign in
-  → Verify analysis: company, as-of date, bounded analysis text
-  → Result: verdicts, review warning, evidence scope, audit reference,
-    non-investment-advice limitation
-  → Optional history: request metadata and audit references only
-```
-
-### Visual direction
-
-Use the supplied HockeyStack page only as visual inspiration, not as a source
-for its branding, copy, logos, product imagery, or interface assets. Quantify's
-design should feel like a calm, premium enterprise control surface:
-
-- light neutral page canvas, generous white space, and a single rounded main
-  content panel;
-- restrained black/near-black typography with one high-contrast primary action;
-- large, concise headline and plain-language product explanation;
-- compact navigation and clearly separated sign-in and primary-action controls;
-- verdict cards that prioritize status, evidence scope, audit reference, and
-  review-required state over decorative charts or investment-style signals;
-- accessible contrast, keyboard navigation, responsive layout, and no color as
-  the only indicator of a verdict.
-
-The first screen should ask one question: **“Is this company-analysis claim
-supported by the declared evidence?”** It must not imply price prediction,
-trading, or personalized investment advice.
-
-Broad browser access is blocked until Phase 2 adds tenant records, atomic
-server-side tenant quota/cost admission, rate-limit messaging, a metadata-only
-history policy, and a named support/incident workflow. Preview invitations are
-operator-managed and are not a substitute for those controls.
-
-## 8. Governance
-
-The user request, `AGENTS.md`, and this specification govern in that order.
-Any change to evidence eligibility, counterevidence, verdict semantics, model
-contract, or disclosure policy requires focused tests and replay-aware version
-updates. Credentials, report text, raw source payloads, and private evaluation
-artifacts must not enter source control or public logs.
+Do not deploy, purchase data, contact customers, publish a release, or expose a
+new public route without explicit user authorization. Credentials, user text,
+private source payloads, and private evaluation artifacts must not enter source
+control or public logs.
