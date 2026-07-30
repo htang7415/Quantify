@@ -62,6 +62,24 @@ missing token is rejected before Lambda runs. Keep the OAuth client secret
 outside the repository and use the public smoke script only from a trusted
 operator environment.
 
+For a local external-agent integration on macOS, provision the existing client
+secret once into the login Keychain, then invoke the narrow public adapter. The
+secret is never written to the repository, shell output, or an environment file:
+
+```bash
+QUANTIFY_AUTHORIZE_PUBLIC_AGENT_KEYCHAIN_PROVISION=1 \
+  deploy/aws/provision_public_agent_keychain.sh
+
+deploy/aws/public_agent_verify.sh \
+  --cik 0000789019 \
+  --analysis-file ./analysis.txt \
+  --as-of-date 2024-07-30
+```
+
+The adapter can call only `POST /v1/agent/verify` and prints only the safe
+Quantify response contract. It does not receive AWS administrator credentials,
+the private core URL, or the Gemini key.
+
 ## Local agent tool
 
 After loading the private staging environment values, a local agent can assume
