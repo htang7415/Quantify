@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 import type { VerificationResponse } from "./types";
 
@@ -17,6 +17,9 @@ const result: VerificationResponse = {
 };
 
 describe("Quantify web app", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
   it("shows the product boundary", () => {
     render(<App />);
     expect(screen.getByRole("heading", { name: "Publish research. Prove every claim." })).toBeInTheDocument();
@@ -33,6 +36,14 @@ describe("Quantify web app", () => {
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     expect(await screen.findByRole("status")).toHaveTextContent("Sign-in is not configured in this preview.");
+  });
+
+  it("explains the bounded anonymous trial when it is enabled", () => {
+    vi.stubEnv("VITE_QUANTIFY_TRIAL_URL", "/v1/trial/verify");
+    render(<App />);
+
+    expect(screen.getByText(/Limited no-sign-up trial/)).toBeInTheDocument();
+    expect(screen.getByText(/Trial availability is capped/)).toBeInTheDocument();
   });
 
   it("submits bounded analysis and renders the safe result", async () => {

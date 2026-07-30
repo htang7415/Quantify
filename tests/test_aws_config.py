@@ -124,6 +124,8 @@ def test_web_preview_uses_a_no_secret_pkce_client_and_proxies_only_the_safe_rout
     deploy = _read("deploy_web_preview.sh")
     assets = _read("deploy_web_preview_assets.sh")
     invite = _read("invite_web_preview_user.sh")
+    trial_smoke = _read("smoke_anonymous_trial.sh")
+    trial_monitor = _read("monitor_anonymous_trial.sh")
 
     assert "AWS::CloudFront::Distribution" in template
     assert "AWS::CloudFront::OriginAccessControl" in template
@@ -157,6 +159,10 @@ def test_web_preview_uses_a_no_secret_pkce_client_and_proxies_only_the_safe_rout
     assert "QUANTIFY_AUTHORIZE_AWS_WEB_PREVIEW_INVITE" in invite
     assert "admin-create-user" in invite
     assert "--desired-delivery-mediums EMAIL" in invite
+    assert "QUANTIFY_AUTHORIZE_AWS_ANONYMOUS_TRIAL_SMOKE" in trial_smoke
+    assert "WEB_PREVIEW_URL" in trial_smoke
+    assert "QUANTIFY_AUTHORIZE_AWS_ANONYMOUS_TRIAL_MONITOR" in trial_monitor
+    assert "PUBLIC_AGENT_STACK_NAME" in trial_monitor
 
 
 def test_aws_lambda_dockerfile_uses_lambda_handler_and_embedded_fixtures() -> None:
@@ -213,6 +219,8 @@ def test_aws_scripts_refuse_external_actions_without_explicit_authorization() ->
         ("deploy_web_preview_assets.sh", "QUANTIFY_AUTHORIZE_AWS_WEB_PREVIEW_ASSET_DEPLOY"),
         ("invite_web_preview_user.sh", "QUANTIFY_AUTHORIZE_AWS_WEB_PREVIEW_INVITE"),
         ("smoke_public_agent.sh", "QUANTIFY_AUTHORIZE_AWS_PUBLIC_AGENT_SMOKE"),
+        ("smoke_anonymous_trial.sh", "QUANTIFY_AUTHORIZE_AWS_ANONYMOUS_TRIAL_SMOKE"),
+        ("monitor_anonymous_trial.sh", "QUANTIFY_AUTHORIZE_AWS_ANONYMOUS_TRIAL_MONITOR"),
         ("smoke_staging.sh", "QUANTIFY_AUTHORIZE_AWS_STAGING_SMOKE"),
         ("validate_observability.sh", "QUANTIFY_AUTHORIZE_AWS_OBSERVABILITY_CHECK"),
         ("check_production_beta.sh", "QUANTIFY_AUTHORIZE_AWS_PRODUCTION_BETA_CHECK"),

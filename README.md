@@ -92,6 +92,26 @@ no-signup test after its backend and CloudFront configuration are deployed,
 use the asset script with `TRIAL_ENABLED=true`. The frontend receives only the
 relative trial path; the expiry, keys, and limits remain server-side.
 
+After a public-edge or trial configuration update, exercise the anonymous path
+through CloudFront before sharing the preview URL. This controlled smoke call
+consumes one bounded trial request and prints no report text:
+
+```bash
+QUANTIFY_AUTHORIZE_AWS_ANONYMOUS_TRIAL_SMOKE=1 \
+WEB_PREVIEW_URL=https://your-preview.cloudfront.net \
+deploy/aws/smoke_anonymous_trial.sh
+```
+
+Monitor the trial's expiry, daily request use, and reserved model cost without
+reading report text:
+
+```bash
+QUANTIFY_AUTHORIZE_AWS_ANONYMOUS_TRIAL_MONITOR=1 \
+AWS_REGION=us-east-2 \
+PUBLIC_AGENT_STACK_NAME=quantify-public-agent \
+deploy/aws/monitor_anonymous_trial.sh
+```
+
 For a UI-only update after the preview stack exists, use the separately guarded
 [`deploy/aws/deploy_web_preview_assets.sh`](deploy/aws/deploy_web_preview_assets.sh).
 To invite one named tester, set `TESTER_EMAIL` and use

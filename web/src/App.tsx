@@ -213,9 +213,10 @@ export function App({ verifier = verifyAnalysis }: { verifier?: Verifier }) {
             />
             <p className="field-note">
               {anonymousTrial
-                ? "Anonymous test preview: request limits apply. Your analysis is sent only when you verify and is not stored in this browser."
+                ? "Limited no-sign-up trial: two verifications per network each day. Your analysis is sent only when you verify and is not stored in this browser."
                 : "Your analysis is sent only when you verify. This prototype does not store it in the browser."}
             </p>
+            {anonymousTrial && <p className="trial-notice">Trial availability is capped and may close without notice.</p>}
             {error && <p className="form-error" role="alert">{error}</p>}
             <button className="button button-dark button-submit" type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Verifying…" : "Verify analysis"} <span aria-hidden="true">↗</span>

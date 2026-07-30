@@ -48,6 +48,9 @@ export async function verifyAnalysis(
   if (response.status === 429) {
     throw new Error("The anonymous trial limit has been reached. Please try again tomorrow.");
   }
+  if (!authenticated && response.status === 503) {
+    throw new Error("The limited trial is temporarily unavailable. Please try again later.");
+  }
   if (!response.ok) {
     throw new Error("Quantify verification is currently unavailable.");
   }
