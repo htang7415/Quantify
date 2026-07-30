@@ -80,6 +80,18 @@ The adapter can call only `POST /v1/agent/verify` and prints only the safe
 Quantify response contract. It does not receive AWS administrator credentials,
 the private core URL, or the Gemini key.
 
+## Controlled public beta monitoring
+
+Run the read-only health gate while the first agent is operating. It checks both
+CloudFormation stacks, all configured alarms, private audit-manifest presence,
+and the current DynamoDB model-cost reservation without printing request or
+audit content:
+
+```bash
+QUANTIFY_AUTHORIZE_AWS_PRODUCTION_BETA_CHECK=1 \
+  deploy/aws/check_production_beta.sh
+```
+
 ## Local agent tool
 
 After loading the private staging environment values, a local agent can assume

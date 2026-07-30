@@ -455,10 +455,17 @@ CLIs or stored in repository files. A trailing secret-file newline is trimmed
 at Lambda initialization before a value can reach a provider HTTP header.
 
 An external AI agent may use Quantify only through the narrow
-`quantify_verify(cik, analysis, as_of_date)` adapter. It must use the restricted
-caller role, preserve every returned verdict and evidence-scope limitation, and
-must not turn a verification result into investment advice, retrieve additional
-evidence, or introduce a multi-agent workflow.
+`quantify_verify(cik, analysis, as_of_date)` adapter. For the public edge, it
+must use a Cognito OAuth access token with only the configured `verify` scope;
+the restricted AWS caller role applies only to private staging. The agent must
+preserve every returned verdict and evidence-scope limitation, and must not turn
+a verification result into investment advice, retrieve additional evidence, or
+introduce a multi-agent workflow.
+
+During the controlled public beta, run the read-only production-beta check to
+require complete stacks, `OK` alarms, a nonempty private audit store, and a
+monthly cost-ledger reservation at or below its configured cap. It reports only
+aggregate counts and cost figures, never reports, audit payloads, or secrets.
 
 ## 15. Deferred Capabilities
 

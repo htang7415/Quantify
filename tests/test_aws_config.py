@@ -158,6 +158,7 @@ def test_aws_scripts_refuse_external_actions_without_explicit_authorization() ->
         ("smoke_public_agent.sh", "QUANTIFY_AUTHORIZE_AWS_PUBLIC_AGENT_SMOKE"),
         ("smoke_staging.sh", "QUANTIFY_AUTHORIZE_AWS_STAGING_SMOKE"),
         ("validate_observability.sh", "QUANTIFY_AUTHORIZE_AWS_OBSERVABILITY_CHECK"),
+        ("check_production_beta.sh", "QUANTIFY_AUTHORIZE_AWS_PRODUCTION_BETA_CHECK"),
     ):
         result = subprocess.run(
             ["bash", str(DEPLOYMENT / script)],
