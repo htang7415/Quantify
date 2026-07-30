@@ -105,7 +105,8 @@ def test_public_agent_template_keeps_the_authenticated_route_and_bounds_the_tria
     assert "TrialIpHashKey:" in template
     assert "TrialOriginKey:" in template
     assert "AWS::DynamoDB::Table" in template
-    assert "dynamodb:TransactWriteItems" in template
+    assert "dynamodb:UpdateItem" in template
+    assert "dynamodb:EnclosingOperation: TransactWriteItems" in template
     assert "QUANTIFY_TRIAL_ORIGIN_KEY" in template
     assert "quantify.agent_lambda.handler" in template
     assert "QUANTIFY_CORE_URL" in template

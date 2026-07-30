@@ -215,10 +215,15 @@ Resources:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action: dynamodb:TransactWriteItems
+                # DynamoDB authorizes each operation inside a transaction by its
+                # underlying action. Limit this role to transactional updates on
+                # the admission ledger; it cannot update the table directly.
+                Action: dynamodb:UpdateItem
                 Resource:
                   - !GetAtt AnonymousTrialLedger.Arn
-                  - !Sub ${AnonymousTrialLedger.Arn}/index/*
+                Condition:
+                  ForAnyValue:StringEquals:
+                    dynamodb:EnclosingOperation: TransactWriteItems
 
   AnonymousTrialLedger:
     Type: AWS::DynamoDB::Table
