@@ -32,6 +32,22 @@ required. The repository currently has one IAM-authenticated private staging
 stack; production creation, promotion, and access expansion remain separate
 decisions.
 
+## Local agent tool
+
+After loading the private staging environment values, a local agent can assume
+`QuantifyCallerRole` and invoke the private verifier without storing report text:
+
+```bash
+python deploy/aws/agent_verify.py --cik 0000789019 \
+  --analysis-file ./analysis.txt --as-of-date 2024-07-30
+```
+
+For a reproducible staging test, use `--analysis-fixture
+fixtures/reports/msft_revenue_growth_v1.json` instead.
+
+The output contains only verified claim verdicts, frozen evidence scope, audit
+hash, and the required non-investment-advice limitation.
+
 ## Interactive latency control
 
 The normal Gemini harness uses a four-second extraction request deadline and a

@@ -477,6 +477,64 @@ Resources:
                   - !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${QuantifyApi}/${StageName}/GET/healthz
                   - !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${QuantifyApi}/${StageName}/POST/v1/companies/*/verify
 
+  QuantifyAgentExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: {Service: lambda.amazonaws.com}
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeOnlyQuantifyStagingRoutes
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: execute-api:Invoke
+                Resource:
+                  - !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${QuantifyApi}/${StageName}/POST/v1/companies/*/verify
+        - PolicyName: WriteAgentLogs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: "*"
+
+  QuantifyAgentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-agent-staging
+      PackageType: Image
+      ImageUri: !Ref ImageUri
+      ImageConfig: {Command: [quantify.agent_lambda.handler]}
+      Role: !GetAtt QuantifyAgentExecutionRole.Arn
+      Timeout: 15
+      MemorySize: 512
+      Environment:
+        Variables:
+          QUANTIFY_STAGING_URL: !Sub https://${QuantifyApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${StageName}
+
+  QuantifyAgentInvokerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: {AWS: !Ref CallerPrincipalArn}
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeOnlyQuantifyAgent
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt QuantifyAgentFunction.Arn
+
 Outputs:
   StagingUrl:
     Description: IAM-authenticated API Gateway staging URL.
@@ -487,6 +545,10 @@ Outputs:
   QuantifyCallerRoleArn:
     Description: Restricted role for the staging caller or future application backend.
     Value: !GetAtt QuantifyCallerRole.Arn
+  QuantifyAgentFunctionName:
+    Value: !Ref QuantifyAgentFunction
+  QuantifyAgentInvokerRoleArn:
+    Value: !GetAtt QuantifyAgentInvokerRole.Arn
   FunctionArn:
     Description: Immutable Lambda function deployment target.
     Value: !GetAtt QuantifyFunction.Arn
