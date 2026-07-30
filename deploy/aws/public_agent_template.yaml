@@ -40,6 +40,48 @@ Parameters:
     Default: ""
     Description: Optional no-secret Cognito PKCE browser client ID created by the private web-preview stack.
     AllowedPattern: ^$|^[A-Za-z0-9_-]{1,128}$
+  TrialEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues: ["false", "true"]
+    Description: Enables only the temporary anonymous trial route; false fails closed.
+  TrialExpiresAt:
+    Type: String
+    Default: ""
+    Description: UTC ISO-8601 expiry for the anonymous trial.
+    AllowedPattern: ^$|^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$
+  TrialIpHashKey:
+    Type: String
+    Default: ""
+    NoEcho: true
+    MaxLength: 256
+    Description: Secret HMAC key used only to avoid storing raw trial IP addresses.
+  TrialOriginKey:
+    Type: String
+    Default: ""
+    NoEcho: true
+    MaxLength: 256
+    Description: Secret CloudFront-to-origin header required by the anonymous trial route.
+  TrialPerIpDailyLimit:
+    Type: Number
+    Default: 2
+    MinValue: 1
+    MaxValue: 10
+  TrialDailyRequestLimit:
+    Type: Number
+    Default: 100
+    MinValue: 1
+    MaxValue: 1000
+  TrialDailyCostLimitMicroUsd:
+    Type: Number
+    Default: 250000
+    MinValue: 1
+    MaxValue: 10000000
+  TrialRequestCostReservationMicroUsd:
+    Type: Number
+    Default: 2500
+    MinValue: 1
+    MaxValue: 100000
 
 Conditions:
   HasBrowserClient: !Not [!Equals [!Ref BrowserClientId, ""]]
@@ -168,6 +210,34 @@ Resources:
               - Effect: Allow
                 Action: execute-api:Invoke
                 Resource: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CoreApiId}/${CoreStageName}/POST/v1/companies/*/verify
+        - PolicyName: ReserveAnonymousTrialCapacity
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: dynamodb:TransactWriteItems
+                Resource:
+                  - !GetAtt AnonymousTrialLedger.Arn
+                  - !Sub ${AnonymousTrialLedger.Arn}/index/*
+
+  AnonymousTrialLedger:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub ${AWS::StackName}-anonymous-trial-ledger
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: bucket
+          AttributeType: S
+      KeySchema:
+        - AttributeName: bucket
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expires_at
+        Enabled: true
+      SSESpecification:
+        SSEEnabled: true
 
   PublicAgentFunction:
     Type: AWS::Serverless::Function
@@ -189,6 +259,15 @@ Resources:
       Environment:
         Variables:
           QUANTIFY_CORE_URL: !Sub https://${CoreApiId}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${CoreStageName}
+          QUANTIFY_TRIAL_ENABLED: !Ref TrialEnabled
+          QUANTIFY_TRIAL_LEDGER_TABLE_NAME: !Ref AnonymousTrialLedger
+          QUANTIFY_TRIAL_PER_IP_DAILY_LIMIT: !Ref TrialPerIpDailyLimit
+          QUANTIFY_TRIAL_DAILY_REQUEST_LIMIT: !Ref TrialDailyRequestLimit
+          QUANTIFY_TRIAL_DAILY_COST_LIMIT_MICRO_USD: !Ref TrialDailyCostLimitMicroUsd
+          QUANTIFY_TRIAL_REQUEST_COST_RESERVATION_MICRO_USD: !Ref TrialRequestCostReservationMicroUsd
+          QUANTIFY_TRIAL_IP_HASH_KEY: !Ref TrialIpHashKey
+          QUANTIFY_TRIAL_ORIGIN_KEY: !Ref TrialOriginKey
+          QUANTIFY_TRIAL_EXPIRES_AT: !Ref TrialExpiresAt
       Events:
         Verify:
           Type: HttpApi
@@ -196,6 +275,14 @@ Resources:
             ApiId: !Ref PublicAgentApi
             Path: /v1/agent/verify
             Method: POST
+        TrialVerify:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PublicAgentApi
+            Path: /v1/trial/verify
+            Method: POST
+            Auth:
+              Authorizer: NONE
 
   PublicAgentAlerts:
     Type: AWS::SNS::Topic
@@ -252,6 +339,9 @@ Outputs:
   PublicAgentUrl:
     Description: Public, Cognito-JWT-protected Quantify agent endpoint.
     Value: !Sub https://${PublicAgentApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/production/v1/agent/verify
+  AnonymousTrialUrl:
+    Description: Temporary anonymous, fail-closed trial route. Enable explicitly and retire at expiry.
+    Value: !Sub https://${PublicAgentApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/production/v1/trial/verify
   PublicAgentApiId:
     Description: API ID used only by the separate CloudFront private-preview origin.
     Value: !Ref PublicAgentApi

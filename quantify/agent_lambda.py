@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import base64
 from datetime import date
+import hmac
 import json
+import logging
 import os
 import re
 from collections.abc import Mapping
@@ -18,10 +20,18 @@ from typing import Any
 from urllib.request import Request, urlopen
 
 from quantify.agent_tool import agent_safe_result
+from quantify.anonymous_trial import (
+    TrialLedgerUnavailableError,
+    TrialLimitError,
+    TrialUnavailableError,
+    load_anonymous_trial_admission,
+)
 
 
 _CIK_PATTERN = re.compile(r"^\d{1,10}$")
 _PUBLIC_ROUTE = "/v1/agent/verify"
+_TRIAL_ROUTE = "/v1/trial/verify"
+_LOGGER = logging.getLogger(__name__)
 
 
 def handler(event: dict[str, object], _context: object) -> dict[str, object]:
@@ -84,10 +94,17 @@ def _api_gateway_response(event: Mapping[str, object]) -> dict[str, object]:
         http = request_context.get("http")
         if not isinstance(http, Mapping) or http.get("method") != "POST":
             return _response(404, {"error": "not_found"})
-        if _application_path(event=event, request_context=request_context) != _PUBLIC_ROUTE:
+        path = _application_path(event=event, request_context=request_context)
+        if path not in {_PUBLIC_ROUTE, _TRIAL_ROUTE}:
             return _response(404, {"error": "not_found"})
         payload = _decode_json_body(event)
+        if path == _TRIAL_ROUTE:
+            _reserve_anonymous_trial(event=event, request_context=request_context)
         return _response(200, verify(payload))
+    except TrialLimitError:
+        return _response(429, {"error": "trial_limit_reached"})
+    except TrialUnavailableError:
+        return _response(503, {"error": "trial_unavailable"})
     except ValueError:
         return _response(400, {"error": "invalid_request"})
     except Exception:
@@ -108,6 +125,37 @@ def _decode_json_body(event: Mapping[str, object]) -> Mapping[str, object]:
     if not isinstance(payload, Mapping):
         raise ValueError("body must be a JSON object")
     return payload
+
+
+def _reserve_anonymous_trial(*, event: Mapping[str, object], request_context: Mapping[str, object]) -> None:
+    """Reserve trial capacity before report text reaches the private core."""
+
+    try:
+        import boto3
+    except ImportError as error:  # pragma: no cover - Lambda base image provides boto3.
+        raise TrialUnavailableError("anonymous trial is unavailable") from error
+    admission = load_anonymous_trial_admission(
+        environment=os.environ, client=boto3.client("dynamodb")
+    )
+    _LOGGER.info("anonymous trial admission configuration loaded")
+    headers = event.get("headers")
+    if not isinstance(headers, Mapping):
+        raise TrialUnavailableError("anonymous trial is unavailable")
+    normalized_headers = {
+        key.lower(): value for key, value in headers.items() if isinstance(key, str) and isinstance(value, str)
+    }
+    origin_key = normalized_headers.get("x-quantify-trial-origin", "")
+    if not hmac.compare_digest(origin_key, admission.origin_key):
+        raise TrialUnavailableError("anonymous trial is unavailable")
+    _LOGGER.info("anonymous trial origin verified")
+    forwarded_for = normalized_headers.get("x-forwarded-for", "")
+    source_ip = forwarded_for.split(",", 1)[0].strip()
+    if not source_ip:
+        http = request_context.get("http")
+        source_ip = http.get("sourceIp") if isinstance(http, Mapping) else ""
+    if not isinstance(source_ip, str):
+        raise TrialUnavailableError("anonymous trial is unavailable")
+    admission.reserve(source_ip=source_ip)
 
 
 def _application_path(*, event: Mapping[str, object], request_context: Mapping[str, object]) -> str:

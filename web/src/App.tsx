@@ -23,6 +23,7 @@ function wordCount(value: string): number {
 }
 
 export function App({ verifier = verifyAnalysis }: { verifier?: Verifier }) {
+  const anonymousTrial = Boolean(import.meta.env.VITE_QUANTIFY_TRIAL_URL);
   const [cik, setCik] = useState(companies[0].cik);
   const [asOfDate, setAsOfDate] = useState("2024-07-30");
   const [analysis, setAnalysis] = useState("");
@@ -82,81 +83,100 @@ export function App({ verifier = verifyAnalysis }: { verifier?: Verifier }) {
           <span>Quantify</span>
         </a>
         <div className="nav-links" aria-label="Product links">
+          <a href="#verify">Agent</a>
           <a href="#how-it-works">How it works</a>
-          <a href="#verify">Verify analysis</a>
           <a href="#trust">Trust</a>
         </div>
-        <button className="button button-dark button-compact" type="button" onClick={() => void signIn()}>
-          Sign in
-        </button>
+        {anonymousTrial ? (
+          <a className="button button-dark button-compact" href="#verify">Try Quantify</a>
+        ) : (
+          <button className="button button-dark button-compact" type="button" onClick={() => void signIn()}>
+            Sign in
+          </button>
+        )}
       </nav>
       {signInMessage && <p className="auth-message shell" role="status">{signInMessage}</p>}
 
       <section className="hero shell" id="top">
         <div className="hero-copy">
-          <p className="eyebrow">Evidence verification for AI research</p>
-          <h1>Publish claims you can defend.</h1>
+          <p className="eyebrow">Evidence assurance for investment research</p>
+          <h1>Publish research. Prove every claim.</h1>
           <p className="hero-text">
-            Quantify checks factual company-analysis claims against a declared,
-            frozen evidence release—then records exactly what supports the result.
+            For investment teams, trading desks, and institutional AI workflows.
+            Quantify verifies company-research claims against a frozen evidence release.
           </p>
           <div className="hero-actions">
             <a className="button button-dark" href="#verify">
               Verify an analysis <span aria-hidden="true">↗</span>
             </a>
-            <a className="button button-light" href="#how-it-works">
-              How it works
+            <a className="button button-light" href="#trust">
+              Why Quantify
             </a>
           </div>
         </div>
-        <div className="hero-art" aria-label="Evidence verification workflow">
-          <div className="art-topline">
-            <span className="status-dot" /> Frozen evidence release
-            <span className="art-code">Q-001</span>
+        <aside className="agent-panel" aria-label="Quantify agent workflow">
+          <div className="agent-window-bar">
+            <div className="agent-identity">
+              <span className="agent-orb" aria-hidden="true" />
+              <div>
+                <strong>Quantify Agent</strong>
+                <span>Research verification</span>
+              </div>
+            </div>
+            <span className="agent-status"><i className="status-dot" /> Active</span>
           </div>
-          <div className="art-card art-card-main">
-            <p className="card-label">Verification decision</p>
-            <p className="decision">VERIFIED</p>
-            <p>Claim is supported by the declared evidence snapshot.</p>
+          <div className="agent-run-label">
+            <span>Sample agent run</span>
+            <span>Snapshot locked</span>
           </div>
-          <div className="art-card art-card-side">
-            <p className="card-label">Audit record</p>
-            <div className="audit-lines"><span /><span /><span /></div>
+          <div className="agent-prompt">
+            <p className="card-label">Incoming research</p>
+            <p>Assess whether the submitted claim is warranted by its declared evidence release.</p>
           </div>
-          <div className="art-grid" aria-hidden="true">
-            <span /><span /><span /><span /><span /><span />
+          <div className="agent-trace" aria-label="Agent verification stages">
+            <p><span>01</span> Parse claims <i>Complete</i></p>
+            <p><span>02</span> Ground evidence <i>Complete</i></p>
+            <p><span>03</span> Evaluate warrant <i>Complete</i></p>
           </div>
-        </div>
+          <div className="agent-answer">
+            <div>
+              <p className="card-label">Verdict</p>
+              <p className="decision">Verified</p>
+            </div>
+            <span className="verified-icon" aria-hidden="true">✓</span>
+          </div>
+          <p className="agent-footnote">Evidence verification only · Not investment advice</p>
+        </aside>
       </section>
 
       <section className="trust-bar shell" id="trust" aria-label="Quantify principles">
-        <span>One bounded model call</span>
-        <span>Frozen evidence scope</span>
+        <span>Source-constrained</span>
+        <span>Frozen evidence</span>
         <span>Deterministic verdicts</span>
-        <span>Audit-ready output</span>
+        <span>Institution-ready audit trail</span>
       </section>
 
       <section className="scale shell" aria-labelledby="scale-title">
         <div className="scale-copy">
           <p className="eyebrow">Designed for commercial scale</p>
-          <h2 id="scale-title">A bounded agent, designed to scale.</h2>
+          <h2 id="scale-title">Research teams need proof, not another opinion.</h2>
           <p>
-            Quantify grows through independently operated verification cells and
-            immutable evidence releases—not through more model autonomy.
+            Quantify gives analysts and AI systems an independent evidence check
+            before research moves through an institution.
           </p>
         </div>
         <div className="scale-grid">
-          <article><span className="scale-number">01</span><h3>Tenant-ready</h3><p>The commercial control plane will isolate customer reports, audit records, credentials, and usage.</p></article>
-          <article><span className="scale-number">02</span><h3>Release-pinned</h3><p>Every verdict identifies the exact evidence, policy, model, and schema release.</p></article>
-          <article><span className="scale-number">03</span><h3>Cell-ready</h3><p>Future stateless AWS verification cells can scale capacity while preserving the same contract.</p></article>
+          <article><span className="scale-number">01</span><h3>Controlled</h3><p>One bounded task, one extraction, one deterministic decision.</p></article>
+          <article><span className="scale-number">02</span><h3>Explainable</h3><p>Every verdict carries its evidence scope and audit reference.</p></article>
+          <article><span className="scale-number">03</span><h3>Institution-ready</h3><p>Trusted verification cells preserve the contract at scale.</p></article>
         </div>
       </section>
 
       <section className="workspace shell" id="verify">
         <div className="section-heading">
           <p className="eyebrow">Quantify verification</p>
-          <h2>Is this claim supported by the declared evidence?</h2>
-          <p>Submit a bounded company analysis. Quantify returns verdicts, not investment advice.</p>
+          <h2>Verify research before it travels.</h2>
+          <p>Submit a short company analysis. Receive a verdict, evidence scope, and audit reference.</p>
         </div>
         <div className="work-grid">
           <form className="verify-form" onSubmit={submit} noValidate>
@@ -191,7 +211,11 @@ export function App({ verifier = verifyAnalysis }: { verifier?: Verifier }) {
               maxLength={3500}
               required
             />
-            <p className="field-note">Your analysis is sent only when you verify. This prototype does not store it in the browser.</p>
+            <p className="field-note">
+              {anonymousTrial
+                ? "Anonymous test preview: request limits apply. Your analysis is sent only when you verify and is not stored in this browser."
+                : "Your analysis is sent only when you verify. This prototype does not store it in the browser."}
+            </p>
             {error && <p className="form-error" role="alert">{error}</p>}
             <button className="button button-dark button-submit" type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Verifying…" : "Verify analysis"} <span aria-hidden="true">↗</span>
@@ -203,11 +227,11 @@ export function App({ verifier = verifyAnalysis }: { verifier?: Verifier }) {
       </section>
 
       <section className="how shell" id="how-it-works">
-        <p className="eyebrow">Built for reliable AI workflows</p>
+        <p className="eyebrow">A disciplined AI research workflow</p>
         <div className="how-grid">
-          <article><span>01</span><h3>Bound the task</h3><p>Analysis, company, date, and evidence scope are explicit.</p></article>
-          <article><span>02</span><h3>Verify deterministically</h3><p>The model proposes; the evidence verifier decides.</p></article>
-          <article><span>03</span><h3>Keep an audit trail</h3><p>Every result names its evidence scope and audit reference.</p></article>
+          <article><span>01</span><h3>Draft</h3><p>Give the agent a company, date, and bounded research.</p></article>
+          <article><span>02</span><h3>Verify</h3><p>The model extracts; deterministic evidence rules decide.</p></article>
+          <article><span>03</span><h3>Publish</h3><p>Carry the verdict, scope, and audit reference with your work.</p></article>
         </div>
       </section>
     </main>

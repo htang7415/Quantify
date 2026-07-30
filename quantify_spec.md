@@ -101,6 +101,15 @@ public agent endpoint protected by Cognito scope. The public contract returns
 only verdicts, evidence scope, audit reference, and a non-investment-advice
 limitation.
 
+For a temporary no-signup test, V1 may additionally expose the same safe
+contract at a separate anonymous trial route. It is not a public core route:
+CloudFront adds a private origin header, Lambda rejects requests lacking that
+header, and admission occurs before the private core call. Admission is
+time-bounded, hashes the viewer IP with a deployment secret rather than storing
+the raw address, and atomically enforces per-IP, daily-request, and reserved
+cost caps. A disabled, expired, malformed, or unavailable ledger fails closed.
+The trial must be removed or explicitly renewed before its configured expiry.
+
 V1 is a verification service, not a multi-agent research system, a live-data
 terminal, a general chatbot, or a trading system.
 
@@ -121,15 +130,19 @@ new public route, live evidence retrieval, model provider, or deployment.
 ## 7. Web Application Experience
 
 The public web application is a React and TypeScript single-page application.
-It authenticates human users with Cognito authorization-code flow and PKCE, and
-calls only the narrow scoped public agent API. It never contains an AWS
-credential, model credential, private-core URL, or OAuth client secret.
+The normal mode authenticates human users with Cognito authorization-code flow
+and PKCE, and calls only the narrow scoped public agent API. The temporary test
+mode does not require sign-in and instead calls only the separately bounded
+anonymous trial route through CloudFront. It never contains an AWS credential,
+model credential, private-core URL, OAuth client secret, or the CloudFront
+origin header.
 
 The private preview uses a separate no-secret browser client. Its callback and
 logout URLs are pinned to the preview origin and `http://127.0.0.1:5173/`; the
-API independently enforces the `verify` scope. Submitted analysis stays in
-memory for the request and is never added to browser storage, history, or UI
-logs. The browser retains an access token only in session storage.
+authenticated API independently enforces the `verify` scope. Submitted
+analysis stays in memory for the request and is never added to browser storage,
+history, or UI logs. The browser retains an access token only in session
+storage when the authenticated mode is used.
 
 ```text
 Sign in

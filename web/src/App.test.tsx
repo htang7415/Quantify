@@ -19,10 +19,10 @@ const result: VerificationResponse = {
 describe("Quantify web app", () => {
   it("shows the product boundary", () => {
     render(<App />);
-    expect(screen.getByRole("heading", { name: "Publish claims you can defend." })).toBeInTheDocument();
-    expect(screen.getByText("One bounded model call")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "A bounded agent, designed to scale." })).toBeInTheDocument();
-    expect(screen.getByText("Release-pinned")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Publish research. Prove every claim." })).toBeInTheDocument();
+    expect(screen.getAllByText("Source-constrained").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Research teams need proof, not another opinion." })).toBeInTheDocument();
+    expect(screen.getByText("Explainable")).toBeInTheDocument();
     expect(screen.getByText("Ready when you are.")).toBeInTheDocument();
   });
 

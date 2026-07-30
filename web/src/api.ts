@@ -18,9 +18,10 @@ const DEVELOPMENT_DEMO_RESULT: VerificationResponse = {
 export async function verifyAnalysis(
   request: VerificationRequest
 ): Promise<VerificationResponse> {
-  const endpoint = import.meta.env.VITE_QUANTIFY_AGENT_URL;
+  const authenticatedEndpoint = import.meta.env.VITE_QUANTIFY_AGENT_URL;
+  const trialEndpoint = import.meta.env.VITE_QUANTIFY_TRIAL_URL;
 
-  if (!endpoint) {
+  if (!authenticatedEndpoint && !trialEndpoint) {
     if (import.meta.env.DEV) {
       return DEVELOPMENT_DEMO_RESULT;
     }
@@ -28,21 +29,24 @@ export async function verifyAnalysis(
   }
 
   const token = accessToken();
-  if (!token || !verifyScopeGranted()) {
+  const authenticated = Boolean(token && verifyScopeGranted());
+  if (!authenticated && !trialEndpoint) {
     throw new Error("Sign in is required before verifying analysis.");
   }
+  const endpoint = authenticated ? authenticatedEndpoint : trialEndpoint;
+  if (!endpoint) throw new Error("Quantify verification is not configured for this environment.");
 
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${token}`,
+      ...(authenticated ? { Authorization: `Bearer ${token}` } : {}),
       "Content-Type": "application/json"
     },
     body: JSON.stringify(request)
   });
 
   if (response.status === 429) {
-    throw new Error("Verification capacity is temporarily unavailable. Please try again later.");
+    throw new Error("The anonymous trial limit has been reached. Please try again tomorrow.");
   }
   if (!response.ok) {
     throw new Error("Quantify verification is currently unavailable.");

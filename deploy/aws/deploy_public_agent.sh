@@ -15,6 +15,7 @@ CORE_STAGE_NAME="${CORE_STAGE_NAME:-production}"
 PUBLIC_API_THROTTLE_RATE_LIMIT="${PUBLIC_API_THROTTLE_RATE_LIMIT:-1}"
 PUBLIC_API_THROTTLE_BURST_LIMIT="${PUBLIC_API_THROTTLE_BURST_LIMIT:-1}"
 BROWSER_CLIENT_ID="${BROWSER_CLIENT_ID:-}"
+TRIAL_ENABLED="${TRIAL_ENABLED:-false}"
 [[ "$IMAGE_URI" =~ @sha256:[0-9a-f]{64}$ ]] || { echo "IMAGE_URI must be an immutable @sha256 reference." >&2; exit 2; }
 [[ "$CORE_STAGE_NAME" =~ ^[a-z0-9-]+$ ]] || { echo "CORE_STAGE_NAME is invalid." >&2; exit 2; }
 [[ "$COGNITO_DOMAIN_PREFIX" =~ ^[a-z][a-z0-9-]{0,61}[a-z0-9]$ ]] || { echo "COGNITO_DOMAIN_PREFIX is invalid." >&2; exit 2; }
@@ -25,6 +26,20 @@ done
 if [[ -n "$BROWSER_CLIENT_ID" && ! "$BROWSER_CLIENT_ID" =~ ^[A-Za-z0-9_-]{1,128}$ ]]; then
   echo "BROWSER_CLIENT_ID is invalid." >&2
   exit 2
+fi
+[[ "$TRIAL_ENABLED" == "false" || "$TRIAL_ENABLED" == "true" ]] || { echo "TRIAL_ENABLED must be true or false." >&2; exit 2; }
+if [[ "$TRIAL_ENABLED" == "true" ]]; then
+  for required in TRIAL_EXPIRES_AT TRIAL_IP_HASH_KEY TRIAL_PER_IP_DAILY_LIMIT \
+    TRIAL_ORIGIN_KEY TRIAL_DAILY_REQUEST_LIMIT TRIAL_DAILY_COST_LIMIT_MICRO_USD TRIAL_REQUEST_COST_RESERVATION_MICRO_USD; do
+    : "${!required:?set $required when TRIAL_ENABLED=true}"
+  done
+  [[ "$TRIAL_EXPIRES_AT" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || { echo "TRIAL_EXPIRES_AT must be UTC ISO-8601." >&2; exit 2; }
+  [[ "${#TRIAL_IP_HASH_KEY}" -ge 32 ]] || { echo "TRIAL_IP_HASH_KEY must contain at least 32 characters." >&2; exit 2; }
+  [[ "${#TRIAL_ORIGIN_KEY}" -ge 32 ]] || { echo "TRIAL_ORIGIN_KEY must contain at least 32 characters." >&2; exit 2; }
+  for value in "$TRIAL_PER_IP_DAILY_LIMIT" "$TRIAL_DAILY_REQUEST_LIMIT" "$TRIAL_DAILY_COST_LIMIT_MICRO_USD" "$TRIAL_REQUEST_COST_RESERVATION_MICRO_USD"; do
+    [[ "$value" =~ ^[1-9][0-9]*$ ]] || { echo "trial limits must be positive integers." >&2; exit 2; }
+  done
+  [[ "$TRIAL_REQUEST_COST_RESERVATION_MICRO_USD" -le "$TRIAL_DAILY_COST_LIMIT_MICRO_USD" ]] || { echo "trial reservation cannot exceed daily cap." >&2; exit 2; }
 fi
 
 aws_bin="${AWS_BIN:-aws}"
@@ -40,6 +55,15 @@ parameters=(
 )
 if [[ -n "$BROWSER_CLIENT_ID" ]]; then
   parameters+=("BrowserClientId=$BROWSER_CLIENT_ID")
+fi
+if [[ "$TRIAL_ENABLED" == "true" ]]; then
+  parameters+=(
+    "TrialEnabled=true" "TrialExpiresAt=$TRIAL_EXPIRES_AT" "TrialIpHashKey=$TRIAL_IP_HASH_KEY" "TrialOriginKey=$TRIAL_ORIGIN_KEY"
+    "TrialPerIpDailyLimit=$TRIAL_PER_IP_DAILY_LIMIT"
+    "TrialDailyRequestLimit=$TRIAL_DAILY_REQUEST_LIMIT"
+    "TrialDailyCostLimitMicroUsd=$TRIAL_DAILY_COST_LIMIT_MICRO_USD"
+    "TrialRequestCostReservationMicroUsd=$TRIAL_REQUEST_COST_RESERVATION_MICRO_USD"
+  )
 fi
 
 "$aws_bin" cloudformation deploy --template-file deploy/aws/public_agent_template.yaml \

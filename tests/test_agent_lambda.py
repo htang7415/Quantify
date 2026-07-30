@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from types import SimpleNamespace
 
 import pytest
 
@@ -8,14 +9,16 @@ from quantify import agent_lambda
 
 
 def _event(
-    *, body: object, path: str = "/v1/agent/verify", method: str = "POST", stage: str | None = None
+    *, body: object, path: str = "/v1/agent/verify", method: str = "POST", stage: str | None = None,
+    source_ip: str = "203.0.113.9", headers: dict[str, str] | None = None,
 ) -> dict[str, object]:
     return {
         "version": "2.0",
         "rawPath": path,
         "body": body,
         "isBase64Encoded": False,
-        "requestContext": {"http": {"method": method}, **({"stage": stage} if stage else {})},
+        "requestContext": {"http": {"method": method, "sourceIp": source_ip}, **({"stage": stage} if stage else {})},
+        **({"headers": headers} if headers is not None else {}),
     }
 
 
@@ -70,6 +73,67 @@ def test_public_agent_route_accepts_api_gateway_named_stage(monkeypatch: pytest.
     )
 
     assert response["statusCode"] == 200
+
+
+def test_anonymous_trial_reserves_capacity_before_invoking_the_private_core(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reserved: list[str] = []
+
+    monkeypatch.setattr(agent_lambda, "_reserve_anonymous_trial", lambda **_: reserved.append("yes"))
+    monkeypatch.setattr(agent_lambda, "invoke_quantify_verify", lambda **_: _safe_result())
+
+    response = agent_lambda.handler(
+        _event(
+            path="/v1/trial/verify",
+            body=json.dumps({"cik": "0000789019", "analysis": "Microsoft revenue increased.", "as_of_date": "2024-07-30"}),
+        ),
+        object(),
+    )
+
+    assert response["statusCode"] == 200
+    assert reserved == ["yes"]
+
+
+def test_anonymous_trial_fails_closed_before_invoking_the_private_core(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        agent_lambda,
+        "_reserve_anonymous_trial",
+        lambda **_: (_ for _ in ()).throw(agent_lambda.TrialLimitError("limit")),
+    )
+    monkeypatch.setattr(agent_lambda, "invoke_quantify_verify", lambda **_: pytest.fail("core invoked"))
+
+    response = agent_lambda.handler(
+        _event(path="/v1/trial/verify", body=json.dumps({"cik": "0000789019", "analysis": "Microsoft revenue increased.", "as_of_date": "2024-07-30"})),
+        object(),
+    )
+
+    assert response["statusCode"] == 429
+    assert json.loads(response["body"]) == {"error": "trial_limit_reached"}
+
+
+def test_anonymous_trial_accepts_only_the_cloudfront_origin_header(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reserved: list[str] = []
+    admission = SimpleNamespace(
+        origin_key="a" * 32,
+        reserve=lambda *, source_ip: reserved.append(source_ip),
+    )
+    monkeypatch.setitem(__import__("sys").modules, "boto3", SimpleNamespace(client=lambda _: object()))
+    monkeypatch.setattr(agent_lambda, "load_anonymous_trial_admission", lambda **_: admission)
+    request_context = {"http": {"method": "POST", "sourceIp": "198.51.100.7"}}
+
+    agent_lambda._reserve_anonymous_trial(
+        event={"headers": {"X-Quantify-Trial-Origin": "a" * 32, "X-Forwarded-For": "203.0.113.9, 10.0.0.1"}},
+        request_context=request_context,
+    )
+
+    assert reserved == ["203.0.113.9"]
+    with pytest.raises(agent_lambda.TrialUnavailableError):
+        agent_lambda._reserve_anonymous_trial(event={"headers": {}}, request_context=request_context)
 
 
 @pytest.mark.parametrize(

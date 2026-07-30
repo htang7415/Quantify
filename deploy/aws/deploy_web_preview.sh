@@ -14,6 +14,11 @@ for required in AWS_REGION WEB_PREVIEW_STACK_NAME PUBLIC_AGENT_STACK_NAME COGNIT
   OAUTH_RESOURCE_SERVER_IDENTIFIER; do
   : "${!required:?set $required}"
 done
+TRIAL_ORIGIN_KEY="${TRIAL_ORIGIN_KEY:-}"
+if [[ -n "$TRIAL_ORIGIN_KEY" && "${#TRIAL_ORIGIN_KEY}" -lt 32 ]]; then
+  echo "TRIAL_ORIGIN_KEY must contain at least 32 characters when supplied." >&2
+  exit 2
+fi
 
 aws_bin="${AWS_BIN:-aws}"
 command -v "$aws_bin" >/dev/null 2>&1 || { echo "aws is unavailable; set AWS_BIN." >&2; exit 2; }
@@ -45,12 +50,18 @@ fi
   exit 2
 }
 
+preview_parameters=(
+  "CognitoUserPoolId=$user_pool_id" "LocalRedirectUri=${LOCAL_REDIRECT_URI:-http://127.0.0.1:5173/}"
+  "OAuthResourceServerIdentifier=$OAUTH_RESOURCE_SERVER_IDENTIFIER" "PublicAgentApiId=$public_api_id"
+)
+if [[ -n "$TRIAL_ORIGIN_KEY" ]]; then
+  preview_parameters+=("TrialOriginKey=$TRIAL_ORIGIN_KEY")
+fi
+
 "$aws_bin" cloudformation deploy --template-file deploy/aws/web_preview_template.yaml \
   --stack-name="$WEB_PREVIEW_STACK_NAME" --region="$AWS_REGION" \
   --capabilities CAPABILITY_IAM --no-fail-on-empty-changeset \
-  --parameter-overrides \
-    "CognitoUserPoolId=$user_pool_id" "LocalRedirectUri=${LOCAL_REDIRECT_URI:-http://127.0.0.1:5173/}" \
-    "OAuthResourceServerIdentifier=$OAUTH_RESOURCE_SERVER_IDENTIFIER" "PublicAgentApiId=$public_api_id"
+  --parameter-overrides "${preview_parameters[@]}"
 
 preview_output() {
   "$aws_bin" cloudformation describe-stacks --stack-name "$WEB_PREVIEW_STACK_NAME" --region "$AWS_REGION" \

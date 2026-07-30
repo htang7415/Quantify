@@ -17,6 +17,12 @@ Parameters:
   PublicAgentApiId:
     Type: String
     Description: Existing scoped public-agent HTTP API ID.
+  TrialOriginKey:
+    Type: String
+    Default: ""
+    NoEcho: true
+    MaxLength: 256
+    Description: Secret header added only by CloudFront when proxying anonymous trials.
 
 Resources:
   PreviewBucket:
@@ -73,6 +79,9 @@ Resources:
           Headers:
             - Authorization
             - Content-Type
+            # This header is overwritten by the configured CloudFront origin
+            # header, then forwarded to the anonymous trial Lambda boundary.
+            - X-Quantify-Trial-Origin
         QueryStringsConfig:
           QueryStringBehavior: none
 
@@ -114,6 +123,9 @@ Resources:
           - Id: PublicAgent
             DomainName: !Sub ${PublicAgentApiId}.execute-api.${AWS::Region}.${AWS::URLSuffix}
             OriginPath: /production
+            OriginCustomHeaders:
+              - HeaderName: X-Quantify-Trial-Origin
+                HeaderValue: !Ref TrialOriginKey
             CustomOriginConfig:
               HTTPSPort: 443
               HTTPPort: 80
@@ -147,6 +159,22 @@ Resources:
               - GET
               - HEAD
             # AWS-managed CachingDisabled: no cache key values and all TTLs zero.
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: !Ref PreviewApiOriginRequestPolicy
+          - PathPattern: /v1/trial/verify
+            TargetOriginId: PublicAgent
+            ViewerProtocolPolicy: https-only
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+            CachedMethods:
+              - GET
+              - HEAD
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
             OriginRequestPolicyId: !Ref PreviewApiOriginRequestPolicy
         CustomErrorResponses:
