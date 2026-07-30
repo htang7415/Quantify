@@ -126,7 +126,7 @@ class _DynamoClient:
 
 
 def test_secret_loader_reads_only_the_pinned_secret_version() -> None:
-    client = _SecretClient({"SecretString": "test-key"})
+    client = _SecretClient({"SecretString": "  test-key\n"})
     environment = {
         "QUANTIFY_GEMINI_SECRET_ARN": "arn:aws:secretsmanager:us-east-2:123:secret:key",
         "QUANTIFY_GEMINI_SECRET_VERSION_ID": "a" * 32,

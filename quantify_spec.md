@@ -397,9 +397,55 @@ ledger before each uncached model call. The first request of the month reserved
 12,384 micro-USD; a failed reservation returns the typed fail-closed cap
 response before Gemini is invoked.
 
-Next, establish the matching Google-side Gemini billing budget and revisit the
-AWS Lambda quota before setting a reserved-concurrency cap. Never create a
-production stack merely because private staging checks pass.
+Gemini AI Studio project-spend controls and the $10 in-service reservation cap
+are configured. AWS's new-account Lambda profile currently provides ten total
+concurrent executions and rejects a modest quota-increase request; it cannot
+yet support a reserved-concurrency allocation while retaining AWS's required
+unreserved pool. Keep the staging cap at zero and recheck the account quota
+after normal private use. Never create a production stack merely because
+private staging checks pass.
+
+### Authenticated public production candidate
+
+The intended V1 public release remains a single-agent verification API, not a
+public research chatbot. It consists of two separately deployed stacks:
+
+```text
+public internet
+→ API Gateway HTTP API with Cognito JWT access-token scope
+→ narrow public agent Lambda: POST /v1/agent/verify
+→ SigV4-only private production core
+→ one bounded Gemini extraction + deterministic verifier
+```
+
+The public edge accepts only `cik`, `analysis`, and `as_of_date`; it validates
+the bounded input, returns only the `quantify_verify` safe contract, and hides
+provider, secret, IAM, and report-detail error information. API Gateway must
+require the `.../verify` OAuth scope before invoking Lambda. The public agent
+role may invoke only the private core's `POST /v1/companies/*/verify` route.
+The core verifier, evidence fixtures, audit store, Gemini secret, and model
+cost ledger stay private.
+
+`deploy/aws/template.yaml` is the production-core candidate when supplied a
+separate stack name, `StageName=production`, and `ReleaseAlias=production`.
+`deploy/aws/public_agent_template.yaml` is the public-edge candidate. Both
+deployment scripts refuse to act without their production-specific
+authorization variables.
+
+The first authenticated production release is deployed in `us-east-2`. Its
+private core accepts only the two AWS_IAM routes, while its public edge accepts
+only the scoped JWT route. It uses a separate Gemini key restricted to the
+Generative Language API and a pinned AWS Secrets Manager version. The public
+OAuth smoke proves an unauthenticated request is rejected and a scoped token
+receives only the safe contract. Core and edge alarms are `OK`, the ECR basic
+scan reports zero findings, and the replacement production log group passes the
+redaction inspection.
+
+Credential rotation must create a new API-restricted Gemini key, pin the new
+Secrets Manager version in a new immutable image release, and retire the old
+key before it can be reused. Secret values must never be printed by provider
+CLIs or stored in repository files. A trailing secret-file newline is trimmed
+at Lambda initialization before a value can reach a provider HTTP header.
 
 An external AI agent may use Quantify only through the narrow
 `quantify_verify(cik, analysis, as_of_date)` adapter. It must use the restricted

@@ -164,9 +164,15 @@ def load_pinned_gemini_api_key(
     except Exception as error:  # AWS SDK exception types are intentionally not exposed.
         raise ProductionConfigurationError("pinned Gemini secret cannot be retrieved") from error
     secret = response.get("SecretString")
-    if not isinstance(secret, str) or not secret:
+    if not isinstance(secret, str):
         raise ProductionConfigurationError("pinned Gemini secret is empty or not a string")
-    return secret
+    # Secret files conventionally end with a newline.  Never carry formatting
+    # whitespace into an HTTP header, where a provider library could echo a
+    # malformed value in an exception or log record.
+    normalized_secret = secret.strip()
+    if not normalized_secret:
+        raise ProductionConfigurationError("pinned Gemini secret is empty or not a string")
+    return normalized_secret
 
 
 def create_aws_production_app(

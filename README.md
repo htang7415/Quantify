@@ -32,6 +32,36 @@ required. The repository currently has one IAM-authenticated private staging
 stack; production creation, promotion, and access expansion remain separate
 decisions.
 
+## Public production candidate
+
+The public release candidate is intentionally a narrow agent API, not an
+anonymous verifier or investment chatbot:
+
+```text
+Cognito OAuth access token with verify scope
+→ POST /v1/agent/verify
+→ private IAM-authenticated Quantify core
+```
+
+The public Lambda validates a bounded `cik`, `analysis`, and `as_of_date`, then
+returns only verdicts, frozen evidence scope, audit hash, and the required
+non-investment-advice limitation. It cannot expose the core verifier response,
+read the Gemini key, retrieve new evidence, or perform extra model calls.
+
+[`deploy/aws/production.env.example`](deploy/aws/production.env.example),
+[`deploy/aws/deploy_production_core.sh`](deploy/aws/deploy_production_core.sh),
+and [`deploy/aws/deploy_public_agent.sh`](deploy/aws/deploy_public_agent.sh)
+prepare separate production-core and public-edge stacks. The scripts require
+explicit production authorization variables and are not deployment
+instructions by themselves. A unique Cognito domain prefix and a separate
+production Gemini key are required before any public ship.
+
+The first authenticated production release is deployed. The public endpoint
+requires a Cognito access token carrying the configured `verify` scope; a
+missing token is rejected before Lambda runs. Keep the OAuth client secret
+outside the repository and use the public smoke script only from a trusted
+operator environment.
+
 ## Local agent tool
 
 After loading the private staging environment values, a local agent can assume

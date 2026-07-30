@@ -28,6 +28,14 @@ Parameters:
     Type: String
     Default: staging
     AllowedPattern: ^[a-z0-9-]+$
+  ReleaseAlias:
+    Type: String
+    Default: staging
+    AllowedPattern: ^[a-z0-9-]+$
+  LambdaLogGroupSuffix:
+    Type: String
+    Default: ""
+    AllowedPattern: ^$|^-[a-z0-9-]+$
   ReservedConcurrency:
     Type: Number
     Default: 0
@@ -70,7 +78,7 @@ Resources:
   LambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-quantify-staging
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-quantify-staging${LambdaLogGroupSuffix}
       RetentionInDays: 30
 
   ApiAccessLogGroup:
@@ -254,7 +262,7 @@ Resources:
         - !Ref AWS::NoValue
       Architectures:
         - x86_64
-      AutoPublishAlias: staging
+      AutoPublishAlias: !Ref ReleaseAlias
       # Configuration (not only image) changes must publish a versioned release
       # before the API-facing alias advances.
       AutoPublishAliasAllProperties: true
@@ -515,7 +523,7 @@ Resources:
       MemorySize: 512
       Environment:
         Variables:
-          QUANTIFY_STAGING_URL: !Sub https://${QuantifyApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${StageName}
+          QUANTIFY_CORE_URL: !Sub https://${QuantifyApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${StageName}
 
   QuantifyAgentInvokerRole:
     Type: AWS::IAM::Role
@@ -539,6 +547,9 @@ Outputs:
   StagingUrl:
     Description: IAM-authenticated API Gateway staging URL.
     Value: !Sub https://${QuantifyApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${StageName}
+  QuantifyApiId:
+    Description: API ID of the IAM-authenticated Quantify core.
+    Value: !Ref QuantifyApi
   SmokeInvokerRoleArn:
     Description: Role used exclusively by the authenticated staging smoke script.
     Value: !GetAtt SmokeInvokerRole.Arn

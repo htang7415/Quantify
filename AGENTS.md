@@ -33,9 +33,9 @@ from AWS Secrets Manager at runtime. The production profile has no secondary
 model path; ambiguity becomes `REQUIRES_AGENT_RESOLUTION`. Model unavailability
 fails closed and must not cause an unrecorded model fallback.
 
-The current engineering plan is §14 of `quantify_spec.md`: prepare an
-AWS IAM-authenticated Lambda staging service with immutable embedded SEC
-fixtures. The deployed allowlist is only:
+The current engineering plan is §14 of `quantify_spec.md`: retain the AWS
+IAM-authenticated Lambda core with immutable embedded SEC fixtures and prepare
+an authenticated public agent edge. The core deployed allowlist is only:
 
 ```text
 GET  /healthz
@@ -48,10 +48,14 @@ claim collapse, startup validation, enforced route allowlist, immutable ECR
 image/secret configuration, and authenticated SigV4 smoke tooling. One
 IAM-authenticated private staging stack is deployed in `us-east-2`; it uses the
 account's unreserved Lambda pool because the initial account concurrency quota
-cannot support a reservation. Keep staging IAM-private and do not promote it or
-create production resources without the corresponding explicit user
-authorization. Live SEC retrieval must be unreachable from the deployed request
-path.
+cannot support a reservation. A public production candidate may expose only
+`POST /v1/agent/verify` behind Cognito JWT scope enforcement and may return only
+the safe agent contract. It must not expose the core verifier, become
+unauthenticated, retrieve live SEC data, or introduce a multi-agent workflow.
+The authenticated production core and public edge are deployed in `us-east-2`.
+Keep their scope and routes unchanged without fresh explicit user authorization;
+do not add an unauthenticated endpoint, a public core route, live SEC retrieval,
+or multi-agent workflow.
 
 ## Working approach
 

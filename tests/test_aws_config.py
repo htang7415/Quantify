@@ -31,7 +31,8 @@ def test_aws_template_pins_image_secret_version_capacity_and_iam_routes() -> Non
     assert "MaxValue: 900" in template
     assert "Timeout: 10" in template
     assert "MemorySize: 512" in template
-    assert "AutoPublishAlias: staging" in template
+    assert "ReleaseAlias:" in template
+    assert "AutoPublishAlias: !Ref ReleaseAlias" in template
     assert "AutoPublishAliasAllProperties: true" in template
     assert "@sha256:[0-9a-f]{64}" in template
     assert "QUANTIFY_GEMINI_SECRET_VERSION_ID" in template
@@ -79,6 +80,29 @@ def test_aws_template_pins_image_secret_version_capacity_and_iam_routes() -> Non
     assert "GEMINI_SECRET_VERSION_ID=" in example
     assert "SMOKE_ROLE_ARN=" in example
     assert "latest" not in template.lower()
+
+
+def test_public_agent_template_exposes_only_a_scoped_cognito_agent_route() -> None:
+    template = _read("public_agent_template.yaml")
+    example = _read("production.env.example")
+
+    assert "AWS::Cognito::UserPool" in template
+    assert "AWS::Cognito::UserPoolResourceServer" in template
+    assert "client_credentials" in template
+    assert "GenerateSecret: true" in template
+    assert "AWS::Serverless::HttpApi" in template
+    assert "DefaultAuthorizer: CognitoJwt" in template
+    assert "AuthorizationScopes:" in template
+    assert "CognitoJwt" in template
+    assert "Path: /v1/agent/verify" in template
+    assert "quantify.agent_lambda.handler" in template
+    assert "QUANTIFY_CORE_URL" in template
+    assert "execute-api:Invoke" in template
+    assert "POST/v1/companies/*/verify" in template
+    assert "Path: /v1/companies/{cik}/verify" not in template
+    assert "AWS_IAM" not in template
+    assert "COGNITO_MACHINE_CLIENT_SECRET_FILE" in example
+    assert "quantify-production-core" in example
 
 
 def test_aws_lambda_dockerfile_uses_lambda_handler_and_embedded_fixtures() -> None:
@@ -129,6 +153,9 @@ def test_aws_scripts_refuse_external_actions_without_explicit_authorization() ->
         ("provision_staging.sh", "QUANTIFY_AUTHORIZE_AWS_BOOTSTRAP"),
         ("build_image.sh", "QUANTIFY_AUTHORIZE_AWS_IMAGE_BUILD"),
         ("deploy_staging.sh", "QUANTIFY_AUTHORIZE_AWS_STAGING_DEPLOY"),
+        ("deploy_production_core.sh", "QUANTIFY_AUTHORIZE_AWS_PRODUCTION_CORE_DEPLOY"),
+        ("deploy_public_agent.sh", "QUANTIFY_AUTHORIZE_AWS_PUBLIC_AGENT_DEPLOY"),
+        ("smoke_public_agent.sh", "QUANTIFY_AUTHORIZE_AWS_PUBLIC_AGENT_SMOKE"),
         ("smoke_staging.sh", "QUANTIFY_AUTHORIZE_AWS_STAGING_SMOKE"),
         ("validate_observability.sh", "QUANTIFY_AUTHORIZE_AWS_OBSERVABILITY_CHECK"),
     ):

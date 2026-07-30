@@ -1,0 +1,256 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Cognito-protected public edge for the Quantify single-agent verification contract.
+
+Parameters:
+  ImageUri:
+    Type: String
+    Description: Immutable ECR image URI for the public agent boundary.
+    AllowedPattern: ^.+@sha256:[0-9a-f]{64}$
+  CoreApiId:
+    Type: String
+    Description: API ID of the separate IAM-private Quantify production core.
+  CoreStageName:
+    Type: String
+    Default: production
+    AllowedPattern: ^[A-Za-z0-9_-]{1,128}$
+  CognitoDomainPrefix:
+    Type: String
+    Description: Globally unique, lower-case Cognito hosted-domain prefix.
+    AllowedPattern: ^[a-z][a-z0-9-]{0,61}[a-z0-9]$
+  OAuthResourceServerIdentifier:
+    Type: String
+    Description: Stable URI identifier for the public Quantify agent OAuth scope.
+    AllowedPattern: ^https://.+$
+  AlarmEmail:
+    Type: String
+    Description: Email recipient for public-edge operational alarms.
+  ApiThrottleRateLimit:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 10
+  ApiThrottleBurstLimit:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 10
+
+Resources:
+  PublicAgentLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-public-agent
+      RetentionInDays: 30
+
+  PublicApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/apigateway/${AWS::StackName}-public-agent
+      RetentionInDays: 30
+
+  PublicApiAccessLogPolicy:
+    Type: AWS::Logs::ResourcePolicy
+    Properties:
+      PolicyName: !Sub ${AWS::StackName}-public-api-access-log-delivery
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: delivery.logs.amazonaws.com
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${PublicApiAccessLogGroup}:log-stream:*
+
+  PublicAgentUserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      UserPoolName: !Sub ${AWS::StackName}-public-agent
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      UsernameConfiguration:
+        CaseSensitive: false
+      MfaConfiguration: "OFF"
+      UserPoolAddOns:
+        AdvancedSecurityMode: ENFORCED
+
+  PublicAgentResourceServer:
+    Type: AWS::Cognito::UserPoolResourceServer
+    Properties:
+      UserPoolId: !Ref PublicAgentUserPool
+      Identifier: !Ref OAuthResourceServerIdentifier
+      Name: quantify-agent
+      Scopes:
+        - ScopeName: verify
+          ScopeDescription: Submit one bounded company-analysis verification request.
+
+  PublicAgentUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Ref CognitoDomainPrefix
+      UserPoolId: !Ref PublicAgentUserPool
+
+  PublicAgentMachineClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: PublicAgentResourceServer
+    Properties:
+      ClientName: !Sub ${AWS::StackName}-machine-client
+      UserPoolId: !Ref PublicAgentUserPool
+      GenerateSecret: true
+      PreventUserExistenceErrors: ENABLED
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - client_credentials
+      AllowedOAuthScopes:
+        - !Sub ${OAuthResourceServerIdentifier}/verify
+
+  PublicAgentApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: production
+      FailOnWarnings: true
+      Auth:
+        DefaultAuthorizer: CognitoJwt
+        Authorizers:
+          CognitoJwt:
+            IdentitySource: "$request.header.Authorization"
+            JwtConfiguration:
+              issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${PublicAgentUserPool}
+              audience:
+                - !Ref PublicAgentMachineClient
+            AuthorizationScopes:
+              - !Sub ${OAuthResourceServerIdentifier}/verify
+      AccessLogSettings:
+        DestinationArn: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${PublicApiAccessLogGroup}
+        Format: '{"requestId":"$context.requestId","status":"$context.status","routeKey":"$context.routeKey","responseLength":"$context.responseLength","integrationError":"$context.integrationErrorMessage"}'
+      DefaultRouteSettings:
+        ThrottlingRateLimit: !Ref ApiThrottleRateLimit
+        ThrottlingBurstLimit: !Ref ApiThrottleBurstLimit
+
+  PublicAgentExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteOnlyPublicAgentLogs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+        - PolicyName: InvokeOnlyPrivateQuantifyCore
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: execute-api:Invoke
+                Resource: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${CoreApiId}/${CoreStageName}/POST/v1/companies/*/verify
+
+  PublicAgentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-public-agent
+      PackageType: Image
+      ImageUri: !Ref ImageUri
+      ImageConfig:
+        Command:
+          - quantify.agent_lambda.handler
+      Role: !GetAtt PublicAgentExecutionRole.Arn
+      Timeout: 10
+      MemorySize: 512
+      LoggingConfig:
+        LogGroup: !Ref PublicAgentLogGroup
+        LogFormat: JSON
+        ApplicationLogLevel: INFO
+        SystemLogLevel: INFO
+      Environment:
+        Variables:
+          QUANTIFY_CORE_URL: !Sub https://${CoreApiId}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${CoreStageName}
+      Events:
+        Verify:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PublicAgentApi
+            Path: /v1/agent/verify
+            Method: POST
+
+  PublicAgentAlerts:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub ${AWS::StackName}-alerts
+      DisplayName: Quantify public agent
+
+  PublicAgentAlertSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      Endpoint: !Ref AlarmEmail
+      TopicArn: !Ref PublicAgentAlerts
+
+  PublicAgentLambdaErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-public-agent-errors
+      AlarmDescription: Public agent Lambda invocation errors require investigation.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref PublicAgentFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref PublicAgentAlerts
+
+  PublicAgentApi5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-public-agent-api-5xx
+      AlarmDescription: Public agent API returned a server error.
+      Namespace: AWS/ApiGateway
+      MetricName: 5xx
+      Dimensions:
+        - Name: ApiId
+          Value: !Ref PublicAgentApi
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref PublicAgentAlerts
+
+Outputs:
+  PublicAgentUrl:
+    Description: Public, Cognito-JWT-protected Quantify agent endpoint.
+    Value: !Sub https://${PublicAgentApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/production/v1/agent/verify
+  CognitoUserPoolId:
+    Description: Cognito user-pool identifier for the public machine client.
+    Value: !Ref PublicAgentUserPool
+  CognitoMachineClientId:
+    Description: Public OAuth machine-client identifier; retrieve its secret separately.
+    Value: !Ref PublicAgentMachineClient
+  OAuthTokenEndpoint:
+    Description: OAuth token endpoint for the Cognito machine client.
+    Value: !Sub https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com/oauth2/token
+  PublicAgentFunctionName:
+    Value: !Ref PublicAgentFunction
