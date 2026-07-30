@@ -8,11 +8,13 @@ from fastapi.testclient import TestClient
 
 from quantify.engine import MetricThresholdClaim, Relation, ReportSpan, StatementClassification
 from quantify.harness import ExtractedStatement, ExtractionResult, validate_extraction
+from quantify.harness.observability import RequestMetrics
 from quantify.harness.sec.client import SecCompanyFactsClient
 from quantify.production import (
     DEFAULT_FIXTURES_DIRECTORY,
     ProductionConfigurationError,
     create_production_app,
+    emit_request_metrics,
 )
 from tests.conftest import load_snapshot
 
@@ -132,6 +134,37 @@ def test_production_request_uses_one_model_call_and_embedded_evidence_only(monke
             (DEFAULT_FIXTURES_DIRECTORY / "manifest.json").read_bytes()
         ).hexdigest()
     )
+
+
+def test_production_metrics_log_contains_aggregate_fields_but_not_report_text(caplog) -> None:
+    report_text = "Confidential analysis text must never enter request metrics."
+
+    with caplog.at_level("INFO", logger="quantify.request_metrics"):
+        emit_request_metrics(
+            RequestMetrics(
+                cache_hit=True,
+                sec_network_calls=0,
+                filings_selected=1,
+                evidence_count=3,
+                eligible_evidence_count=3,
+                rejected_evidence_count=0,
+                verified_count=1,
+                unsupported_count=0,
+                defeated_count=0,
+                qualified_count=0,
+                agent_resolution_count=0,
+                empty_result=False,
+                total_cost=0.0,
+                company_cik="0000789019",
+            )
+        )
+
+    message = caplog.messages[-1]
+    assert message.startswith("quantify_request_metrics={")
+    assert report_text not in message
+    payload = json.loads(message.removeprefix("quantify_request_metrics="))
+    assert payload["observability_schema_version"] == "1.0.0"
+    assert payload["company_cik"] == "0000789019"
 
 
 def test_unavailable_pinned_model_returns_typed_503() -> None:

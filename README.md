@@ -19,6 +19,19 @@ frozen inputs. A provider-specific extractor may supply an `ExtractionResult`,
 but it cannot bypass deterministic grounding, reference validation, or verdict
 composition.
 
+## Private AWS staging
+
+The deployment contract lives in [`deploy/aws/`](deploy/aws/). It packages the
+existing fixture-only FastAPI production factory as a digest-pinned AWS Lambda
+container image, exposes only the two V1 routes through API Gateway HTTP API,
+and requires AWS IAM SigV4 authentication. The Gemini API key is read only from
+one immutable AWS Secrets Manager version at Lambda initialization. All scripts
+refuse external actions unless their operation-specific authorization variable
+is set; AWS CLI v2 deploys the CloudFormation stack directly, so no SAM CLI is
+required. The repository currently has one IAM-authenticated private staging
+stack; production creation, promotion, and access expansion remain separate
+decisions.
+
 ## Interactive latency control
 
 The normal Gemini harness uses a four-second extraction request deadline and a

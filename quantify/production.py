@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import date
 from hashlib import sha256
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Mapping
@@ -23,11 +24,13 @@ from quantify.harness import (
     AutonomousResolutionLoop,
     GeminiExtractionConfig,
     GeminiStructuredExtractor,
+    RequestMetrics,
     SnapshotBuild,
     build_sec_snapshot,
 )
 from quantify.harness.acquisition import EvidenceAcquisitionRecord
 from quantify.harness.coverage import EvidenceRequestType
+from quantify.harness.observability import request_metrics_as_dict
 from quantify.harness.sec.client import SecCompanyFactsClient, SecPayload
 from quantify.harness.gemini import JsonTransport
 from quantify.harness.sec.normalize import INITIAL_METRIC_ROUTES
@@ -37,10 +40,31 @@ from quantify.service import ApplicationService
 DEFAULT_FIXTURES_DIRECTORY = Path(__file__).parents[1] / "fixtures" / "sec"
 _IMAGE_DIGEST_ENV = "QUANTIFY_IMAGE_DIGEST"
 _GEMINI_KEY_ENV = "GEMINI_API_KEY"
+_REQUEST_METRICS_LOGGER = logging.getLogger("quantify.request_metrics")
+_REQUEST_METRICS_LOGGER.setLevel(logging.INFO)
 
 
 class ProductionConfigurationError(RuntimeError):
     """The immutable production composition cannot be assembled safely."""
+
+
+def emit_request_metrics(metrics: RequestMetrics) -> None:
+    """Emit one aggregate-only observability record through the runtime logger.
+
+    ``RequestMetrics`` deliberately has no report text, evidence payload, or
+    credential fields.  Keeping this conversion at the production boundary
+    makes Lambda/CloudWatch observability useful without making request content
+    available in operational logs.
+    """
+
+    _REQUEST_METRICS_LOGGER.info(
+        "quantify_request_metrics=%s",
+        json.dumps(
+            request_metrics_as_dict(metrics=metrics),
+            sort_keys=True,
+            separators=(",", ":"),
+        ),
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -233,6 +257,7 @@ def create_production_app(
         disclosure_detector_version="disabled-v1",
         evidence_fixture_manifest_hash=manifest_hash,
         deployment_image_digest=image_digest,
+        metrics_sink=emit_request_metrics,
     )
     app = create_app(
         service, include_internal_routes=False, include_documentation=False

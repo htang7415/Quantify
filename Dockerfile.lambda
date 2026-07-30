@@ -1,0 +1,17 @@
+# Immutable AWS Lambda image for the private Quantify V1 API.
+FROM public.ecr.aws/lambda/python:3.12
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY requirements.production.lock ${LAMBDA_TASK_ROOT}/
+RUN pip install --no-cache-dir --disable-pip-version-check -r requirements.production.lock \
+    && python -c "import boto3"
+
+COPY pyproject.toml README.md ${LAMBDA_TASK_ROOT}/
+COPY quantify ${LAMBDA_TASK_ROOT}/quantify
+COPY fixtures/sec ${LAMBDA_TASK_ROOT}/fixtures/sec
+RUN pip install --no-deps --no-cache-dir ${LAMBDA_TASK_ROOT} \
+    && chmod -R a=rX ${LAMBDA_TASK_ROOT}
+
+CMD ["quantify.aws_lambda.handler"]

@@ -1,0 +1,185 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Private AWS staging service for Quantify Research Referee.
+
+Parameters:
+  ImageUri:
+    Type: String
+    Description: Immutable ECR image URI ending in an sha256 digest.
+    AllowedPattern: ^.+@sha256:[0-9a-f]{64}$
+  ImageDigest:
+    Type: String
+    Description: sha256 digest recorded in every Quantify audit manifest.
+    AllowedPattern: ^sha256:[0-9a-f]{64}$
+  GeminiSecretArn:
+    Type: String
+    Description: ARN of the private Gemini API-key secret.
+  GeminiSecretVersionId:
+    Type: String
+    Description: Immutable AWS Secrets Manager version ID for the Gemini API key.
+    AllowedPattern: ^[A-Za-z0-9-]{32,64}$
+  SmokePrincipalArn:
+    Type: String
+    Description: Exact IAM user or role ARN permitted to assume the smoke-invoker role.
+  StageName:
+    Type: String
+    Default: staging
+    AllowedPattern: ^[a-z0-9-]+$
+  ReservedConcurrency:
+    Type: Number
+    Default: 0
+    MinValue: 0
+    MaxValue: 900
+    Description: Explicit upper bound for requests; zero uses the account's unreserved pool.
+
+Conditions:
+  UseReservedConcurrency: !Not [!Equals [!Ref ReservedConcurrency, 0]]
+
+Resources:
+  LambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-quantify-staging
+      RetentionInDays: 30
+
+  ApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/apigateway/${AWS::StackName}-quantify-staging
+      RetentionInDays: 30
+
+  ApiAccessLogDeliveryPolicy:
+    Type: AWS::Logs::ResourcePolicy
+    Properties:
+      PolicyName: !Sub ${AWS::StackName}-api-access-log-delivery
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: delivery.logs.amazonaws.com
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !GetAtt ApiAccessLogGroup.Arn
+
+  QuantifyApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref StageName
+      FailOnWarnings: true
+      Auth:
+        EnableIamAuthorizer: true
+        DefaultAuthorizer: AWS_IAM
+      AccessLogSettings:
+        # HTTP API access logging requires the log-group ARN without the
+        # trailing :* stream wildcard returned by GetAtt LogGroup.Arn.
+        DestinationArn: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${ApiAccessLogGroup}
+        Format: '{"requestId":"$context.requestId","status":"$context.status","routeKey":"$context.routeKey","responseLength":"$context.responseLength","integrationError":"$context.integrationErrorMessage"}'
+
+  QuantifyExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteOnlyQuantifyLogs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                # LogGroup.Arn already ends in :* and covers its streams.
+                Resource: !GetAtt LambdaLogGroup.Arn
+        - PolicyName: ReadOnlyPinnedGeminiSecret
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref GeminiSecretArn
+
+  QuantifyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-quantify-staging
+      PackageType: Image
+      ImageUri: !Ref ImageUri
+      ImageConfig:
+        Command:
+          - quantify.aws_lambda.handler
+      Role: !GetAtt QuantifyExecutionRole.Arn
+      Timeout: 10
+      MemorySize: 512
+      LoggingConfig:
+        LogGroup: !Ref LambdaLogGroup
+        LogFormat: JSON
+        ApplicationLogLevel: INFO
+        SystemLogLevel: INFO
+      ReservedConcurrentExecutions: !If
+        - UseReservedConcurrency
+        - !Ref ReservedConcurrency
+        - !Ref AWS::NoValue
+      Architectures:
+        - x86_64
+      AutoPublishAlias: staging
+      # Configuration (not only image) changes must publish a versioned release
+      # before the API-facing alias advances.
+      AutoPublishAliasAllProperties: true
+      Environment:
+        Variables:
+          QUANTIFY_IMAGE_DIGEST: !Ref ImageDigest
+          QUANTIFY_GEMINI_SECRET_ARN: !Ref GeminiSecretArn
+          QUANTIFY_GEMINI_SECRET_VERSION_ID: !Ref GeminiSecretVersionId
+      Events:
+        Health:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref QuantifyApi
+            Path: /healthz
+            Method: GET
+        Verify:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref QuantifyApi
+            Path: /v1/companies/{cik}/verify
+            Method: POST
+
+  SmokeInvokerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Ref SmokePrincipalArn
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeOnlyQuantifyStagingRoutes
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: execute-api:Invoke
+                Resource:
+                  - !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${QuantifyApi}/${StageName}/GET/healthz
+                  - !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${QuantifyApi}/${StageName}/POST/v1/companies/*/verify
+
+Outputs:
+  StagingUrl:
+    Description: IAM-authenticated API Gateway staging URL.
+    Value: !Sub https://${QuantifyApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${StageName}
+  SmokeInvokerRoleArn:
+    Description: Role used exclusively by the authenticated staging smoke script.
+    Value: !GetAtt SmokeInvokerRole.Arn
+  FunctionArn:
+    Description: Immutable Lambda function deployment target.
+    Value: !GetAtt QuantifyFunction.Arn

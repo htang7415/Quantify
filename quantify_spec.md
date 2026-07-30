@@ -241,16 +241,20 @@ establish or alter interactive latency readiness.
 
 ## 12. Private Deployment Design
 
-The target is a private Google Cloud Run service. This section is a design
-contract, not authorization to create cloud resources.
+The target is a private AWS Lambda container image behind an API Gateway HTTP
+API. This section is a design contract, not authorization to create cloud
+resources. “Private” means the gateway allows only AWS Signature Version 4
+(SigV4) requests from explicitly authorized IAM principals. The endpoint is
+not anonymously invokable; no application-issued alternate authentication path
+is permitted.
 
 ```text
 source commit + frozen fixtures
-→ tested immutable container image
-→ Artifact Registry image digest
-→ IAM-authenticated private staging service
+→ tested immutable Lambda container image
+→ Amazon ECR image digest
+→ IAM-authenticated API Gateway staging route
 → frozen Microsoft smoke test
-→ immutable production revision or rollback
+→ immutable Lambda version or rollback
 ```
 
 ### Deployed API allowlist
@@ -287,31 +291,38 @@ creation, but are disabled and unreachable from the deployed request path.
 ### Runtime profile
 
 ```text
-region:             us-central1
-CPU / memory:       1 vCPU / 512 MiB
-min instances:      0
-max instances:      2
-concurrency:        1
-authentication:     Cloud Run IAM
-release:            immutable private staging; later candidates start zero-traffic
+region:              selected AWS staging region
+memory:              512 MiB
+timeout:             10 seconds
+reserved concurrency: explicit per-environment cap when quota allows; new-account staging
+                      defaults to 0 (the unreserved Lambda pool)
+authentication:      API Gateway HTTP API AWS_IAM / SigV4
+release:             digest-pinned Lambda image; immutable published staging alias
 ```
 
-The image must pin Python and dependencies, run as non-root, honor `PORT`, use
-a production Uvicorn command, keep application files read-only, enforce report
-size limits, and emit redacted structured logs.
+The Lambda image must pin Python and dependencies, contain only the validated
+fixtures, use the Lambda runtime’s restricted execution user, keep application
+files read-only, enforce report size limits, and emit redacted structured logs.
+The AWS boundary is a narrow API Gateway payload-v2-to-ASGI adapter; the
+provider-neutral FastAPI production factory remains the in-process allowlist.
 
-Because V1 verification includes extraction, `GEMINI_API_KEY` is required for
-the private staging service. Secret Manager injects one numbered, pinned secret
-version at runtime through a dedicated least-privilege service identity. No
-secret may enter the image, repository, logs, manifests, or private artifacts.
-If the pinned Gemini model or extraction schema is unavailable, the request
-fails closed with a typed service-unavailable response; Quantify neither
-switches models nor performs an unrecorded fallback retry.
+Because V1 verification includes extraction, `GEMINI_API_KEY` is obtained only
+from one explicitly pinned AWS Secrets Manager version at Lambda initialization
+through a dedicated least-privilege execution role. The image, repository,
+environment, logs, manifests, and private artifacts must never contain the
+secret value. The execution role may read only the declared secret ARN. If the
+pinned secret, Gemini model, or extraction schema is unavailable, the request
+fails closed; Quantify neither switches models nor performs an unrecorded
+fallback retry.
 
-Billing alerts are not hard quotas. Private IAM access, a maximum of two
-single-concurrency instances, report/model input caps, and one model call per
-request bound V1 capacity and spend. They do not implement a per-identity or
-per-day request quota; durable tenant quotas and billing remain deferred.
+Billing alerts are not hard quotas. Private IAM access, a Lambda
+reserved-concurrency cap when quota permits, report/model input caps, and one
+model call per request bound V1 capacity and spend. The first private staging
+stack uses the unreserved pool because its new AWS account quota is too small to
+reserve capacity while retaining Lambda's required unreserved allocation. Later
+environments may reserve a cap only after an explicit Gemini quota, latency,
+cost, and throttling review. This does not implement a per-identity or per-day
+request quota; durable tenant quotas and billing remain deferred.
 
 ## 13. Deployment Quality Gate
 
@@ -339,24 +350,16 @@ creation are separate ship actions requiring explicit user authorization.
 
 The production application factory, enforced route allowlist, fixture-only
 evidence provider, typed unavailable-model response, duplicate collapse,
-locked non-root container, and digest-pinned private staging configuration are
-implemented and covered by focused tests. The Google Cloud bootstrap and one
-Cloud Build image build are complete; no Cloud Run service or staging request
-has been created.
+digest-pinned AWS Lambda image configuration, and authenticated SigV4 smoke
+tooling are implemented and covered by focused tests. Private staging is
+deployed in `us-east-2` with an immutable ECR image, pinned Secrets Manager
+version, API Gateway AWS_IAM authentication, and a successful authenticated
+smoke request. It is not a production release.
 
-Complete private Cloud Run staging without expanding product scope:
-
-```text
-1. Add the Gemini credential directly to Secret Manager as numbered version
-   `1`; the secret name and runtime accessor binding already exist.
-2. After explicit deployment authorization, create the IAM-authenticated,
-   tagged staging service using that digest and secret version. Its first
-   revision is private and receives staging-service traffic because Cloud Run
-   cannot create a zero-traffic service; later candidate revisions start at
-   zero traffic and are reached through their tags.
-3. After explicit staging-smoke authorization, run authenticated staging smoke
-   tests, review telemetry, then decide whether to promote.
-```
+Next, improve staging observability and smoke coverage, inspect redacted logs,
+and decide the audit-retention, caller-identity, quota, cost, and alerting
+contracts required before proposing a separate production stack. Never create a
+production stack merely because private staging smoke passes.
 
 ## 15. Deferred Capabilities
 

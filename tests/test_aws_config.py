@@ -1,0 +1,180 @@
+from __future__ import annotations
+
+import os
+from pathlib import Path
+import subprocess
+
+
+ROOT = Path(__file__).parents[1]
+DEPLOYMENT = ROOT / "deploy" / "aws"
+
+
+def _read(name: str) -> str:
+    return (DEPLOYMENT / name).read_text()
+
+
+def test_aws_template_pins_image_secret_version_capacity_and_iam_routes() -> None:
+    template = _read("template.yaml")
+    example = _read("staging.env.example")
+
+    assert "AWS::Serverless::HttpApi" in template
+    assert "EnableIamAuthorizer: true" in template
+    assert "DefaultAuthorizer: AWS_IAM" in template
+    assert "Path: /healthz" in template
+    assert "Path: /v1/companies/{cik}/verify" in template
+    assert "UseReservedConcurrency" in template
+    assert "ReservedConcurrentExecutions: !If" in template
+    assert "Default: 0" in template
+    assert "MaxValue: 900" in template
+    assert "Timeout: 10" in template
+    assert "MemorySize: 512" in template
+    assert "AutoPublishAlias: staging" in template
+    assert "AutoPublishAliasAllProperties: true" in template
+    assert "@sha256:[0-9a-f]{64}" in template
+    assert "QUANTIFY_GEMINI_SECRET_VERSION_ID" in template
+    assert "secretsmanager:GetSecretValue" in template
+    assert "execute-api:Invoke" in template
+    assert "DestinationArn: !Sub arn:${AWS::Partition}:logs:" in template
+    assert "Resource: !GetAtt LambdaLogGroup.Arn" in template
+    assert "${LambdaLogGroup.Arn}:*" not in template
+    assert "Type: AWS::Logs::ResourcePolicy" in template
+    assert "Service: delivery.logs.amazonaws.com" in template
+    assert "LogFormat: JSON" in template
+    assert "ApplicationLogLevel: INFO" in template
+    assert "SystemLogLevel: INFO" in template
+    assert "review" not in template
+    assert "resolve" not in template
+    assert "batch" not in template
+    assert "IMAGE_URI=" in example
+    assert "GEMINI_SECRET_VERSION_ID=" in example
+    assert "SMOKE_ROLE_ARN=" in example
+    assert "latest" not in template.lower()
+
+
+def test_aws_lambda_dockerfile_uses_lambda_handler_and_embedded_fixtures() -> None:
+    dockerfile = (ROOT / "Dockerfile.lambda").read_text()
+
+    assert "public.ecr.aws/lambda/python:3.12" in dockerfile
+    assert "fixtures/sec" in dockerfile
+    assert '"quantify.aws_lambda.handler"' in dockerfile
+    assert "boto3" in dockerfile
+    assert "find ${LAMBDA_TASK_ROOT}" not in dockerfile
+    assert "chmod -R a=rX ${LAMBDA_TASK_ROOT}" in dockerfile
+
+
+def test_aws_runtime_dependencies_pin_boto3_and_its_transitive_requirements() -> None:
+    production_lock = (ROOT / "requirements.production.lock").read_text()
+
+    for dependency in (
+        "boto3==1.42.37",
+        "botocore==1.42.97",
+        "jmespath==1.1.0",
+        "python-dateutil==2.9.0.post0",
+        "s3transfer==0.16.1",
+        "six==1.17.0",
+        "urllib3==2.7.0",
+    ):
+        assert dependency in production_lock
+
+
+def test_aws_image_build_uses_lambda_compatible_buildx_provenance_settings() -> None:
+    build = _read("build_image.sh")
+
+    assert "docker buildx build" in build
+    assert "--platform linux/amd64" in build
+    assert "--provenance=false" in build
+
+
+def test_aws_smoke_requires_auditable_embedded_evidence_response() -> None:
+    smoke = _read("smoke_staging.py")
+
+    assert 'evidence_scope.get("source") != "SEC EDGAR"' in smoke
+    assert 'evidence_scope.get("entity_level_only") is not True' in smoke
+    assert 'response.get("verification_cache_hit"), bool' in smoke
+    assert 'audit.get("manifest_hash")' in smoke
+
+
+def test_aws_scripts_refuse_external_actions_without_explicit_authorization() -> None:
+    for script, authorization in (
+        ("provision_staging.sh", "QUANTIFY_AUTHORIZE_AWS_BOOTSTRAP"),
+        ("build_image.sh", "QUANTIFY_AUTHORIZE_AWS_IMAGE_BUILD"),
+        ("deploy_staging.sh", "QUANTIFY_AUTHORIZE_AWS_STAGING_DEPLOY"),
+        ("smoke_staging.sh", "QUANTIFY_AUTHORIZE_AWS_STAGING_SMOKE"),
+    ):
+        result = subprocess.run(
+            ["bash", str(DEPLOYMENT / script)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 2
+        assert authorization in result.stderr
+
+
+def test_aws_deploy_rejects_non_digest_image_and_never_uses_latest(tmp_path: Path) -> None:
+    fake_aws = tmp_path / "aws"
+    fake_aws.write_text("#!/usr/bin/env bash\nprintf '%s\\n' \"$*\" > \"$CALLS\"\n")
+    fake_aws.chmod(0o755)
+    environment = os.environ | {
+        "QUANTIFY_AUTHORIZE_AWS_STAGING_DEPLOY": "1",
+        "AWS_REGION": "us-east-2",
+        "AWS_STACK_NAME": "quantify-private-staging",
+        "IMAGE_URI": "example/image:latest",
+        "IMAGE_DIGEST": "sha256:" + "0" * 64,
+        "GEMINI_SECRET_ARN": "arn:aws:secretsmanager:us-east-2:123456789012:secret:gemini",
+        "GEMINI_SECRET_VERSION_ID": "a" * 32,
+        "SMOKE_PRINCIPAL_ARN": "arn:aws:iam::123456789012:role/smoke",
+        "RESERVED_CONCURRENCY": "2",
+        "AWS_BIN": str(fake_aws),
+        "CALLS": str(tmp_path / "calls"),
+    }
+
+    result = subprocess.run(
+        ["bash", str(DEPLOYMENT / "deploy_staging.sh")],
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert "immutable @sha256" in result.stderr
+
+
+def test_aws_deploy_passes_the_exact_digest_and_pinned_secret_version(tmp_path: Path) -> None:
+    calls = tmp_path / "aws-calls.txt"
+    fake_aws = tmp_path / "aws"
+    fake_aws.write_text("#!/usr/bin/env bash\nprintf '%s\\n' \"$*\" > \"$CALLS\"\n")
+    fake_aws.chmod(0o755)
+    digest = "sha256:" + "1" * 64
+    environment = os.environ | {
+        "QUANTIFY_AUTHORIZE_AWS_STAGING_DEPLOY": "1",
+        "AWS_REGION": "us-east-2",
+        "AWS_STACK_NAME": "quantify-private-staging",
+        "IMAGE_URI": f"123.dkr.ecr.us-east-2.amazonaws.com/quantify@{digest}",
+        "IMAGE_DIGEST": digest,
+        "GEMINI_SECRET_ARN": "arn:aws:secretsmanager:us-east-2:123456789012:secret:gemini",
+        "GEMINI_SECRET_VERSION_ID": "b" * 32,
+        "SMOKE_PRINCIPAL_ARN": "arn:aws:iam::123456789012:role/smoke",
+        "RESERVED_CONCURRENCY": "2",
+        "AWS_BIN": str(fake_aws),
+        "CALLS": str(calls),
+    }
+
+    result = subprocess.run(
+        ["bash", str(DEPLOYMENT / "deploy_staging.sh")],
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    invocation = calls.read_text()
+    assert f"ImageUri=123.dkr.ecr.us-east-2.amazonaws.com/quantify@{digest}" in invocation
+    assert f"ImageDigest={digest}" in invocation
+    assert "GeminiSecretVersionId=" + "b" * 32 in invocation
+    assert "cloudformation deploy" in invocation
+    assert "CAPABILITY_AUTO_EXPAND" in invocation
+    assert "ReservedConcurrency=2" in invocation
+    assert "latest" not in invocation

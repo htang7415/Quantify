@@ -29,12 +29,12 @@ one bounded structured extraction call
 
 It is not a multi-agent research system. Private staging is model-enabled:
 each uncached verify request makes one pinned Gemini extraction call, supplied
-from Secret Manager at runtime. The production profile has no secondary model
-path; ambiguity becomes `REQUIRES_AGENT_RESOLUTION`. Model unavailability
+from AWS Secrets Manager at runtime. The production profile has no secondary
+model path; ambiguity becomes `REQUIRES_AGENT_RESOLUTION`. Model unavailability
 fails closed and must not cause an unrecorded model fallback.
 
-The current engineering plan is §14 of `quantify_spec.md`: prepare a private,
-IAM-authenticated Google Cloud Run staging service with immutable embedded SEC
+The current engineering plan is §14 of `quantify_spec.md`: prepare an
+AWS IAM-authenticated Lambda staging service with immutable embedded SEC
 fixtures. The deployed allowlist is only:
 
 ```text
@@ -42,18 +42,16 @@ GET  /healthz
 POST /v1/companies/{cik}/verify
 ```
 
-Production application assembly, dynamic container QA, and private staging
+Production application assembly, dynamic container QA, and AWS private staging
 configuration are complete: embedded-fixture-only evidence, semantic-duplicate
-claim collapse, startup validation, enforced route allowlist, locked non-root
-image, immutable image/secret configuration, and authenticated smoke tooling.
-Google Cloud bootstrap and an immutable image build are complete. The next
-work is adding Secret Manager version `1`, then separately authorizing a
-private staging deployment and staging smoke call. The first Cloud Run revision
-is IAM-private staging traffic only; later candidate revisions begin at zero
-traffic. Live SEC retrieval
-must be unreachable from the deployed request path. Do not deploy, promote
-traffic, or publish a release without the corresponding explicit user
-authorization.
+claim collapse, startup validation, enforced route allowlist, immutable ECR
+image/secret configuration, and authenticated SigV4 smoke tooling. One
+IAM-authenticated private staging stack is deployed in `us-east-2`; it uses the
+account's unreserved Lambda pool because the initial account concurrency quota
+cannot support a reservation. Keep staging IAM-private and do not promote it or
+create production resources without the corresponding explicit user
+authorization. Live SEC retrieval must be unreachable from the deployed request
+path.
 
 ## Working approach
 
