@@ -36,7 +36,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     args.reference_mapping_output.write_text(
         json.dumps(worklist.reference_mapping(), sort_keys=True)
     )
-    print(json.dumps(worklist.model_input(), sort_keys=True))
+    # The model input contains report text.  It is constructed again only at the
+    # provider boundary; command output must remain safe for operator logs.
+    print(json.dumps({"case_count": len(worklist.items), "reference_mapping_output": str(args.reference_mapping_output)}, sort_keys=True))
     return 0
 
 

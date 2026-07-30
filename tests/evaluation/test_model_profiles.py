@@ -27,7 +27,7 @@ def test_pinned_batch_profile_caps_the_full_30_case_two_path_cost() -> None:
     assert profile.model == "gemini-3.1-flash-lite"
     assert profile.execution_mode.value == "batch"
     assert estimate.request_count == 60
-    assert estimate.total_cost_usd == pytest.approx(0.04224)
+    assert estimate.total_cost_usd == pytest.approx(0.13824)
     assert estimate.within_budget is True
     require_cost_within_budget(estimate=estimate)
 

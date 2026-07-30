@@ -43,7 +43,7 @@ def _campaign_arguments(tmp_path: Path, *, trial: int = 1) -> list[str]:
     campaign = plan_scheduled_evaluation_campaign(
         profile=load_evaluation_model_profile(path=PROFILE),
         trial_count=2,
-        max_total_cost_usd=0.10,
+        max_total_cost_usd=0.30,
     )
     campaign_path = tmp_path / "campaign.json"
     campaign_path.write_text(
@@ -72,7 +72,7 @@ def test_submit_prompt_only_writes_only_opaque_batch_metadata(
             return SimpleNamespace(
                 batch_name="batches/prompt-fixture",
                 request_ids=tuple(item.request_id for item in worklist.items),
-                estimated_total_cost_usd=0.02112,
+                estimated_total_cost_usd=0.06912,
             )
 
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
@@ -95,7 +95,7 @@ def test_submit_prompt_only_writes_only_opaque_batch_metadata(
     ledger = json.loads((tmp_path / "campaign-ledger.json").read_text())
     reservation = ledger["reservations"][0]
     assert reservation["batch_name"] == "batches/prompt-fixture"
-    assert reservation["max_cost_usd"] == pytest.approx(0.02112)
+    assert reservation["max_cost_usd"] == pytest.approx(0.06912)
     assert reservation["path"] == "prompt_only"
     assert reservation["status"] == "submitted"
     assert reservation["trial"] == 1
@@ -131,7 +131,7 @@ def test_collect_quantify_writes_the_compiler_input_artifact(
     campaign = plan_scheduled_evaluation_campaign(
         profile=load_evaluation_model_profile(path=PROFILE),
         trial_count=2,
-        max_total_cost_usd=0.10,
+        max_total_cost_usd=0.30,
     )
     ledger_path = tmp_path / "campaign-ledger.json"
     reserve_campaign_submission(
@@ -197,7 +197,7 @@ def test_cli_refuses_an_unmanaged_or_duplicate_submission(
     campaign = plan_scheduled_evaluation_campaign(
         profile=load_evaluation_model_profile(path=PROFILE),
         trial_count=2,
-        max_total_cost_usd=0.10,
+        max_total_cost_usd=0.30,
     )
     reserve_campaign_submission(
         campaign=campaign,

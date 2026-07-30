@@ -68,7 +68,7 @@ def test_submits_public_facts_without_private_labels_and_verifies_locally() -> N
     )
     artifact = quantify_outcome_artifact_as_dict(outcomes=result)
 
-    assert submission.estimated_total_cost_usd == 0.02112
+    assert submission.estimated_total_cost_usd == 0.06912
     assert transport.url.endswith("/batches/quantify-fixture-123")
     assert len(transport.body["batch"]["input_config"]["requests"]["requests"]) == 30
     assert "case_id" not in serialized
@@ -145,33 +145,46 @@ def _successful_batch_response(worklist) -> dict:
 
 def _proposal(case) -> dict:
     if case.expected_unclassified_statement_ids:
-        return {"classification": "unclassified", "claim_type": "none"}
+        return {
+            "statements": [
+                {
+                    "classification": "unclassified",
+                    "report_span_id": "report-s1",
+                    "claim_type": "none",
+                }
+            ]
+        }
     claim = case.extraction.statements[0].claims[0]
     if isinstance(claim, MetricThresholdClaim):
-        return {
+        statement = {
             "classification": "classified",
+            "report_span_id": "report-s1",
             "claim_type": "threshold",
             "relation": claim.relation.value,
             "cited_evidence_id": claim.cited_evidence_id,
             "threshold": str(claim.threshold),
         }
-    if isinstance(claim, MetricComparisonClaim):
-        return {
+    elif isinstance(claim, MetricComparisonClaim):
+        statement = {
             "classification": "classified",
+            "report_span_id": "report-s1",
             "claim_type": "comparison",
             "relation": claim.relation.value,
             "left_evidence_id": claim.left_evidence_id,
             "right_evidence_id": claim.right_evidence_id,
         }
-    assert isinstance(claim, MetricBaselineClaim)
-    return {
-        "classification": "classified",
-        "claim_type": "baseline",
-        "relation": claim.relation.value,
-        "cited_evidence_id": claim.cited_evidence_id,
-        "historical_evidence_ids": list(claim.calibration.historical_evidence_ids),
-        "historical_cutoff": claim.calibration.historical_cutoff.isoformat(),
-    }
+    else:
+        assert isinstance(claim, MetricBaselineClaim)
+        statement = {
+            "classification": "classified",
+            "report_span_id": "report-s1",
+            "claim_type": "baseline",
+            "relation": claim.relation.value,
+            "cited_evidence_id": claim.cited_evidence_id,
+            "historical_evidence_ids": list(claim.calibration.historical_evidence_ids),
+            "historical_cutoff": claim.calibration.historical_cutoff.isoformat(),
+        }
+    return {"statements": [statement]}
 
 
 def _expected_outcome(case) -> str:

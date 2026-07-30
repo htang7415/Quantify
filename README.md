@@ -91,6 +91,12 @@ Batch artifacts cannot satisfy the commercial readiness latency gate. That gate
 requires a versioned `interactive_runtime` measurement from the normal
 one-call extraction path.
 
+The Batch Quantify parity path must use the same versioned extraction
+instruction, response schema, model, temperature, and input/output envelope as
+the deployed extractor. A compact or separately worded Batch prompt is not
+comparable production evidence. The prompt-only comparator remains a distinct
+model-visible baseline by design.
+
 ## Interactive readiness evaluation
 
 `quantify.evaluation.interactive_cli` is the only path that produces the

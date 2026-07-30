@@ -58,7 +58,7 @@ def test_submits_only_safe_worklist_data_after_cost_preflight() -> None:
     serialized = str(transport.body)
     requests = transport.body["batch"]["input_config"]["requests"]["requests"]
     assert submission.batch_name == "batches/fixture-123"
-    assert submission.estimated_total_cost_usd == 0.02112
+    assert submission.estimated_total_cost_usd == 0.06912
     assert len(requests) == 30
     assert transport.url.endswith("models/gemini-3.1-flash-lite:batchGenerateContent")
     assert transport.headers["x-goog-api-key"] == "test-key"

@@ -65,7 +65,7 @@ def _completed_campaign(tmp_path: Path):
     campaign = plan_scheduled_evaluation_campaign(
         profile=load_evaluation_model_profile(path=PROFILE),
         trial_count=2,
-        max_total_cost_usd=0.10,
+        max_total_cost_usd=0.30,
     )
     ledger_path = tmp_path / "ledger.json"
     for trial in (1, 2):
@@ -105,7 +105,7 @@ def test_operations_are_derived_from_all_completed_authorized_batches(
 
     assert measurements.completed_batch_count == 4
     assert measurements.mean_batch_elapsed_seconds == 12.0
-    assert measurements.quantify_max_cost_per_report == pytest.approx(0.000704)
+    assert measurements.quantify_max_cost_per_report == pytest.approx(0.002304)
     payload = scheduled_operational_measurements_as_dict(measurements=measurements)
     path = tmp_path / "operations.json"
     path.write_text(json.dumps(payload))
@@ -116,7 +116,7 @@ def test_operations_refuse_incomplete_campaigns(tmp_path: Path) -> None:
     campaign = plan_scheduled_evaluation_campaign(
         profile=load_evaluation_model_profile(path=PROFILE),
         trial_count=2,
-        max_total_cost_usd=0.10,
+        max_total_cost_usd=0.30,
     )
     ledger_path = tmp_path / "ledger.json"
     reserve_campaign_submission(

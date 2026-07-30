@@ -54,10 +54,13 @@ def test_worklist_cli_writes_private_mapping_separately(tmp_path: Path, capsys) 
         ]
     )
 
-    model_input = json.loads(capsys.readouterr().out)
+    status = json.loads(capsys.readouterr().out)
     reference_mapping = json.loads(mapping_path.read_text())
     assert exit_code == 0
-    assert set(model_input["items"][0]) == {"request_id", "report_text"}
+    assert status == {
+        "case_count": 30,
+        "reference_mapping_output": str(mapping_path),
+    }
     assert set(reference_mapping["items"][0]) == {
         "request_id",
         "case_id",

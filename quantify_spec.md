@@ -426,6 +426,13 @@ role may invoke only the private core's `POST /v1/companies/*/verify` route.
 The core verifier, evidence fixtures, audit store, Gemini secret, and model
 cost ledger stay private.
 
+Offline Gemini Batch parity is quality evidence only; its queue time cannot
+satisfy the interactive latency gate. The Batch Quantify branch must reuse the
+same versioned extraction instruction, response schema, model, temperature,
+and input/output envelope as the deployed extractor. A reduced or separately
+worded Batch prompt is not comparable production evidence. The prompt-only
+branch remains a distinct model-visible baseline.
+
 `deploy/aws/template.yaml` is the production-core candidate when supplied a
 separate stack name, `StageName=production`, and `ReleaseAlias=production`.
 `deploy/aws/public_agent_template.yaml` is the public-edge candidate. Both

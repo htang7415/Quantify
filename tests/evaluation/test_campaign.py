@@ -24,12 +24,12 @@ def test_two_trial_campaign_requires_an_explicit_budget_for_all_four_batches() -
     campaign = plan_scheduled_evaluation_campaign(
         profile=load_evaluation_model_profile(path=PROFILE),
         trial_count=2,
-        max_total_cost_usd=0.10,
+        max_total_cost_usd=0.30,
     )
 
     assert campaign.paths == ("prompt_only", "quantify")
-    assert campaign.per_path_cost_usd == pytest.approx(0.02112)
-    assert campaign.estimated_total_cost_usd == pytest.approx(0.08448)
+    assert campaign.per_path_cost_usd == pytest.approx(0.06912)
+    assert campaign.estimated_total_cost_usd == pytest.approx(0.27648)
 
 
 def test_campaign_refuses_a_budget_that_only_covers_one_trial() -> None:
@@ -50,7 +50,7 @@ def test_campaign_cli_writes_a_no_secret_authorization_artifact(tmp_path: Path) 
                 "--profile",
                 str(PROFILE),
                 "--max-total-cost-usd",
-                "0.10",
+                "0.30",
                 "--output",
                 str(output),
             ]
@@ -60,7 +60,7 @@ def test_campaign_cli_writes_a_no_secret_authorization_artifact(tmp_path: Path) 
 
     payload = json.loads(output.read_text())
     assert payload["campaign_version"] == "1.0.0"
-    assert payload["estimated_total_cost_usd"] == pytest.approx(0.08448)
+    assert payload["estimated_total_cost_usd"] == pytest.approx(0.27648)
     assert "api_key" not in json.dumps(payload)
 
 
@@ -70,7 +70,7 @@ def test_ledger_reserves_each_authorized_slot_once_and_records_the_batch(
     campaign = plan_scheduled_evaluation_campaign(
         profile=load_evaluation_model_profile(path=PROFILE),
         trial_count=2,
-        max_total_cost_usd=0.10,
+        max_total_cost_usd=0.30,
     )
     ledger_path = tmp_path / "campaign-ledger.json"
 
@@ -137,7 +137,7 @@ def test_ledger_refuses_a_tampered_or_different_campaign_authorization(
     changed_campaign = plan_scheduled_evaluation_campaign(
         profile=load_evaluation_model_profile(path=PROFILE),
         trial_count=2,
-        max_total_cost_usd=0.11,
+        max_total_cost_usd=0.31,
     )
 
     with pytest.raises(ValueError, match="different authorization"):

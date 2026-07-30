@@ -3,23 +3,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from datetime import date
-from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 import json
 from typing import Protocol
 
-from quantify.engine import (
-    CalibrationMethod,
-    MetricBaselineClaim,
-    MetricComparisonClaim,
-    MetricThresholdClaim,
-    Relation,
-    ReportSpan,
-    StatementClassification,
-    build_upper_baseline_calibration,
+from quantify.harness import verify_report
+from quantify.harness.gemini import (
+    GeminiExtractionConfig,
+    _RESPONSE_SCHEMA,
+    _SYSTEM_INSTRUCTION,
+    _extraction_from_response,
 )
-from quantify.harness import ExtractedStatement, ExtractionResult, verify_report
 
 from .gemini_batch import JsonTransport, UrllibJsonTransport
 from .model_profiles import (
@@ -129,6 +123,19 @@ def build_quantify_parity_worklist(
     )
 
 
+def _extraction_config(*, profile: EvaluationModelProfile) -> GeminiExtractionConfig:
+    """Map the pinned evaluation envelope to the deployed extraction contract."""
+
+    return GeminiExtractionConfig(
+        model=profile.model,
+        temperature=profile.temperature,
+        input_price_per_million_usd=profile.input_price_per_million_usd,
+        output_price_per_million_usd=profile.output_price_per_million_usd,
+        max_output_tokens=profile.max_output_tokens_per_request,
+        max_input_payload_bytes=profile.max_input_tokens_per_request,
+    )
+
+
 class GeminiQuantifyBatchClient:
     """Run one structured extraction Batch; verification remains local and deterministic."""
 
@@ -192,15 +199,16 @@ class GeminiQuantifyBatchClient:
         outcomes = tuple(
             (
                 item.request_id,
-                _verify_proposal(
+                _verify_extraction(
                     case=worklist.case_for(request_id=item.request_id),
                     report_text=item.report_text,
-                    proposal=_proposal_for(
+                    response=_response_for(
                         payload=payload,
                         expected_request_id=item.request_id,
                         position=index,
                         expected_count=len(worklist.items),
                     ),
+                    config=_extraction_config(profile=profile),
                 ),
             )
             for index, item in enumerate(worklist.items)
@@ -215,19 +223,9 @@ class GeminiQuantifyBatchClient:
 
 
 def quantify_prompt_hash(*, profile: EvaluationModelProfile) -> str:
-    """Hash the fixed Quantify model contract, excluding all frozen case data."""
+    """Return the exact deployed structured-extraction prompt identity."""
 
-    template = _generate_content_request(
-        item=QuantifyParityWorkItem(
-            request_id="<opaque-request-id>",
-            report_text="<frozen-report-text>",
-            evidence=(),
-        ),
-        profile=profile,
-    )
-    return sha256(
-        json.dumps(template, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
+    return _extraction_config(profile=profile).prompt_hash
 
 
 def quantify_outcome_artifact_as_dict(*, outcomes: GeminiQuantifyOutcomes) -> dict:
@@ -253,12 +251,7 @@ def _generate_content_request(
         "system_instruction": {
             "parts": [
                 {
-                    "text": (
-                        "Extract at most one closed financial claim from the report. "
-                        "Use only the supplied frozen facts and their evidence IDs. "
-                        "Do not decide whether a claim is true, do not invent facts, "
-                        "and return unclassified when no typed claim is justified."
-                    )
+                    "text": _SYSTEM_INSTRUCTION
                 }
             ]
         },
@@ -269,7 +262,9 @@ def _generate_content_request(
                     {
                         "text": json.dumps(
                             {
-                                "report_text": item.report_text,
+                                "report_spans": [
+                                    {"report_span_id": "report-s1", "text": item.report_text}
+                                ],
                                 "frozen_facts": item.evidence,
                             },
                             sort_keys=True,
@@ -283,55 +278,37 @@ def _generate_content_request(
             "temperature": profile.temperature,
             "max_output_tokens": profile.max_output_tokens_per_request,
             "response_mime_type": "application/json",
-            "response_schema": {
-                "type": "OBJECT",
-                "properties": {
-                    "classification": {
-                        "type": "STRING",
-                        "enum": ["classified", "unclassified"],
-                    },
-                    "claim_type": {
-                        "type": "STRING",
-                        "enum": ["threshold", "comparison", "baseline", "none"],
-                    },
-                    "relation": {
-                        "type": "STRING",
-                        "enum": [
-                            Relation.GREATER_THAN.value,
-                            Relation.LESS_THAN.value,
-                            Relation.OUTSIDE_UPPER_BASELINE.value,
-                        ],
-                    },
-                    "cited_evidence_id": {"type": "STRING"},
-                    "left_evidence_id": {"type": "STRING"},
-                    "right_evidence_id": {"type": "STRING"},
-                    "threshold": {"type": "STRING"},
-                    "historical_evidence_ids": {
-                        "type": "ARRAY",
-                        "items": {"type": "STRING"},
-                    },
-                    "historical_cutoff": {"type": "STRING"},
-                },
-                "required": ["classification", "claim_type"],
-            },
+            "response_schema": _RESPONSE_SCHEMA,
         },
     }
 
 
-def _verify_proposal(*, case: RegressionCase, report_text: str, proposal: dict) -> str:
-    extraction = _extraction_from_proposal(
-        request_id=proposal["request_id"],
+def _verify_extraction(
+    *,
+    case: RegressionCase,
+    report_text: str,
+    response: dict,
+    config: GeminiExtractionConfig,
+) -> str:
+    extraction = _extraction_from_response(
+        response=response,
         report_text=report_text,
-        proposal={**proposal, "snapshot": case.snapshot},
+        snapshot=case.snapshot,
+        config=config,
     )
-    if extraction is None:
-        return "unclassified"
     initial = verify_report(
         report_text=report_text,
         snapshot=case.snapshot,
         extraction=extraction,
     )
-    model_claim_id = extraction.statements[0].claims[0].claim_id
+    classified_claims = tuple(
+        claim
+        for statement in extraction.statements
+        for claim in statement.claims
+    )
+    if len(classified_claims) != 1:
+        return "unclassified"
+    model_claim_id = classified_claims[0].claim_id
     assessment_by_evidence = {
         item.defeating_evidence_id: item for item in case.disclosure_assessments
     }
@@ -351,71 +328,7 @@ def _verify_proposal(*, case: RegressionCase, report_text: str, proposal: dict) 
     return report.claim_verdicts[0].verdict.value
 
 
-def _extraction_from_proposal(
-    *, request_id: str, report_text: str, proposal: dict
-) -> ExtractionResult | None:
-    if proposal.get("classification") != "classified":
-        return None
-    claim_type = proposal.get("claim_type")
-    if claim_type not in _CLAIM_TYPES:
-        return None
-    try:
-        relation = Relation(proposal["relation"])
-        claim_id = f"gemini-{request_id}"
-        if claim_type == "threshold":
-            claim = MetricThresholdClaim(
-                claim_id=claim_id,
-                cited_evidence_id=_string_field(proposal, "cited_evidence_id"),
-                relation=relation,
-                threshold=Decimal(_string_field(proposal, "threshold")),
-            )
-        elif claim_type == "comparison":
-            claim = MetricComparisonClaim(
-                claim_id=claim_id,
-                left_evidence_id=_string_field(proposal, "left_evidence_id"),
-                relation=relation,
-                right_evidence_id=_string_field(proposal, "right_evidence_id"),
-            )
-        else:
-            claim = MetricBaselineClaim(
-                claim_id=claim_id,
-                cited_evidence_id=_string_field(proposal, "cited_evidence_id"),
-                relation=relation,
-                calibration=build_upper_baseline_calibration(
-                    snapshot=proposal["snapshot"],
-                    historical_evidence_ids=_string_list(
-                        proposal, "historical_evidence_ids"
-                    ),
-                    historical_cutoff=date.fromisoformat(
-                        _string_field(proposal, "historical_cutoff")
-                    ),
-                    method=CalibrationMethod.HISTORICAL_RANGE,
-                ),
-            )
-    except (KeyError, ValueError, InvalidOperation):
-        return None
-    return ExtractionResult(
-        extractor_version="gemini-quantify-parity-v1",
-        statements=(
-            ExtractedStatement(
-                statement_id=f"s-{request_id}",
-                classification=StatementClassification.CLASSIFIED,
-                report_span=ReportSpan(
-                    span_id=f"span-{request_id}",
-                    sentence_text=report_text,
-                    sentence_start=0,
-                    sentence_end=len(report_text),
-                    claim_fragment=report_text,
-                    fragment_start=0,
-                    fragment_end=len(report_text),
-                ),
-                claims=(claim,),
-            ),
-        ),
-    )
-
-
-def _proposal_for(
+def _response_for(
     *, payload: dict, expected_request_id: str, position: int, expected_count: int
 ) -> dict:
     inline = _inline_responses(payload)
@@ -430,14 +343,11 @@ def _proposal_for(
         raise ValueError("Gemini inline result key does not match the submitted order")
     if item.get("error") is not None:
         raise ValueError("Gemini batch contains a failed inline request")
-    text = _response_text(item.get("response"))
-    try:
-        proposal = json.loads(text)
-    except (TypeError, json.JSONDecodeError) as error:
-        raise ValueError("Gemini proposal is not valid JSON") from error
-    if not isinstance(proposal, dict):
-        raise ValueError("Gemini proposal must be an object")
-    return {**proposal, "request_id": request_id}
+    response = item.get("response")
+    if not isinstance(response, dict):
+        raise ValueError("Gemini inline result does not include a response")
+    _response_text(response)
+    return response
 
 
 def _inline_responses(payload: dict) -> list:
@@ -489,19 +399,3 @@ def _validate_batch_name(batch_name: object) -> None:
         or any(character.isspace() for character in identifier)
     ):
         raise ValueError("Gemini batch name must have the batches/{id} form")
-
-
-def _string_field(payload: dict, name: str) -> str:
-    value = payload[name]
-    if not isinstance(value, str) or not value:
-        raise ValueError(f"Gemini proposal requires {name}")
-    return value
-
-
-def _string_list(payload: dict, name: str) -> tuple[str, ...]:
-    value = payload[name]
-    if not isinstance(value, list) or not value or any(
-        not isinstance(item, str) or not item for item in value
-    ):
-        raise ValueError(f"Gemini proposal requires {name}")
-    return tuple(value)
