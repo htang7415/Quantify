@@ -12,22 +12,29 @@ for required in AWS_REGION PUBLIC_AGENT_STACK_NAME IMAGE_URI CORE_API_ID COGNITO
 done
 
 CORE_STAGE_NAME="${CORE_STAGE_NAME:-production}"
-PUBLIC_API_THROTTLE_RATE_LIMIT="${PUBLIC_API_THROTTLE_RATE_LIMIT:-1}"
-PUBLIC_API_THROTTLE_BURST_LIMIT="${PUBLIC_API_THROTTLE_BURST_LIMIT:-1}"
+PUBLIC_API_THROTTLE_RATE_LIMIT="${PUBLIC_API_THROTTLE_RATE_LIMIT:-5}"
+PUBLIC_API_THROTTLE_BURST_LIMIT="${PUBLIC_API_THROTTLE_BURST_LIMIT:-5}"
 BROWSER_CLIENT_ID="${BROWSER_CLIENT_ID:-}"
 TRIAL_ENABLED="${TRIAL_ENABLED:-false}"
+TENANT_DAILY_REQUEST_LIMIT="${TENANT_DAILY_REQUEST_LIMIT:-5}"
+TENANT_DAILY_COST_LIMIT_MICRO_USD="${TENANT_DAILY_COST_LIMIT_MICRO_USD:-15000}"
+TENANT_REQUEST_COST_RESERVATION_MICRO_USD="${TENANT_REQUEST_COST_RESERVATION_MICRO_USD:-2500}"
 [[ "$IMAGE_URI" =~ @sha256:[0-9a-f]{64}$ ]] || { echo "IMAGE_URI must be an immutable @sha256 reference." >&2; exit 2; }
 [[ "$CORE_STAGE_NAME" =~ ^[a-z0-9-]+$ ]] || { echo "CORE_STAGE_NAME is invalid." >&2; exit 2; }
 [[ "$COGNITO_DOMAIN_PREFIX" =~ ^[a-z][a-z0-9-]{0,61}[a-z0-9]$ ]] || { echo "COGNITO_DOMAIN_PREFIX is invalid." >&2; exit 2; }
 [[ "$OAUTH_RESOURCE_SERVER_IDENTIFIER" =~ ^https://.+$ ]] || { echo "OAUTH_RESOURCE_SERVER_IDENTIFIER must be an https URI." >&2; exit 2; }
 for value in "$PUBLIC_API_THROTTLE_RATE_LIMIT" "$PUBLIC_API_THROTTLE_BURST_LIMIT"; do
-  [[ "$value" =~ ^[1-9][0-9]*$ && "$value" -le 10 ]] || { echo "public throttle settings must be integers from 1 through 10." >&2; exit 2; }
+  [[ "$value" =~ ^[1-9][0-9]*$ && "$value" -le 20 ]] || { echo "public throttle settings must be integers from 1 through 20." >&2; exit 2; }
 done
 if [[ -n "$BROWSER_CLIENT_ID" && ! "$BROWSER_CLIENT_ID" =~ ^[A-Za-z0-9_-]{1,128}$ ]]; then
   echo "BROWSER_CLIENT_ID is invalid." >&2
   exit 2
 fi
 [[ "$TRIAL_ENABLED" == "false" || "$TRIAL_ENABLED" == "true" ]] || { echo "TRIAL_ENABLED must be true or false." >&2; exit 2; }
+for value in "$TENANT_DAILY_REQUEST_LIMIT" "$TENANT_DAILY_COST_LIMIT_MICRO_USD" "$TENANT_REQUEST_COST_RESERVATION_MICRO_USD"; do
+  [[ "$value" =~ ^[1-9][0-9]*$ ]] || { echo "tenant limits must be positive integers." >&2; exit 2; }
+done
+[[ "$TENANT_REQUEST_COST_RESERVATION_MICRO_USD" -le "$TENANT_DAILY_COST_LIMIT_MICRO_USD" ]] || { echo "tenant reservation cannot exceed daily cap." >&2; exit 2; }
 if [[ "$TRIAL_ENABLED" == "true" ]]; then
   for required in TRIAL_EXPIRES_AT TRIAL_IP_HASH_KEY TRIAL_PER_IP_DAILY_LIMIT \
     TRIAL_ORIGIN_KEY TRIAL_DAILY_REQUEST_LIMIT TRIAL_DAILY_COST_LIMIT_MICRO_USD TRIAL_REQUEST_COST_RESERVATION_MICRO_USD; do
@@ -52,6 +59,9 @@ parameters=(
   "AlarmEmail=$ALARM_EMAIL"
   "ApiThrottleRateLimit=$PUBLIC_API_THROTTLE_RATE_LIMIT"
   "ApiThrottleBurstLimit=$PUBLIC_API_THROTTLE_BURST_LIMIT"
+  "TenantDailyRequestLimit=$TENANT_DAILY_REQUEST_LIMIT"
+  "TenantDailyCostLimitMicroUsd=$TENANT_DAILY_COST_LIMIT_MICRO_USD"
+  "TenantRequestCostReservationMicroUsd=$TENANT_REQUEST_COST_RESERVATION_MICRO_USD"
 )
 if [[ -n "$BROWSER_CLIENT_ID" ]]; then
   parameters+=("BrowserClientId=$BROWSER_CLIENT_ID")

@@ -26,6 +26,11 @@ from quantify.anonymous_trial import (
     TrialUnavailableError,
     load_anonymous_trial_admission,
 )
+from quantify.tenant_admission import (
+    TenantLedgerUnavailableError,
+    TenantQuotaExceededError,
+    load_tenant_admission,
+)
 
 
 _CIK_PATTERN = re.compile(r"^\d{1,10}$")
@@ -45,6 +50,13 @@ def handler(event: dict[str, object], _context: object) -> dict[str, object]:
 def verify(event: Mapping[str, object]) -> dict[str, object]:
     """Run exactly one private core verification and expose only safe fields."""
 
+    cik, analysis, as_of_date = _validated_request(event)
+    return invoke_quantify_verify(cik=cik, analysis=analysis, as_of_date=as_of_date)
+
+
+def _validated_request(event: Mapping[str, object]) -> tuple[str, str, str]:
+    """Validate a request before it can consume any admission capacity."""
+
     try:
         cik = event["cik"]
         analysis = event["analysis"]
@@ -61,8 +73,7 @@ def verify(event: Mapping[str, object]) -> dict[str, object]:
         date.fromisoformat(as_of_date)
     except ValueError as error:
         raise ValueError("as_of_date must be an ISO calendar date") from error
-
-    return invoke_quantify_verify(cik=cik, analysis=analysis, as_of_date=as_of_date)
+    return cik, analysis, as_of_date
 
 
 def invoke_quantify_verify(*, cik: str, analysis: str, as_of_date: str) -> dict[str, object]:
@@ -98,13 +109,25 @@ def _api_gateway_response(event: Mapping[str, object]) -> dict[str, object]:
         if path not in {_PUBLIC_ROUTE, _TRIAL_ROUTE}:
             return _response(404, {"error": "not_found"})
         payload = _decode_json_body(event)
+        cik, analysis, as_of_date = _validated_request(payload)
         if path == _TRIAL_ROUTE:
             _reserve_anonymous_trial(event=event, request_context=request_context)
-        return _response(200, verify(payload))
+        else:
+            _reserve_authenticated_tenant(request_context=request_context)
+        return _response(
+            200,
+            invoke_quantify_verify(
+                cik=cik, analysis=analysis, as_of_date=as_of_date
+            ),
+        )
     except TrialLimitError:
         return _response(429, {"error": "trial_limit_reached"})
     except TrialUnavailableError:
         return _response(503, {"error": "trial_unavailable"})
+    except TenantQuotaExceededError:
+        return _response(429, {"error": "tenant_quota_exhausted"})
+    except TenantLedgerUnavailableError:
+        return _response(503, {"error": "tenant_admission_unavailable"})
     except ValueError:
         return _response(400, {"error": "invalid_request"})
     except Exception:
@@ -158,9 +181,33 @@ def _reserve_anonymous_trial(*, event: Mapping[str, object], request_context: Ma
     admission.reserve(source_ip=source_ip)
 
 
+def _reserve_authenticated_tenant(*, request_context: Mapping[str, object]) -> None:
+    """Reserve an authenticated tenant budget before forwarding report text."""
+
+    authorizer = request_context.get("authorizer")
+    jwt = authorizer.get("jwt") if isinstance(authorizer, Mapping) else None
+    claims = jwt.get("claims") if isinstance(jwt, Mapping) else None
+    tenant_id = claims.get("sub") if isinstance(claims, Mapping) else None
+    if not isinstance(tenant_id, str) or not tenant_id.strip():
+        raise TenantLedgerUnavailableError("tenant identity is unavailable")
+    try:
+        import boto3
+    except ImportError as error:  # pragma: no cover - Lambda base image provides boto3.
+        raise TenantLedgerUnavailableError("tenant admission is unavailable") from error
+    admission = load_tenant_admission(
+        environment=os.environ, client=boto3.client("dynamodb")
+    )
+    admission.reserve(tenant_id=tenant_id)
+
+
 def _application_path(*, event: Mapping[str, object], request_context: Mapping[str, object]) -> str:
     """Remove API Gateway's named stage before comparing the public allowlist."""
 
+    route_key = event.get("routeKey")
+    if isinstance(route_key, str):
+        method, separator, route_path = route_key.partition(" ")
+        if method == "POST" and separator and route_path.startswith("/"):
+            return route_path
     raw_path = event.get("rawPath")
     if not isinstance(raw_path, str):
         return ""

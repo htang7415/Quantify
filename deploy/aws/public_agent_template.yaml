@@ -27,14 +27,14 @@ Parameters:
     Description: Email recipient for public-edge operational alarms.
   ApiThrottleRateLimit:
     Type: Number
-    Default: 1
+    Default: 5
     MinValue: 1
-    MaxValue: 10
+    MaxValue: 20
   ApiThrottleBurstLimit:
     Type: Number
-    Default: 1
+    Default: 5
     MinValue: 1
-    MaxValue: 10
+    MaxValue: 20
   BrowserClientId:
     Type: String
     Default: ""
@@ -44,11 +44,11 @@ Parameters:
     Type: String
     Default: "false"
     AllowedValues: ["false", "true"]
-    Description: Enables only the temporary anonymous trial route; false fails closed.
+    Description: Enables the separately bounded no-sign-up agent route; false fails closed.
   TrialExpiresAt:
     Type: String
     Default: ""
-    Description: UTC ISO-8601 expiry for the anonymous trial.
+    Description: UTC ISO-8601 renewal point for the no-sign-up agent route.
     AllowedPattern: ^$|^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$
   TrialIpHashKey:
     Type: String
@@ -64,24 +64,42 @@ Parameters:
     Description: Secret CloudFront-to-origin header required by the anonymous trial route.
   TrialPerIpDailyLimit:
     Type: Number
-    Default: 2
-    MinValue: 1
-    MaxValue: 10
-  TrialDailyRequestLimit:
-    Type: Number
     Default: 100
     MinValue: 1
     MaxValue: 1000
+  TrialDailyRequestLimit:
+    Type: Number
+    Default: 100000
+    MinValue: 1
+    MaxValue: 1000000
   TrialDailyCostLimitMicroUsd:
     Type: Number
-    Default: 250000
+    Default: 250000000
     MinValue: 1
-    MaxValue: 10000000
+    MaxValue: 2500000000
   TrialRequestCostReservationMicroUsd:
     Type: Number
     Default: 2500
     MinValue: 1
     MaxValue: 100000
+  TenantDailyRequestLimit:
+    Type: Number
+    Default: 5
+    MinValue: 1
+    MaxValue: 100000
+    Description: Per-authenticated-tenant daily request admission limit.
+  TenantDailyCostLimitMicroUsd:
+    Type: Number
+    Default: 15000
+    MinValue: 1
+    MaxValue: 1000000000
+    Description: Per-authenticated-tenant daily reserved model-cost cap in micro-USD.
+  TenantRequestCostReservationMicroUsd:
+    Type: Number
+    Default: 2500
+    MinValue: 1
+    MaxValue: 100000
+    Description: Worst-case model-cost reservation before an authenticated request.
 
 Conditions:
   HasBrowserClient: !Not [!Equals [!Ref BrowserClientId, ""]]
@@ -224,6 +242,17 @@ Resources:
                 Condition:
                   ForAnyValue:StringEquals:
                     dynamodb:EnclosingOperation: TransactWriteItems
+        - PolicyName: ReserveAuthenticatedTenantCapacity
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: dynamodb:UpdateItem
+                Resource:
+                  - !GetAtt TenantUsageLedger.Arn
+                Condition:
+                  ForAnyValue:StringEquals:
+                    dynamodb:EnclosingOperation: TransactWriteItems
 
   AnonymousTrialLedger:
     Type: AWS::DynamoDB::Table
@@ -231,6 +260,25 @@ Resources:
     UpdateReplacePolicy: Retain
     Properties:
       TableName: !Sub ${AWS::StackName}-anonymous-trial-ledger
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: bucket
+          AttributeType: S
+      KeySchema:
+        - AttributeName: bucket
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expires_at
+        Enabled: true
+      SSESpecification:
+        SSEEnabled: true
+
+  TenantUsageLedger:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub ${AWS::StackName}-tenant-usage-ledger
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: bucket
@@ -273,6 +321,10 @@ Resources:
           QUANTIFY_TRIAL_IP_HASH_KEY: !Ref TrialIpHashKey
           QUANTIFY_TRIAL_ORIGIN_KEY: !Ref TrialOriginKey
           QUANTIFY_TRIAL_EXPIRES_AT: !Ref TrialExpiresAt
+          QUANTIFY_TENANT_USAGE_LEDGER_TABLE_NAME: !Ref TenantUsageLedger
+          QUANTIFY_TENANT_DAILY_REQUEST_LIMIT: !Ref TenantDailyRequestLimit
+          QUANTIFY_TENANT_DAILY_COST_LIMIT_MICRO_USD: !Ref TenantDailyCostLimitMicroUsd
+          QUANTIFY_TENANT_REQUEST_COST_RESERVATION_MICRO_USD: !Ref TenantRequestCostReservationMicroUsd
       Events:
         Verify:
           Type: HttpApi

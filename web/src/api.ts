@@ -46,10 +46,10 @@ export async function verifyAnalysis(
   });
 
   if (response.status === 429) {
-    throw new Error("The anonymous trial limit has been reached. Please try again tomorrow.");
+    throw new Error("The open agent has reached a temporary capacity limit. Please try again shortly.");
   }
   if (!authenticated && response.status === 503) {
-    throw new Error("The limited trial is temporarily unavailable. Please try again later.");
+    throw new Error("The open agent is temporarily unavailable. Please try again later.");
   }
   if (!response.ok) {
     throw new Error("Quantify verification is currently unavailable.");

@@ -38,12 +38,12 @@ describe("Quantify web app", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("Sign-in is not configured in this preview.");
   });
 
-  it("explains the bounded anonymous trial when it is enabled", () => {
+  it("explains open no-sign-up access when it is enabled", () => {
     vi.stubEnv("VITE_QUANTIFY_TRIAL_URL", "/v1/trial/verify");
     render(<App />);
 
-    expect(screen.getByText(/Limited no-sign-up trial/)).toBeInTheDocument();
-    expect(screen.getByText(/Trial availability is capped/)).toBeInTheDocument();
+    expect(screen.getByText(/Open access: no sign-up required/)).toBeInTheDocument();
+    expect(screen.getByText(/may slow temporarily/)).toBeInTheDocument();
   });
 
   it("submits bounded analysis and renders the safe result", async () => {

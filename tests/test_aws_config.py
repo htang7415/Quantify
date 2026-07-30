@@ -104,10 +104,14 @@ def test_public_agent_template_keeps_the_authenticated_route_and_bounds_the_tria
     assert "TrialExpiresAt:" in template
     assert "TrialIpHashKey:" in template
     assert "TrialOriginKey:" in template
+    assert "TenantDailyRequestLimit:" in template
+    assert "TenantDailyCostLimitMicroUsd:" in template
+    assert "TenantUsageLedger:" in template
     assert "AWS::DynamoDB::Table" in template
     assert "dynamodb:UpdateItem" in template
     assert "dynamodb:EnclosingOperation: TransactWriteItems" in template
     assert "QUANTIFY_TRIAL_ORIGIN_KEY" in template
+    assert "QUANTIFY_TENANT_USAGE_LEDGER_TABLE_NAME" in template
     assert "quantify.agent_lambda.handler" in template
     assert "QUANTIFY_CORE_URL" in template
     assert "execute-api:Invoke" in template
@@ -140,7 +144,7 @@ def test_web_preview_uses_a_no_secret_pkce_client_and_proxies_only_the_safe_rout
     assert "/verify" in template
     assert "PathPattern: /v1/agent/verify" in template
     assert "PathPattern: /v1/trial/verify" in template
-    assert "X-Quantify-Trial-Origin" in template
+    assert "HeaderName: X-Quantify-Trial-Origin" in template
     assert "- POST" in template
     assert "- PUT" in template
     assert "Authorization" in template

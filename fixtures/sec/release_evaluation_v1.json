@@ -1,0 +1,18 @@
+{
+  "corpus_version": "1.0.0",
+  "purpose": "Frozen mechanical regression evidence required before releasing the embedded Apple and Microsoft SEC fixture set.",
+  "cases": [
+    {
+      "path": "aapl_revenue_regression.json",
+      "sha256": "fec362af6f12f5ac5d9cad928948034544ea2a6f2dcbe88952316c24a5009e39"
+    },
+    {
+      "path": "msft_revenue_regression.json",
+      "sha256": "97828c943d5284a1c304b8d99bc620988542e9986a8e153744e68033dca473ef"
+    },
+    {
+      "path": "msft_fundamentals_regression.json",
+      "sha256": "5e7207c4e7460a661d45bdc9234194f9ceb0cff665dd716a4a84f0e7cc30d113"
+    }
+  ]
+}

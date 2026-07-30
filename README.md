@@ -69,26 +69,24 @@ creates a separate no-secret Cognito authorization-code + PKCE client, permits
 only its exact CloudFront and local callback URLs, and adds that client ID to
 the existing API JWT audience. The static application is delivered from a
 private S3 bucket through CloudFront. Its only API origins are the scoped
-`POST /v1/agent/verify` route and, when explicitly enabled, a temporary
-anonymous `POST /v1/trial/verify` route. It has no direct core origin or
+`POST /v1/agent/verify` route and, when explicitly enabled, a no-sign-up
+`POST /v1/trial/verify` route. It has no direct core origin or
 browser-visible credentials.
 
-For the current no-signup test, the anonymous route is deliberately separate
+For the current no-sign-up agent, the anonymous route is deliberately separate
 from the Cognito route. CloudFront supplies a private origin header, Lambda
 rejects direct calls without it, and DynamoDB atomically caps hashed-viewer-IP,
 daily request, and reserved model-cost use before the private core runs. The
-route is fail-closed and expires at `TRIAL_EXPIRES_AT`; it must not be treated
-as a commercial authentication design. Report text is not put in browser
+route is fail-closed and must be explicitly renewed at `TRIAL_EXPIRES_AT`.
+Report text is not put in browser
 storage or public API/Lambda logs.
 
 Use [`web/.env.example`](web/.env.example) for local public configuration, run
 `npm --prefix web run dev`, and use `npm --prefix web test -- --run` before a
 preview deploy. The guarded [`deploy/aws/deploy_web_preview.sh`](deploy/aws/deploy_web_preview.sh)
 builds the app, uploads it, and invalidates CloudFront only when both web-preview
-and public-agent deployment authorizations are supplied. It does not invite
-people: an operator must explicitly create Cognito users and securely share
-their temporary credentials with named testers. To publish the temporary
-no-signup test after its backend and CloudFront configuration are deployed,
+and public-agent deployment authorizations are supplied. To publish the open
+no-sign-up agent after its backend and CloudFront configuration are deployed,
 use the asset script with `TRIAL_ENABLED=true`. The frontend receives only the
 relative trial path; the expiry, keys, and limits remain server-side.
 

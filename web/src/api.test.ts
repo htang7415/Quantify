@@ -50,12 +50,12 @@ describe("safe public-agent response parser", () => {
     );
   });
 
-  it("explains an exhausted anonymous limit without retaining the request", async () => {
+  it("explains temporary open-agent capacity without retaining the request", async () => {
     vi.stubEnv("VITE_QUANTIFY_TRIAL_URL", "/v1/trial/verify");
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 429 }));
 
     await expect(
       verifyAnalysis({ cik: "0000789019", analysis: "Microsoft revenue increased.", as_of_date: "2024-07-30" })
-    ).rejects.toThrow("anonymous trial limit");
+    ).rejects.toThrow("open agent has reached a temporary capacity limit");
   });
 });

@@ -17,7 +17,11 @@ def _event(
         "rawPath": path,
         "body": body,
         "isBase64Encoded": False,
-        "requestContext": {"http": {"method": method, "sourceIp": source_ip}, **({"stage": stage} if stage else {})},
+        "requestContext": {
+            "http": {"method": method, "sourceIp": source_ip},
+            "authorizer": {"jwt": {"claims": {"sub": "tenant-test"}}},
+            **({"stage": stage} if stage else {}),
+        },
         **({"headers": headers} if headers is not None else {}),
     }
 
@@ -45,6 +49,7 @@ def test_public_agent_route_returns_only_safe_contract(monkeypatch: pytest.Monke
         return _safe_result()
 
     monkeypatch.setattr(agent_lambda, "invoke_quantify_verify", invoke)
+    monkeypatch.setattr(agent_lambda, "_reserve_authenticated_tenant", lambda **_: None)
     response = agent_lambda.handler(
         _event(body=json.dumps({"cik": "0000789019", "analysis": "Microsoft revenue increased.", "as_of_date": "2024-07-30"})),
         object(),
@@ -62,6 +67,7 @@ def test_public_agent_route_returns_only_safe_contract(monkeypatch: pytest.Monke
 
 def test_public_agent_route_accepts_api_gateway_named_stage(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(agent_lambda, "invoke_quantify_verify", lambda **_: _safe_result())
+    monkeypatch.setattr(agent_lambda, "_reserve_authenticated_tenant", lambda **_: None)
 
     response = agent_lambda.handler(
         _event(
@@ -73,6 +79,88 @@ def test_public_agent_route_accepts_api_gateway_named_stage(monkeypatch: pytest.
     )
 
     assert response["statusCode"] == 200
+
+
+def test_public_agent_route_uses_api_gateway_route_key_when_stage_path_is_ambiguous(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(agent_lambda, "invoke_quantify_verify", lambda **_: _safe_result())
+    monkeypatch.setattr(agent_lambda, "_reserve_authenticated_tenant", lambda **_: None)
+    event = _event(
+        path="/production/v1/agent/verify",
+        stage="$default",
+        body=json.dumps({"cik": "0000789019", "analysis": "Microsoft revenue increased.", "as_of_date": "2024-07-30"}),
+    )
+    event["routeKey"] = "POST /v1/agent/verify"
+
+    response = agent_lambda.handler(event, object())
+
+    assert response["statusCode"] == 200
+
+
+def test_authenticated_tenant_admission_precedes_private_core(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    steps: list[str] = []
+    monkeypatch.setattr(
+        agent_lambda,
+        "_reserve_authenticated_tenant",
+        lambda **_: steps.append("tenant"),
+    )
+    monkeypatch.setattr(
+        agent_lambda,
+        "invoke_quantify_verify",
+        lambda **_: (steps.append("core") or _safe_result()),
+    )
+
+    response = agent_lambda.handler(
+        _event(
+            body=json.dumps(
+                {
+                    "cik": "0000789019",
+                    "analysis": "Microsoft revenue increased.",
+                    "as_of_date": "2024-07-30",
+                }
+            )
+        ),
+        object(),
+    )
+
+    assert response["statusCode"] == 200
+    assert steps == ["tenant", "core"]
+
+
+def test_authenticated_tenant_quota_fails_closed_before_private_core(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        agent_lambda,
+        "_reserve_authenticated_tenant",
+        lambda **_: (_ for _ in ()).throw(
+            agent_lambda.TenantQuotaExceededError("quota")
+        ),
+    )
+    monkeypatch.setattr(
+        agent_lambda,
+        "invoke_quantify_verify",
+        lambda **_: pytest.fail("core invoked"),
+    )
+
+    response = agent_lambda.handler(
+        _event(
+            body=json.dumps(
+                {
+                    "cik": "0000789019",
+                    "analysis": "Microsoft revenue increased.",
+                    "as_of_date": "2024-07-30",
+                }
+            )
+        ),
+        object(),
+    )
+
+    assert response["statusCode"] == 429
+    assert json.loads(response["body"]) == {"error": "tenant_quota_exhausted"}
 
 
 def test_anonymous_trial_reserves_capacity_before_invoking_the_private_core(

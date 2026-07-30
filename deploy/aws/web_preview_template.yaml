@@ -79,9 +79,6 @@ Resources:
           Headers:
             - Authorization
             - Content-Type
-            # This header is overwritten by the configured CloudFront origin
-            # header, then forwarded to the anonymous trial Lambda boundary.
-            - X-Quantify-Trial-Origin
         QueryStringsConfig:
           QueryStringBehavior: none
 

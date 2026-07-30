@@ -88,7 +88,7 @@ export function App({ verifier = verifyAnalysis }: { verifier?: Verifier }) {
           <a href="#trust">Trust</a>
         </div>
         {anonymousTrial ? (
-          <a className="button button-dark button-compact" href="#verify">Try Quantify</a>
+          <a className="button button-dark button-compact" href="#verify">Open agent</a>
         ) : (
           <button className="button button-dark button-compact" type="button" onClick={() => void signIn()}>
             Sign in
@@ -213,10 +213,10 @@ export function App({ verifier = verifyAnalysis }: { verifier?: Verifier }) {
             />
             <p className="field-note">
               {anonymousTrial
-                ? "Limited no-sign-up trial: two verifications per network each day. Your analysis is sent only when you verify and is not stored in this browser."
+                ? "Open access: no sign-up required. Your analysis is sent only when you verify and is not stored in this browser."
                 : "Your analysis is sent only when you verify. This prototype does not store it in the browser."}
             </p>
-            {anonymousTrial && <p className="trial-notice">Trial availability is capped and may close without notice.</p>}
+            {anonymousTrial && <p className="trial-notice">The agent uses a frozen evidence release and may slow temporarily to protect reliability.</p>}
             {error && <p className="form-error" role="alert">{error}</p>}
             <button className="button button-dark button-submit" type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Verifying…" : "Verify analysis"} <span aria-hidden="true">↗</span>
