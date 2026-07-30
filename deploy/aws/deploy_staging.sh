@@ -7,8 +7,27 @@ if [[ "${QUANTIFY_AUTHORIZE_AWS_STAGING_DEPLOY:-}" != "1" ]]; then
   exit 2
 fi
 for required in AWS_REGION AWS_STACK_NAME IMAGE_URI IMAGE_DIGEST GEMINI_SECRET_ARN \
-  GEMINI_SECRET_VERSION_ID SMOKE_PRINCIPAL_ARN RESERVED_CONCURRENCY; do
+  GEMINI_SECRET_VERSION_ID SMOKE_PRINCIPAL_ARN CALLER_PRINCIPAL_ARN \
+  RESERVED_CONCURRENCY ALARM_EMAIL; do
   : "${!required:?set $required}"
+done
+AUDIT_RETENTION_DAYS="${AUDIT_RETENTION_DAYS:-90}"
+[[ "$AUDIT_RETENTION_DAYS" =~ ^(30|90|365)$ ]] || {
+  echo "AUDIT_RETENTION_DAYS must be one of 30, 90, or 365." >&2
+  exit 2
+}
+API_THROTTLE_RATE_LIMIT="${API_THROTTLE_RATE_LIMIT:-2}"
+API_THROTTLE_BURST_LIMIT="${API_THROTTLE_BURST_LIMIT:-2}"
+MONTHLY_COST_LIMIT_MICRO_USD="${MONTHLY_COST_LIMIT_MICRO_USD:-10000000}"
+[[ "$MONTHLY_COST_LIMIT_MICRO_USD" =~ ^[1-9][0-9]*$ && "$MONTHLY_COST_LIMIT_MICRO_USD" -ge 12384 ]] || {
+  echo "MONTHLY_COST_LIMIT_MICRO_USD must cover one maximum request." >&2
+  exit 2
+}
+for throttle_setting in API_THROTTLE_RATE_LIMIT API_THROTTLE_BURST_LIMIT; do
+  [[ "${!throttle_setting}" =~ ^[1-9][0-9]*$ && "${!throttle_setting}" -le 10 ]] || {
+    echo "$throttle_setting must be a whole number from 1 through 10." >&2
+    exit 2
+  }
 done
 [[ "$IMAGE_URI" =~ @sha256:[0-9a-f]{64}$ ]] || {
   echo "IMAGE_URI must be an immutable @sha256 reference." >&2
@@ -44,4 +63,10 @@ command -v "$aws_bin" >/dev/null 2>&1 || {
     "GeminiSecretArn=$GEMINI_SECRET_ARN" \
     "GeminiSecretVersionId=$GEMINI_SECRET_VERSION_ID" \
     "SmokePrincipalArn=$SMOKE_PRINCIPAL_ARN" \
+    "CallerPrincipalArn=$CALLER_PRINCIPAL_ARN" \
+    "AlarmEmail=$ALARM_EMAIL" \
+    "AuditRetentionDays=$AUDIT_RETENTION_DAYS" \
+    "ApiThrottleRateLimit=$API_THROTTLE_RATE_LIMIT" \
+    "ApiThrottleBurstLimit=$API_THROTTLE_BURST_LIMIT" \
+    "MonthlyCostLimitMicroUsd=$MONTHLY_COST_LIMIT_MICRO_USD" \
     "ReservedConcurrency=$RESERVED_CONCURRENCY"

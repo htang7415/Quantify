@@ -315,14 +315,19 @@ pinned secret, Gemini model, or extraction schema is unavailable, the request
 fails closed; Quantify neither switches models nor performs an unrecorded
 fallback retry.
 
-Billing alerts are not hard quotas. Private IAM access, a Lambda
-reserved-concurrency cap when quota permits, report/model input caps, and one
-model call per request bound V1 capacity and spend. The first private staging
-stack uses the unreserved pool because its new AWS account quota is too small to
-reserve capacity while retaining Lambda's required unreserved allocation. Later
-environments may reserve a cap only after an explicit Gemini quota, latency,
-cost, and throttling review. This does not implement a per-identity or per-day
-request quota; durable tenant quotas and billing remain deferred.
+Private IAM access, API throttling, report/model input caps, one model call per
+request, and the private staging monthly model-cost reservation ledger bound V1
+capacity and spend. The first staging stack uses the unreserved Lambda pool
+because its new AWS account quota is too small to reserve capacity while
+retaining Lambda's required unreserved allocation. Per-identity and tenant
+quotas remain deferred.
+
+Private staging emits aggregate-only request metrics and pinned-model failure
+records to CloudWatch Logs. It also creates alarms for Lambda errors,
+near-timeout duration, throttles, API Gateway 5xx responses, and pinned-model
+unavailability. The staging stack routes these alarms to one SNS email
+subscription after the recipient confirms AWS's subscription message; logs and
+alarms must never contain report text, SEC payloads, or secret values.
 
 ## 13. Deployment Quality Gate
 
@@ -341,6 +346,10 @@ logs contain no report text, API key, or SEC payload
 timeout and invalid structured output fail closed
 unavailable pinned model or schema returns the typed fail-closed response
 deployed request path cannot invoke live SEC retrieval or secondary model calls
+audit persistence failure returns its typed fail-closed response
+monthly cost-cap rejection occurs before the model call
+caller role has only the two API invoke permissions
+API throttling is configured
 ```
 
 Promotion, traffic changes, external release, secret binding, and cloud resource
@@ -356,10 +365,47 @@ deployed in `us-east-2` with an immutable ECR image, pinned Secrets Manager
 version, API Gateway AWS_IAM authentication, and a successful authenticated
 smoke request. It is not a production release.
 
-Next, improve staging observability and smoke coverage, inspect redacted logs,
-and decide the audit-retention, caller-identity, quota, cost, and alerting
-contracts required before proposing a separate production stack. Never create a
-production stack merely because private staging smoke passes.
+The deployed staging smoke, ECR basic scan, and a schema/redaction inspection
+of the Lambda and API access logs have passed. The repeatable
+`deploy/aws/validate_observability.sh` check reports only record counts and
+rejects unexpected log fields or smoke-report/credential-like fragments.
+
+The deployed staging baseline includes a private S3 audit-manifest
+bucket: public access is blocked, objects require AWS KMS encryption, the
+Lambda role may only put canonical manifests, and lifecycle expiration is a
+reversible 90-day default (30, 90, or 365 days). A deployed authenticated
+smoke request created and validated the canonical encrypted object. A storage
+failure prevents publication of the verification result with a typed fail-closed
+response.
+
+Private staging also has a distinct one-hour `QuantifyCallerRole`. It trusts
+only the configured operator identity and permits only the two deployed API
+routes; it has no S3, Secrets Manager, Lambda, or administrative permissions.
+The authenticated smoke contract passes while using that role rather than the
+administrator session.
+
+Private staging applies a stage-wide API Gateway token-bucket limit of two
+requests per second with a burst of two. This bounds uncached pinned-model
+calls because V1 performs at most one extraction per verification request.
+CloudWatch alarms when more than twenty verified requests arrive in five
+minutes.
+
+With the approved $10 paid Gemini cap, staging pins the standard
+`gemini-3.1-flash-lite` price contract ($0.25 input and $1.50 output per
+million tokens) and reserves a conservative maximum cost in a private DynamoDB
+ledger before each uncached model call. The first request of the month reserved
+12,384 micro-USD; a failed reservation returns the typed fail-closed cap
+response before Gemini is invoked.
+
+Next, establish the matching Google-side Gemini billing budget and revisit the
+AWS Lambda quota before setting a reserved-concurrency cap. Never create a
+production stack merely because private staging checks pass.
+
+An external AI agent may use Quantify only through the narrow
+`quantify_verify(cik, analysis, as_of_date)` adapter. It must use the restricted
+caller role, preserve every returned verdict and evidence-scope limitation, and
+must not turn a verification result into investment advice, retrieve additional
+evidence, or introduce a multi-agent workflow.
 
 ## 15. Deferred Capabilities
 

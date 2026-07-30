@@ -6,7 +6,7 @@ from dataclasses import asdict, replace
 from datetime import date
 from collections import Counter
 from time import perf_counter
-from typing import Callable, Protocol
+from typing import Callable, Mapping, Protocol
 
 from quantify.api import VerifyRequest
 from quantify.engine import ClaimVerdict, EvidenceSnapshot
@@ -21,7 +21,7 @@ from quantify.harness import (
     approve_acquisition_requests,
     assess_coverage,
 )
-from quantify.runtime import ModelUnavailableError
+from quantify.runtime import AuditPersistenceError, ModelUnavailableError
 
 
 class SnapshotProvider(Protocol):
@@ -58,6 +58,8 @@ class ApplicationService:
         disclosure_detector: DisclosureDetector | None = None,
         verification_cache: VerificationCache[dict] | None = None,
         metrics_sink: Callable[[RequestMetrics], None] | None = None,
+        audit_manifest_sink: Callable[[Mapping[str, object]], None] | None = None,
+        before_model_call: Callable[[], None] | None = None,
         extraction_model: str = "unconfigured",
         prompt_hash: str | None = None,
         temperature: float | None = None,
@@ -78,6 +80,8 @@ class ApplicationService:
         self._disclosure_detector = disclosure_detector
         self._cache = verification_cache or VerificationCache()
         self._metrics_sink = metrics_sink
+        self._audit_manifest_sink = audit_manifest_sink
+        self._before_model_call = before_model_call
         self._extraction_model = extraction_model
         self._prompt_hash = prompt_hash
         self._temperature = temperature
@@ -200,6 +204,8 @@ class ApplicationService:
         def compute() -> dict:
             nonlocal extraction_elapsed, disclosure_elapsed
             nonlocal input_tokens, output_tokens, total_cost
+            if self._before_model_call is not None:
+                self._before_model_call()
             extraction_started_at = self._clock()
             extraction = self._extractor.extract(
                 report_text=request.analysis, snapshot=build.snapshot
@@ -244,6 +250,7 @@ class ApplicationService:
             key=cache_key, compute=compute
         )
         response = {**response, "verification_cache_hit": verification_cache_hit}
+        self._persist_audit_manifest(response=response)
         self._emit_metrics(
             response=response,
             build=build,
@@ -259,6 +266,23 @@ class ApplicationService:
             cik=cik,
         )
         return response
+
+    def _persist_audit_manifest(self, *, response: Mapping[str, object]) -> None:
+        """Durably record the canonical audit manifest before publishing a verdict."""
+
+        if self._audit_manifest_sink is None:
+            return
+        manifest = response.get("audit_manifest")
+        if not isinstance(manifest, Mapping):
+            raise AuditPersistenceError("verification response has no audit manifest")
+        try:
+            self._audit_manifest_sink(manifest)
+        except AuditPersistenceError:
+            raise
+        except Exception as error:
+            raise AuditPersistenceError(
+                "audit manifest persistence did not complete"
+            ) from error
 
     def _network_call_count(self) -> int:
         return self._sec_network_call_count() if self._sec_network_call_count else 0

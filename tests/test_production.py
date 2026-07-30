@@ -52,12 +52,13 @@ class _Transport:
         }
 
 
-def _app(*, transport: _Transport) -> TestClient:
+def _app(*, transport: _Transport, audit_manifest_sink=None) -> TestClient:
     return TestClient(
         create_production_app(
             api_key="test-key",
             image_digest="sha256:test-image",
             transport=transport,
+            audit_manifest_sink=audit_manifest_sink,
         )
     )
 
@@ -136,6 +137,41 @@ def test_production_request_uses_one_model_call_and_embedded_evidence_only(monke
     )
 
 
+def test_production_persists_the_canonical_manifest_before_returning_a_verdict() -> None:
+    stored: list[dict[str, object]] = []
+
+    response = _app(transport=_Transport(), audit_manifest_sink=stored.append).post(
+        "/v1/companies/789019/verify", json=_request()
+    )
+
+    assert response.status_code == 200
+    assert len(stored) == 1
+    assert stored[0]["manifest_hash"] == response.json()["audit_manifest"]["manifest_hash"]
+    assert _request()["analysis"] not in json.dumps(stored[0])
+
+
+def test_audit_persistence_failure_returns_typed_503_without_logging_report_text(caplog) -> None:
+    request = _request()
+
+    def unavailable_store(_manifest: object) -> None:
+        raise RuntimeError("storage unavailable")
+
+    with caplog.at_level("WARNING", logger="quantify.request_failure"):
+        response = _app(
+            transport=_Transport(), audit_manifest_sink=unavailable_store
+        ).post("/v1/companies/789019/verify", json=request)
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "audit_manifest_unavailable"
+    message = caplog.messages[-1]
+    assert request["analysis"] not in message
+    assert json.loads(message.removeprefix("quantify_request_failure=")) == {
+        "code": "audit_manifest_unavailable",
+        "event": "audit_manifest_unavailable",
+        "status_code": 503,
+    }
+
+
 def test_production_metrics_log_contains_aggregate_fields_but_not_report_text(caplog) -> None:
     report_text = "Confidential analysis text must never enter request metrics."
 
@@ -167,13 +203,23 @@ def test_production_metrics_log_contains_aggregate_fields_but_not_report_text(ca
     assert payload["company_cik"] == "0000789019"
 
 
-def test_unavailable_pinned_model_returns_typed_503() -> None:
-    response = _app(transport=_Transport(unavailable=True)).post(
-        "/v1/companies/789019/verify", json=_request()
-    )
+def test_unavailable_pinned_model_returns_typed_503_without_logging_report_text(caplog) -> None:
+    request = _request()
+    with caplog.at_level("WARNING", logger="quantify.request_failure"):
+        response = _app(transport=_Transport(unavailable=True)).post(
+            "/v1/companies/789019/verify", json=request
+        )
 
     assert response.status_code == 503
     assert response.json()["detail"]["code"] == "pinned_model_unavailable"
+    message = caplog.messages[-1]
+    assert message.startswith("quantify_request_failure={")
+    assert request["analysis"] not in message
+    assert json.loads(message.removeprefix("quantify_request_failure=")) == {
+        "code": "pinned_model_unavailable",
+        "event": "pinned_model_unavailable",
+        "status_code": 503,
+    }
 
 
 def test_production_rejects_oversized_reports_before_model_extraction() -> None:

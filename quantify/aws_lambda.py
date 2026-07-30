@@ -12,21 +12,131 @@ import base64
 from collections.abc import Awaitable, Callable, Mapping
 from functools import lru_cache
 import os
+import json
+import re
+import datetime as dt
 from typing import Any, Protocol
 from urllib.parse import unquote
 
 from fastapi import FastAPI
 
+from quantify.harness.audit import AuditManifest
+from quantify.cost_guard import GeminiCostPolicy
 from quantify.production import ProductionConfigurationError, create_production_app
+from quantify.runtime import (
+    AuditPersistenceError,
+    CostLedgerUnavailableError,
+    MonthlyCostLimitError,
+)
 
 
 _SECRET_ARN_ENV = "QUANTIFY_GEMINI_SECRET_ARN"
 _SECRET_VERSION_ENV = "QUANTIFY_GEMINI_SECRET_VERSION_ID"
 _IMAGE_DIGEST_ENV = "QUANTIFY_IMAGE_DIGEST"
+_AUDIT_BUCKET_ENV = "QUANTIFY_AUDIT_BUCKET_NAME"
+_COST_LEDGER_TABLE_ENV = "QUANTIFY_COST_LEDGER_TABLE_NAME"
+_MONTHLY_COST_LIMIT_ENV = "QUANTIFY_MONTHLY_COST_LIMIT_MICRO_USD"
+_AUDIT_STORAGE_SCHEMA_VERSION = "1.0.0"
+_MANIFEST_HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
 class SecretsManagerClient(Protocol):
     def get_secret_value(self, **kwargs: str) -> Mapping[str, object]: ...
+
+
+class S3Client(Protocol):
+    def put_object(self, **kwargs: object) -> Mapping[str, object]: ...
+
+
+class DynamoDbClient(Protocol):
+    def update_item(self, **kwargs: object) -> Mapping[str, object]: ...
+
+
+class DynamoMonthlyCostGuard:
+    def __init__(self, *, table_name: str, monthly_limit_micro_usd: int, client: DynamoDbClient) -> None:
+        self._table_name = table_name
+        self._limit = monthly_limit_micro_usd
+        self._client = client
+        self._reservation = GeminiCostPolicy().maximum_request_micro_usd
+
+    def reserve(self) -> None:
+        month = dt.datetime.now(dt.UTC).strftime("%Y-%m")
+        try:
+            self._client.update_item(
+                TableName=self._table_name,
+                Key={"month": {"S": month}},
+                UpdateExpression="SET reserved_micro_usd = if_not_exists(reserved_micro_usd, :zero) + :amount",
+                ConditionExpression="attribute_not_exists(reserved_micro_usd) OR reserved_micro_usd <= :remaining",
+                ExpressionAttributeValues={
+                    ":zero": {"N": "0"},
+                    ":amount": {"N": str(self._reservation)},
+                    ":remaining": {"N": str(self._limit - self._reservation)},
+                },
+            )
+        except Exception as error:
+            response = getattr(error, "response", None)
+            code = response.get("Error", {}).get("Code") if isinstance(response, Mapping) else None
+            if code == "ConditionalCheckFailedException":
+                raise MonthlyCostLimitError("monthly model-cost limit is reached") from error
+            raise CostLedgerUnavailableError("monthly cost ledger is unavailable") from error
+
+
+class S3AuditManifestStore:
+    """Write one canonical, encrypted audit record per semantic manifest."""
+
+    def __init__(self, *, bucket_name: str, client: S3Client) -> None:
+        self._bucket_name = bucket_name
+        self._client = client
+
+    def persist(self, manifest: Mapping[str, object]) -> None:
+        record, manifest_hash = self._canonical_record(manifest=manifest)
+        try:
+            self._client.put_object(
+                Bucket=self._bucket_name,
+                Key=f"audit-manifests/v1/{manifest_hash}.json",
+                Body=json.dumps(record, sort_keys=True, separators=(",", ":")).encode(),
+                ContentType="application/json",
+                ServerSideEncryption="aws:kms",
+                BucketKeyEnabled=True,
+                IfNoneMatch="*",
+                Metadata={
+                    "audit-storage-schema-version": _AUDIT_STORAGE_SCHEMA_VERSION,
+                    "manifest-hash": manifest_hash,
+                },
+            )
+        except Exception as error:
+            # A concurrent identical write is safe: the semantic hash and
+            # canonical payload are identical, so S3's conditional conflict
+            # means the durable record already exists.
+            response = getattr(error, "response", None)
+            code = response.get("Error", {}).get("Code") if isinstance(response, Mapping) else None
+            if code in {"PreconditionFailed", "412"}:
+                return
+            raise AuditPersistenceError("audit manifest persistence did not complete") from error
+
+    @staticmethod
+    def _canonical_record(*, manifest: Mapping[str, object]) -> tuple[dict[str, object], str]:
+        expected_keys = {"manifest_hash", *AuditManifest.__dataclass_fields__}
+        if set(manifest) != expected_keys:
+            raise AuditPersistenceError("audit manifest has an unsupported schema")
+        manifest_hash = manifest.get("manifest_hash")
+        if not isinstance(manifest_hash, str) or not _MANIFEST_HASH_PATTERN.fullmatch(manifest_hash):
+            raise AuditPersistenceError("audit manifest hash is invalid")
+        # Cache state belongs in aggregate observability, not durable replay
+        # data: it is deliberately excluded from the semantic manifest hash.
+        canonical_manifest = {
+            key: value
+            for key, value in manifest.items()
+            if key not in {"cache_hit", "manifest_hash"}
+        }
+        return (
+            {
+                "audit_storage_schema_version": _AUDIT_STORAGE_SCHEMA_VERSION,
+                "manifest_hash": manifest_hash,
+                "manifest": canonical_manifest,
+            },
+            manifest_hash,
+        )
 
 
 def load_pinned_gemini_api_key(
@@ -63,6 +173,8 @@ def create_aws_production_app(
     *,
     environment: Mapping[str, str] | None = None,
     secret_client: SecretsManagerClient | None = None,
+    audit_client: S3Client | None = None,
+    cost_ledger_client: DynamoDbClient | None = None,
 ) -> FastAPI:
     """Compose the existing production app with an AWS-pinned Gemini secret."""
 
@@ -70,11 +182,55 @@ def create_aws_production_app(
     api_key = load_pinned_gemini_api_key(
         environment=environment, secret_client=secret_client
     )
+    audit_manifest_store = load_audit_manifest_store(
+        environment=environment, client=audit_client
+    )
+    cost_guard = load_monthly_cost_guard(environment=environment, client=cost_ledger_client)
     return create_production_app(
         api_key=api_key,
         image_digest=environment.get(_IMAGE_DIGEST_ENV),
         environment=environment,
+        audit_manifest_sink=audit_manifest_store.persist,
+        before_model_call=cost_guard.reserve,
     )
+
+
+def load_audit_manifest_store(
+    *,
+    environment: Mapping[str, str] | None = None,
+    client: S3Client | None = None,
+) -> S3AuditManifestStore:
+    """Configure the mandatory private S3 audit store without reading objects."""
+
+    environment = environment if environment is not None else os.environ
+    bucket_name = environment.get(_AUDIT_BUCKET_ENV)
+    if not bucket_name:
+        raise ProductionConfigurationError("QUANTIFY_AUDIT_BUCKET_NAME is required")
+    if client is None:
+        try:
+            import boto3
+        except ImportError as error:  # pragma: no cover - Lambda base image provides boto3.
+            raise ProductionConfigurationError("AWS Lambda runtime boto3 is unavailable") from error
+        client = boto3.client("s3")
+    return S3AuditManifestStore(bucket_name=bucket_name, client=client)
+
+
+def load_monthly_cost_guard(*, environment: Mapping[str, str] | None = None, client: DynamoDbClient | None = None) -> DynamoMonthlyCostGuard:
+    environment = environment if environment is not None else os.environ
+    table_name = environment.get(_COST_LEDGER_TABLE_ENV)
+    raw_limit = environment.get(_MONTHLY_COST_LIMIT_ENV)
+    if not table_name or not raw_limit:
+        raise ProductionConfigurationError("QUANTIFY_COST_LEDGER_TABLE_NAME and QUANTIFY_MONTHLY_COST_LIMIT_MICRO_USD are required")
+    try:
+        limit = int(raw_limit)
+    except ValueError as error:
+        raise ProductionConfigurationError("monthly cost limit must be an integer micro-USD value") from error
+    if limit < GeminiCostPolicy().maximum_request_micro_usd:
+        raise ProductionConfigurationError("monthly cost limit cannot cover one maximum request")
+    if client is None:
+        import boto3
+        client = boto3.client("dynamodb")
+    return DynamoMonthlyCostGuard(table_name=table_name, monthly_limit_micro_usd=limit, client=client)
 
 
 AsgiApp = Callable[

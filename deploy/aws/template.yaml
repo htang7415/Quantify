@@ -21,6 +21,9 @@ Parameters:
   SmokePrincipalArn:
     Type: String
     Description: Exact IAM user or role ARN permitted to assume the smoke-invoker role.
+  CallerPrincipalArn:
+    Type: String
+    Description: Exact IAM user or role ARN permitted to assume the restricted staging caller role.
   StageName:
     Type: String
     Default: staging
@@ -31,6 +34,34 @@ Parameters:
     MinValue: 0
     MaxValue: 900
     Description: Explicit upper bound for requests; zero uses the account's unreserved pool.
+  AlarmEmail:
+    Type: String
+    Description: Email recipient for confirmed private-staging operational alerts.
+  ApiThrottleRateLimit:
+    Type: Number
+    Default: 2
+    MinValue: 1
+    MaxValue: 10
+    Description: Sustained private API requests per second across the staging stage.
+  ApiThrottleBurstLimit:
+    Type: Number
+    Default: 2
+    MinValue: 1
+    MaxValue: 10
+    Description: Maximum short private API request burst across the staging stage.
+  AuditRetentionDays:
+    Type: Number
+    Default: 90
+    AllowedValues:
+      - 30
+      - 90
+      - 365
+    Description: Days to retain private canonical audit manifests before lifecycle expiration.
+  MonthlyCostLimitMicroUsd:
+    Type: Number
+    Default: 10000000
+    MinValue: 12384
+    Description: Approved monthly Gemini cap in micro-USD; 10000000 is $10.00.
 
 Conditions:
   UseReservedConcurrency: !Not [!Equals [!Ref ReservedConcurrency, 0]]
@@ -48,6 +79,77 @@ Resources:
       LogGroupName: !Sub /aws/apigateway/${AWS::StackName}-quantify-staging
       RetentionInDays: 30
 
+  AuditManifestBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: true
+            ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-canonical-audit-manifests
+            Status: Enabled
+            Prefix: audit-manifests/
+            ExpirationInDays: !Ref AuditRetentionDays
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 1
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+
+  AuditManifestBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref AuditManifestBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt AuditManifestBucket.Arn
+              - !Sub ${AuditManifestBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+          - Sid: DenyUnencryptedObjectWrites
+            Effect: Deny
+            Principal: "*"
+            Action: s3:PutObject
+            Resource: !Sub ${AuditManifestBucket.Arn}/*
+            Condition:
+              StringNotEquals:
+                s3:x-amz-server-side-encryption: aws:kms
+
+  MonthlyCostLedger:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: month
+          AttributeType: S
+      KeySchema:
+        - AttributeName: month
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+
   ApiAccessLogDeliveryPolicy:
     Type: AWS::Logs::ResourcePolicy
     Properties:
@@ -61,7 +163,7 @@ Resources:
             Action:
               - logs:CreateLogStream
               - logs:PutLogEvents
-            Resource: !GetAtt ApiAccessLogGroup.Arn
+            Resource: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${ApiAccessLogGroup}:log-stream:*
 
   QuantifyApi:
     Type: AWS::Serverless::HttpApi
@@ -76,6 +178,9 @@ Resources:
         # trailing :* stream wildcard returned by GetAtt LogGroup.Arn.
         DestinationArn: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${ApiAccessLogGroup}
         Format: '{"requestId":"$context.requestId","status":"$context.status","routeKey":"$context.routeKey","responseLength":"$context.responseLength","integrationError":"$context.integrationErrorMessage"}'
+      DefaultRouteSettings:
+        ThrottlingRateLimit: !Ref ApiThrottleRateLimit
+        ThrottlingBurstLimit: !Ref ApiThrottleBurstLimit
 
   QuantifyExecutionRole:
     Type: AWS::IAM::Role
@@ -94,10 +199,13 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
+                  - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                # LogGroup.Arn already ends in :* and covers its streams.
-                Resource: !GetAtt LambdaLogGroup.Arn
+                # Lambda's documented basic execution policy uses this scope
+                # for reliable CloudWatch delivery.  It grants no log reads,
+                # deletion, or permission outside CloudWatch Logs.
+                Resource: "*"
         - PolicyName: ReadOnlyPinnedGeminiSecret
           PolicyDocument:
             Version: "2012-10-17"
@@ -105,6 +213,23 @@ Resources:
               - Effect: Allow
                 Action: secretsmanager:GetSecretValue
                 Resource: !Ref GeminiSecretArn
+        - PolicyName: WriteOnlyCanonicalAuditManifest
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: s3:PutObject
+                Resource: !Sub ${AuditManifestBucket.Arn}/audit-manifests/*
+                Condition:
+                  StringEquals:
+                    s3:x-amz-server-side-encryption: aws:kms
+        - PolicyName: ReserveMonthlyModelCost
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: dynamodb:UpdateItem
+                Resource: !GetAtt MonthlyCostLedger.Arn
 
   QuantifyFunction:
     Type: AWS::Serverless::Function
@@ -138,6 +263,11 @@ Resources:
           QUANTIFY_IMAGE_DIGEST: !Ref ImageDigest
           QUANTIFY_GEMINI_SECRET_ARN: !Ref GeminiSecretArn
           QUANTIFY_GEMINI_SECRET_VERSION_ID: !Ref GeminiSecretVersionId
+          # Bump when execution-role policy changes require a fresh published alias.
+          QUANTIFY_RUNTIME_POLICY_VERSION: "3"
+          QUANTIFY_AUDIT_BUCKET_NAME: !Ref AuditManifestBucket
+          QUANTIFY_COST_LEDGER_TABLE_NAME: !Ref MonthlyCostLedger
+          QUANTIFY_MONTHLY_COST_LIMIT_MICRO_USD: !Ref MonthlyCostLimitMicroUsd
       Events:
         Health:
           Type: HttpApi
@@ -151,6 +281,157 @@ Resources:
             ApiId: !Ref QuantifyApi
             Path: /v1/companies/{cik}/verify
             Method: POST
+
+  PinnedModelUnavailableMetric:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref LambdaLogGroup
+      FilterPattern: '"quantify_request_failure"'
+      MetricTransformations:
+        - MetricNamespace: Quantify/PrivateStaging
+          MetricName: PinnedModelUnavailable
+          MetricValue: "1"
+          DefaultValue: 0
+
+  VerificationRequestMetric:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref LambdaLogGroup
+      FilterPattern: '"quantify_request_metrics="'
+      MetricTransformations:
+        - MetricNamespace: Quantify/PrivateStaging
+          MetricName: VerificationRequests
+          MetricValue: "1"
+          DefaultValue: 0
+
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub ${AWS::StackName}-alerts
+      DisplayName: Quantify private staging
+
+  AlarmEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      Endpoint: !Ref AlarmEmail
+      TopicArn: !Ref AlarmTopic
+
+  LambdaErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-lambda-errors
+      AlarmDescription: Lambda invocation errors require staging investigation.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref QuantifyFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmTopic
+
+  LambdaNearTimeoutAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-lambda-near-timeout
+      AlarmDescription: A Lambda invocation consumed at least nine of its ten seconds.
+      Namespace: AWS/Lambda
+      MetricName: Duration
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref QuantifyFunction
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 9000
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmTopic
+
+  LambdaThrottlesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-lambda-throttles
+      AlarmDescription: Lambda concurrency or account quota throttled a staging request.
+      Namespace: AWS/Lambda
+      MetricName: Throttles
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref QuantifyFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmTopic
+
+  ApiServerErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-api-5xx
+      AlarmDescription: API Gateway returned a server error for private staging.
+      Namespace: AWS/ApiGateway
+      MetricName: 5xx
+      Dimensions:
+        - Name: ApiId
+          Value: !Ref QuantifyApi
+        - Name: Stage
+          Value: !Ref StageName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmTopic
+
+  PinnedModelUnavailableAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-pinned-model-unavailable
+      AlarmDescription: The pinned Gemini extraction contract failed closed.
+      Namespace: Quantify/PrivateStaging
+      MetricName: PinnedModelUnavailable
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmTopic
+
+  VerificationRequestVolumeAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-verification-request-volume
+      AlarmDescription: More than twenty verified staging requests arrived in five minutes.
+      Namespace: Quantify/PrivateStaging
+      MetricName: VerificationRequests
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 20
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlarmTopic
 
   SmokeInvokerRole:
     Type: AWS::IAM::Role
@@ -173,6 +454,29 @@ Resources:
                   - !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${QuantifyApi}/${StageName}/GET/healthz
                   - !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${QuantifyApi}/${StageName}/POST/v1/companies/*/verify
 
+  QuantifyCallerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Restricted caller identity for the private Quantify staging API.
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Ref CallerPrincipalArn
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeOnlyQuantifyStagingRoutes
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: execute-api:Invoke
+                Resource:
+                  - !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${QuantifyApi}/${StageName}/GET/healthz
+                  - !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${QuantifyApi}/${StageName}/POST/v1/companies/*/verify
+
 Outputs:
   StagingUrl:
     Description: IAM-authenticated API Gateway staging URL.
@@ -180,6 +484,15 @@ Outputs:
   SmokeInvokerRoleArn:
     Description: Role used exclusively by the authenticated staging smoke script.
     Value: !GetAtt SmokeInvokerRole.Arn
+  QuantifyCallerRoleArn:
+    Description: Restricted role for the staging caller or future application backend.
+    Value: !GetAtt QuantifyCallerRole.Arn
   FunctionArn:
     Description: Immutable Lambda function deployment target.
     Value: !GetAtt QuantifyFunction.Arn
+  AuditManifestBucketName:
+    Description: Private encrypted bucket retaining canonical audit manifests.
+    Value: !Ref AuditManifestBucket
+  MonthlyCostLedgerName:
+    Description: Private DynamoDB table that reserves the approved monthly model cap.
+    Value: !Ref MonthlyCostLedger

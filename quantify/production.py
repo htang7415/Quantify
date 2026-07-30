@@ -14,7 +14,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Mapping
+from typing import Callable, Mapping
 
 from fastapi import FastAPI
 
@@ -223,6 +223,8 @@ def create_production_app(
     environment: Mapping[str, str] | None = None,
     extraction_config: GeminiExtractionConfig | None = None,
     transport: JsonTransport | None = None,
+    audit_manifest_sink: Callable[[Mapping[str, object]], None] | None = None,
+    before_model_call: Callable[[], None] | None = None,
 ) -> FastAPI:
     """Create the private deployment app with an enforced V1 composition."""
 
@@ -241,7 +243,10 @@ def create_production_app(
     # evaluator's narrow fixture payload.  Keep the one-call/output limits,
     # while allowing the full validated V1 evidence context to reach Gemini.
     config = extraction_config or GeminiExtractionConfig(
-        max_output_tokens=256, max_input_payload_bytes=48_000
+        max_output_tokens=256,
+        max_input_payload_bytes=48_000,
+        input_price_per_million_usd=0.25,
+        output_price_per_million_usd=1.50,
     )
     extractor = GeminiStructuredExtractor(
         api_key=api_key, config=config, transport=transport
@@ -258,6 +263,8 @@ def create_production_app(
         evidence_fixture_manifest_hash=manifest_hash,
         deployment_image_digest=image_digest,
         metrics_sink=emit_request_metrics,
+        audit_manifest_sink=audit_manifest_sink,
+        before_model_call=before_model_call,
     )
     app = create_app(
         service, include_internal_routes=False, include_documentation=False

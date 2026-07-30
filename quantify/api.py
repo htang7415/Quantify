@@ -3,16 +3,25 @@
 from __future__ import annotations
 
 from datetime import date
+import json
+import logging
 from typing import Protocol
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from quantify.harness.coverage import EvidenceRequestType
-from quantify.runtime import ModelUnavailableError
+from quantify.runtime import (
+    AuditPersistenceError,
+    CostLedgerUnavailableError,
+    ModelUnavailableError,
+    MonthlyCostLimitError,
+)
 
 
 MAX_BRIEF_WORDS = 250
+_REQUEST_FAILURE_LOGGER = logging.getLogger("quantify.request_failure")
+_REQUEST_FAILURE_LOGGER.setLevel(logging.WARNING)
 
 
 class VerifyRequest(BaseModel):
@@ -72,9 +81,53 @@ def create_app(
         try:
             return service.verify(cik=cik, request=request)
         except ModelUnavailableError as error:
+            _REQUEST_FAILURE_LOGGER.warning(
+                "quantify_request_failure=%s",
+                json.dumps(
+                    {
+                        "event": "pinned_model_unavailable",
+                        "status_code": 503,
+                        "code": error.code,
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+            )
             raise HTTPException(
                 status_code=503,
                 detail={"code": error.code, "message": str(error)},
+            ) from error
+        except AuditPersistenceError as error:
+            _REQUEST_FAILURE_LOGGER.warning(
+                "quantify_request_failure=%s",
+                json.dumps(
+                    {
+                        "event": "audit_manifest_unavailable",
+                        "status_code": 503,
+                        "code": error.code,
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+            )
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": error.code,
+                    "message": "The audit manifest could not be stored.",
+                },
+            ) from error
+        except MonthlyCostLimitError as error:
+            _request_failure(error=error, event="monthly_cost_limit_reached", status_code=429)
+            raise HTTPException(
+                status_code=429,
+                detail={"code": error.code, "message": "The monthly model-cost limit is reached."},
+            ) from error
+        except CostLedgerUnavailableError as error:
+            _request_failure(error=error, event="cost_ledger_unavailable", status_code=503)
+            raise HTTPException(
+                status_code=503,
+                detail={"code": error.code, "message": "The cost ledger is unavailable."},
             ) from error
 
     if not include_internal_routes:
@@ -108,3 +161,10 @@ def create_app(
         }
 
     return app
+
+
+def _request_failure(*, error: RuntimeError, event: str, status_code: int) -> None:
+    _REQUEST_FAILURE_LOGGER.warning(
+        "quantify_request_failure=%s",
+        json.dumps({"event": event, "status_code": status_code, "code": error.code}, sort_keys=True, separators=(",", ":")),
+    )

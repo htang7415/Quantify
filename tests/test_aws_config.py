@@ -20,6 +20,9 @@ def test_aws_template_pins_image_secret_version_capacity_and_iam_routes() -> Non
     assert "AWS::Serverless::HttpApi" in template
     assert "EnableIamAuthorizer: true" in template
     assert "DefaultAuthorizer: AWS_IAM" in template
+    assert "DefaultRouteSettings:" in template
+    assert "ThrottlingRateLimit: !Ref ApiThrottleRateLimit" in template
+    assert "ThrottlingBurstLimit: !Ref ApiThrottleBurstLimit" in template
     assert "Path: /healthz" in template
     assert "Path: /v1/companies/{cik}/verify" in template
     assert "UseReservedConcurrency" in template
@@ -32,16 +35,43 @@ def test_aws_template_pins_image_secret_version_capacity_and_iam_routes() -> Non
     assert "AutoPublishAliasAllProperties: true" in template
     assert "@sha256:[0-9a-f]{64}" in template
     assert "QUANTIFY_GEMINI_SECRET_VERSION_ID" in template
+    assert "QUANTIFY_RUNTIME_POLICY_VERSION" in template
+    assert "Type: AWS::S3::Bucket" in template
+    assert "SSEAlgorithm: aws:kms" in template
+    assert "PublicAccessBlockConfiguration:" in template
+    assert "DeletionPolicy: Retain" in template
+    assert "AuditRetentionDays:" in template
+    assert "QUANTIFY_AUDIT_BUCKET_NAME" in template
+    assert "s3:PutObject" in template
+    assert "audit-manifests/*" in template
+    assert "Type: AWS::DynamoDB::Table" in template
+    assert "dynamodb:UpdateItem" in template
+    assert "MonthlyCostLimitMicroUsd:" in template
     assert "secretsmanager:GetSecretValue" in template
     assert "execute-api:Invoke" in template
+    assert "CallerPrincipalArn:" in template
+    assert "QuantifyCallerRole:" in template
+    assert "MaxSessionDuration: 3600" in template
+    assert "QuantifyCallerRoleArn:" in template
     assert "DestinationArn: !Sub arn:${AWS::Partition}:logs:" in template
-    assert "Resource: !GetAtt LambdaLogGroup.Arn" in template
-    assert "${LambdaLogGroup.Arn}:*" not in template
+    assert "${ApiAccessLogGroup}:log-stream:*" in template
+    assert "- logs:CreateLogGroup" in template
     assert "Type: AWS::Logs::ResourcePolicy" in template
     assert "Service: delivery.logs.amazonaws.com" in template
     assert "LogFormat: JSON" in template
     assert "ApplicationLogLevel: INFO" in template
     assert "SystemLogLevel: INFO" in template
+    assert "Type: AWS::Logs::MetricFilter" in template
+    assert "MetricName: PinnedModelUnavailable" in template
+    assert "MetricName: VerificationRequests" in template
+    assert "Type: AWS::CloudWatch::Alarm" in template
+    assert "MetricName: Throttles" in template
+    assert "MetricName: 5xx" in template
+    assert "verification-request-volume" in template
+    assert "TreatMissingData: notBreaching" in template
+    assert "Type: AWS::SNS::Topic" in template
+    assert "Protocol: email" in template
+    assert "AlarmActions:" in template
     assert "review" not in template
     assert "resolve" not in template
     assert "batch" not in template
@@ -100,6 +130,7 @@ def test_aws_scripts_refuse_external_actions_without_explicit_authorization() ->
         ("build_image.sh", "QUANTIFY_AUTHORIZE_AWS_IMAGE_BUILD"),
         ("deploy_staging.sh", "QUANTIFY_AUTHORIZE_AWS_STAGING_DEPLOY"),
         ("smoke_staging.sh", "QUANTIFY_AUTHORIZE_AWS_STAGING_SMOKE"),
+        ("validate_observability.sh", "QUANTIFY_AUTHORIZE_AWS_OBSERVABILITY_CHECK"),
     ):
         result = subprocess.run(
             ["bash", str(DEPLOYMENT / script)],
@@ -124,7 +155,9 @@ def test_aws_deploy_rejects_non_digest_image_and_never_uses_latest(tmp_path: Pat
         "GEMINI_SECRET_ARN": "arn:aws:secretsmanager:us-east-2:123456789012:secret:gemini",
         "GEMINI_SECRET_VERSION_ID": "a" * 32,
         "SMOKE_PRINCIPAL_ARN": "arn:aws:iam::123456789012:role/smoke",
+        "CALLER_PRINCIPAL_ARN": "arn:aws:iam::123456789012:role/caller",
         "RESERVED_CONCURRENCY": "2",
+        "ALARM_EMAIL": "operator@example.com",
         "AWS_BIN": str(fake_aws),
         "CALLS": str(tmp_path / "calls"),
     }
@@ -156,7 +189,9 @@ def test_aws_deploy_passes_the_exact_digest_and_pinned_secret_version(tmp_path: 
         "GEMINI_SECRET_ARN": "arn:aws:secretsmanager:us-east-2:123456789012:secret:gemini",
         "GEMINI_SECRET_VERSION_ID": "b" * 32,
         "SMOKE_PRINCIPAL_ARN": "arn:aws:iam::123456789012:role/smoke",
+        "CALLER_PRINCIPAL_ARN": "arn:aws:iam::123456789012:role/caller",
         "RESERVED_CONCURRENCY": "2",
+        "ALARM_EMAIL": "operator@example.com",
         "AWS_BIN": str(fake_aws),
         "CALLS": str(calls),
     }
@@ -177,4 +212,9 @@ def test_aws_deploy_passes_the_exact_digest_and_pinned_secret_version(tmp_path: 
     assert "cloudformation deploy" in invocation
     assert "CAPABILITY_AUTO_EXPAND" in invocation
     assert "ReservedConcurrency=2" in invocation
+    assert "AlarmEmail=operator@example.com" in invocation
+    assert "AuditRetentionDays=90" in invocation
+    assert "CallerPrincipalArn=arn:aws:iam::123456789012:role/caller" in invocation
+    assert "ApiThrottleRateLimit=2" in invocation
+    assert "ApiThrottleBurstLimit=2" in invocation
     assert "latest" not in invocation
