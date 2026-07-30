@@ -1,0 +1,66 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it } from "vitest";
+import { App } from "./App";
+import type { VerificationResponse } from "./types";
+
+const result: VerificationResponse = {
+  verdicts: [{ claim_id: "revenue-growth", verdict: "verified" }],
+  requires_agent_resolution: false,
+  evidence_scope: {
+    source: "SEC EDGAR",
+    forms: ["10-K"],
+    snapshot_manifest_hash: "e".repeat(64)
+  },
+  audit_manifest_hash: "a".repeat(64),
+  limitation: "This is not investment advice."
+};
+
+describe("Quantify web app", () => {
+  it("shows the product boundary", () => {
+    render(<App />);
+    expect(screen.getByRole("heading", { name: "Publish claims you can defend." })).toBeInTheDocument();
+    expect(screen.getByText("One bounded model call")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "A bounded agent, designed to scale." })).toBeInTheDocument();
+    expect(screen.getByText("Release-pinned")).toBeInTheDocument();
+    expect(screen.getByText("Ready when you are.")).toBeInTheDocument();
+  });
+
+  it("does not pretend sign-in works before public Cognito is configured", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Sign-in is not configured in this preview.");
+  });
+
+  it("submits bounded analysis and renders the safe result", async () => {
+    const user = userEvent.setup();
+    const verify = async () => ({ ...result, report_text: "private source report must never render" }) as VerificationResponse;
+    render(<App verifier={verify} />);
+
+    await user.type(
+      screen.getByLabelText("Company analysis"),
+      "Microsoft revenue increased from fiscal 2023 to fiscal 2024."
+    );
+    await user.click(screen.getByRole("button", { name: /verify analysis/i }));
+
+    expect(await screen.findByText("revenue-growth")).toBeInTheDocument();
+    expect(screen.getByText("SEC EDGAR · 10-K")).toBeInTheDocument();
+    expect(screen.getByText("This is not investment advice.")).toBeInTheDocument();
+    expect(screen.queryByText("private source report must never render")).not.toBeInTheDocument();
+    const storedValues = Object.keys(window.sessionStorage).map((key) => window.sessionStorage.getItem(key)).join(" ");
+    expect(storedValues).not.toContain("Microsoft revenue increased");
+  });
+
+  it("rejects analysis above the product word limit", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.type(screen.getByLabelText("Company analysis"), "word ".repeat(251));
+    await user.click(screen.getByRole("button", { name: /verify analysis/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("250 words or fewer");
+  });
+});

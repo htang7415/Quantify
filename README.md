@@ -62,6 +62,25 @@ missing token is rejected before Lambda runs. Keep the OAuth client secret
 outside the repository and use the public smoke script only from a trusted
 operator environment.
 
+### Private browser preview
+
+[`web/`](web/) is the React/TypeScript browser client. The preview deployment
+creates a separate no-secret Cognito authorization-code + PKCE client, permits
+only its exact CloudFront and local callback URLs, and adds that client ID to
+the existing API JWT audience. The static application is delivered from a
+private S3 bucket through CloudFront; access to verification remains limited to
+invited Cognito users. Its only API origin is the existing scoped
+`POST /v1/agent/verify` route. It has no direct core origin or browser-visible
+credentials.
+
+Use [`web/.env.example`](web/.env.example) for local public configuration, run
+`npm --prefix web run dev`, and use `npm --prefix web test -- --run` before a
+preview deploy. The guarded [`deploy/aws/deploy_web_preview.sh`](deploy/aws/deploy_web_preview.sh)
+builds the app, uploads it, and invalidates CloudFront only when both web-preview
+and public-agent deployment authorizations are supplied. It does not invite
+people: an operator must explicitly create Cognito users and securely share
+their temporary credentials with named testers.
+
 For a local external-agent integration on macOS, provision the existing client
 secret once into the login Keychain, then invoke the narrow public adapter. The
 secret is never written to the repository, shell output, or an environment file:
@@ -73,12 +92,15 @@ QUANTIFY_AUTHORIZE_PUBLIC_AGENT_KEYCHAIN_PROVISION=1 \
 deploy/aws/public_agent_verify.sh \
   --cik 0000789019 \
   --analysis-file ./analysis.txt \
-  --as-of-date 2024-07-30
+  --as-of-date 2024-07-30 \
+  --format human
 ```
 
 The adapter can call only `POST /v1/agent/verify` and prints only the safe
-Quantify response contract. It does not receive AWS administrator credentials,
-the private core URL, or the Gemini key.
+Quantify response contract. Use `--format human` for a fixed user-facing
+summary or leave the default `--format json` for another agent to consume. It
+does not receive AWS administrator credentials, the private core URL, or the
+Gemini key.
 
 ## Controlled public beta monitoring
 

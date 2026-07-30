@@ -38,4 +38,10 @@ docs/
 # Local credentials and evaluator-side artifacts must never enter Git.
 .env
 .env.*
+!web/.env.example
 .quantify-private/
+
+# Frontend generated files
+web/node_modules/
+web/dist/
+web/coverage/

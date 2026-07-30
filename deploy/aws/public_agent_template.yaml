@@ -35,6 +35,14 @@ Parameters:
     Default: 1
     MinValue: 1
     MaxValue: 10
+  BrowserClientId:
+    Type: String
+    Default: ""
+    Description: Optional no-secret Cognito PKCE browser client ID created by the private web-preview stack.
+    AllowedPattern: ^$|^[A-Za-z0-9_-]{1,128}$
+
+Conditions:
+  HasBrowserClient: !Not [!Equals [!Ref BrowserClientId, ""]]
 
 Resources:
   PublicAgentLogGroup:
@@ -122,6 +130,7 @@ Resources:
               issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${PublicAgentUserPool}
               audience:
                 - !Ref PublicAgentMachineClient
+                - !If [HasBrowserClient, !Ref BrowserClientId, !Ref AWS::NoValue]
             AuthorizationScopes:
               - !Sub ${OAuthResourceServerIdentifier}/verify
       AccessLogSettings:
@@ -243,6 +252,9 @@ Outputs:
   PublicAgentUrl:
     Description: Public, Cognito-JWT-protected Quantify agent endpoint.
     Value: !Sub https://${PublicAgentApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/production/v1/agent/verify
+  PublicAgentApiId:
+    Description: API ID used only by the separate CloudFront private-preview origin.
+    Value: !Ref PublicAgentApi
   CognitoUserPoolId:
     Description: Cognito user-pool identifier for the public machine client.
     Value: !Ref PublicAgentUserPool

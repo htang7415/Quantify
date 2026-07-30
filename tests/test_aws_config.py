@@ -90,6 +90,9 @@ def test_public_agent_template_exposes_only_a_scoped_cognito_agent_route() -> No
     assert "AWS::Cognito::UserPoolResourceServer" in template
     assert "client_credentials" in template
     assert "GenerateSecret: true" in template
+    assert "BrowserClientId:" in template
+    assert "HasBrowserClient:" in template
+    assert "PublicAgentApiId:" in template
     assert "AWS::Serverless::HttpApi" in template
     assert "DefaultAuthorizer: CognitoJwt" in template
     assert "AuthorizationScopes:" in template
@@ -103,6 +106,36 @@ def test_public_agent_template_exposes_only_a_scoped_cognito_agent_route() -> No
     assert "AWS_IAM" not in template
     assert "COGNITO_MACHINE_CLIENT_SECRET_FILE" in example
     assert "quantify-production-core" in example
+    assert "WEB_PREVIEW_STACK_NAME=" in example
+
+
+def test_web_preview_uses_a_no_secret_pkce_client_and_proxies_only_the_safe_route() -> None:
+    template = _read("web_preview_template.yaml")
+    deploy = _read("deploy_web_preview.sh")
+
+    assert "AWS::CloudFront::Distribution" in template
+    assert "AWS::CloudFront::OriginAccessControl" in template
+    assert "AWS::CloudFront::ResponseHeadersPolicy" in template
+    assert "ContentSecurityPolicy:" in template
+    assert "AWS::S3::BucketPolicy" in template
+    assert "GenerateSecret: false" in template
+    assert "- code" in template
+    assert "- openid" in template
+    assert "LocalRedirectUri:" in template
+    assert "http://127.0.0.1:5173/" in template
+    assert "/verify" in template
+    assert "PathPattern: /v1/agent/verify" in template
+    assert "- POST" in template
+    assert "- PUT" in template
+    assert "Authorization" in template
+    assert "OriginPath: /production" in template
+    assert "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" in template
+    assert "POST/v1/companies" not in template
+    assert "QUANTIFY_AUTHORIZE_AWS_WEB_PREVIEW_DEPLOY" in deploy
+    assert "QUANTIFY_AUTHORIZE_AWS_PUBLIC_AGENT_DEPLOY" in deploy
+    assert "s3 sync web/dist" in deploy
+    assert "BROWSER_CLIENT_ID" in deploy
+    assert "PUBLIC_AGENT_IMAGE_URI" in deploy
 
 
 def test_aws_lambda_dockerfile_uses_lambda_handler_and_embedded_fixtures() -> None:
@@ -155,6 +188,7 @@ def test_aws_scripts_refuse_external_actions_without_explicit_authorization() ->
         ("deploy_staging.sh", "QUANTIFY_AUTHORIZE_AWS_STAGING_DEPLOY"),
         ("deploy_production_core.sh", "QUANTIFY_AUTHORIZE_AWS_PRODUCTION_CORE_DEPLOY"),
         ("deploy_public_agent.sh", "QUANTIFY_AUTHORIZE_AWS_PUBLIC_AGENT_DEPLOY"),
+        ("deploy_web_preview.sh", "QUANTIFY_AUTHORIZE_AWS_WEB_PREVIEW_DEPLOY"),
         ("smoke_public_agent.sh", "QUANTIFY_AUTHORIZE_AWS_PUBLIC_AGENT_SMOKE"),
         ("smoke_staging.sh", "QUANTIFY_AUTHORIZE_AWS_STAGING_SMOKE"),
         ("validate_observability.sh", "QUANTIFY_AUTHORIZE_AWS_OBSERVABILITY_CHECK"),
@@ -246,3 +280,37 @@ def test_aws_deploy_passes_the_exact_digest_and_pinned_secret_version(tmp_path: 
     assert "ApiThrottleRateLimit=2" in invocation
     assert "ApiThrottleBurstLimit=2" in invocation
     assert "latest" not in invocation
+
+
+def test_public_agent_deploy_adds_only_a_validated_browser_client_audience(tmp_path: Path) -> None:
+    calls = tmp_path / "aws-calls.txt"
+    fake_aws = tmp_path / "aws"
+    fake_aws.write_text("#!/usr/bin/env bash\nprintf '%s\\n' \"$*\" > \"$CALLS\"\n")
+    fake_aws.chmod(0o755)
+    browser_client_id = "1browser_client-id"
+    environment = os.environ | {
+        "QUANTIFY_AUTHORIZE_AWS_PUBLIC_AGENT_DEPLOY": "1",
+        "AWS_REGION": "us-east-2",
+        "PUBLIC_AGENT_STACK_NAME": "quantify-public-agent",
+        "IMAGE_URI": "123.dkr.ecr.us-east-2.amazonaws.com/quantify@sha256:" + "1" * 64,
+        "CORE_API_ID": "abc123",
+        "COGNITO_DOMAIN_PREFIX": "quantify-preview",
+        "OAUTH_RESOURCE_SERVER_IDENTIFIER": "https://api.example.com/quantify",
+        "ALARM_EMAIL": "operator@example.com",
+        "BROWSER_CLIENT_ID": browser_client_id,
+        "AWS_BIN": str(fake_aws),
+        "CALLS": str(calls),
+    }
+
+    result = subprocess.run(
+        ["bash", str(DEPLOYMENT / "deploy_public_agent.sh")],
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    invocation = calls.read_text()
+    assert f"BrowserClientId={browser_client_id}" in invocation
+    assert "CAPABILITY_AUTO_EXPAND" in invocation
