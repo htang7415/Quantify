@@ -388,6 +388,24 @@ def test_ambiguous_provider_failure_waits_for_explicit_reconciliation() -> None:
     assert final["state"] == TaskState.FAILED_UNRESOLVED.value
 
 
+def test_unresolved_worker_failure_logs_only_the_exception_type(caplog: pytest.LogCaptureFixture) -> None:
+    service, store, queue, plane, _, _ = _task_service()
+    service.submit(request=_request(), idempotency_key="unresolved-log")
+
+    class _BrokenVerifier:
+        def verify(self, **kwargs):
+            raise RuntimeError("api_key=do-not-log request private text")
+
+    result = _worker(
+        service=service, store=store, queue=queue, plane=plane,
+        verifier=_BrokenVerifier(),
+    ).run_once()
+
+    assert result is not None and result["state"] == TaskState.FAILED_UNRESOLVED.value
+    assert "error_type=RuntimeError" in caplog.text
+    assert "api_key" not in caplog.text and "private text" not in caplog.text
+
+
 def test_not_started_reconciliation_releases_reservation_and_permits_one_manual_retry() -> None:
     reconciler = _Reconciler(
         ProviderReconciliation(state=ProviderReconciliationState.NOT_STARTED)

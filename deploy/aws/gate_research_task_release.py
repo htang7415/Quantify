@@ -88,6 +88,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     parser.add_argument("--release-gate-policy", type=Path, required=True)
     parser.add_argument("--lane", choices=[lane.value for lane in ReleaseLane], required=True)
     parser.add_argument("--reviewer-approval", type=Path)
+    parser.add_argument("--approval-output", type=Path)
     args = parser.parse_args(argv)
     record = gate_release(
         release=_release(fixtures_directory=args.fixtures_directory, declaration_path=args.release_declaration),
@@ -97,7 +98,15 @@ def main(argv: Sequence[str] | None = None) -> None:
         lane=ReleaseLane(args.lane),
         reviewer=_reviewer(args.reviewer_approval),
     )
-    print(json.dumps(record.as_dict(), sort_keys=True, separators=(",", ":")))
+    serialized = json.dumps(record.as_dict(), sort_keys=True, separators=(",", ":"))
+    if args.approval_output is not None:
+        try:
+            with args.approval_output.open("x", encoding="utf-8") as output:
+                output.write(serialized)
+                output.write("\n")
+        except FileExistsError as error:
+            raise ValueError("release approval output already exists") from error
+    print(serialized)
     if not record.approved:
         raise SystemExit(2)
 

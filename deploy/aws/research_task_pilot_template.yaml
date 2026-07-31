@@ -12,7 +12,7 @@ Parameters:
   GeminiSecretArn: {Type: String}
   GeminiSecretVersionId: {Type: String, AllowedPattern: '^[A-Za-z0-9-]{32,64}$'}
   EnableTaskConsumption: {Type: String, Default: 'false', AllowedValues: ['false', 'true']}
-  TaskMaximumConcurrency: {Type: Number, Default: 1, MinValue: 1, MaxValue: 1}
+  TaskMaximumConcurrency: {Type: Number, Default: 2, MinValue: 2, MaxValue: 2}
 Conditions:
   ConsumeTasks: !Equals [!Ref EnableTaskConsumption, 'true']
 Resources:
@@ -67,7 +67,7 @@ Resources:
     Properties:
       KmsMasterKeyId: alias/aws/sqs
       RedrivePolicy: {deadLetterTargetArn: !GetAtt TaskDlq.Arn, maxReceiveCount: 3}
-      Tags: [{Key: QuantifyPilotMode, Value: inactive}]
+      Tags: [{Key: QuantifyPilotMode, Value: inactive}, {Key: QuantifyPilotRevision, Value: event-source-v2}]
   WorkerRole:
     Type: AWS::IAM::Role
     Properties:

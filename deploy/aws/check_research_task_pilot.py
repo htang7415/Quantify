@@ -1,4 +1,4 @@
-"""Read-only fail-closed readiness check for the inactive private task pilot."""
+"""Read-only fail-closed readiness check for the private task pilot."""
 
 from __future__ import annotations
 
@@ -107,18 +107,27 @@ def _require_bucket(*, bucket_name: str, region: str, environment: dict[str, str
         raise RuntimeError(f"bucket controls are incomplete for {bucket_name}")
 
 
-def _require_inactive_worker(*, worker_name: str, region: str, environment: dict[str, str]) -> str:
+def _require_worker(*, worker_name: str, region: str, environment: dict[str, str], mode: str) -> str:
     concurrency = _json("lambda", "get-function-concurrency", "--function-name", worker_name, "--region", region, "--output", "json", environment=environment)
-    if not isinstance(concurrency, dict) or concurrency.get("ReservedConcurrentExecutions") != 0:
-        raise RuntimeError("pilot worker must remain at reserved concurrency zero")
+    expected_concurrency = 0 if mode == "inactive" else 2
+    if not isinstance(concurrency, dict) or concurrency.get("ReservedConcurrentExecutions") != expected_concurrency:
+        raise RuntimeError(f"pilot worker must have reserved concurrency {expected_concurrency}")
     configuration = _json("lambda", "get-function-configuration", "--function-name", worker_name, "--region", region, "--output", "json", environment=environment)
     variables = configuration.get("Environment", {}).get("Variables") if isinstance(configuration, dict) else None
     digest = variables.get("QUANTIFY_IMAGE_DIGEST") if isinstance(variables, dict) else None
     if not isinstance(digest, str) or not _DIGEST.fullmatch(digest):
         raise RuntimeError("pilot worker image digest is invalid")
     mappings = _json("lambda", "list-event-source-mappings", "--function-name", worker_name, "--region", region, "--output", "json", environment=environment)
-    if not isinstance(mappings, dict) or mappings.get("EventSourceMappings") != []:
+    rows = mappings.get("EventSourceMappings") if isinstance(mappings, dict) else None
+    if mode == "inactive" and rows != []:
         raise RuntimeError("pilot worker must have no active event source mapping")
+    if mode == "active":
+        if not isinstance(rows, list) or len(rows) != 1:
+            raise RuntimeError("active pilot worker requires exactly one event source mapping")
+        mapping = rows[0]
+        maximum = mapping.get("ScalingConfig", {}).get("MaximumConcurrency") if isinstance(mapping, dict) and isinstance(mapping.get("ScalingConfig"), dict) else None
+        if not isinstance(mapping, dict) or mapping.get("State") != "Enabled" or maximum != 2:
+            raise RuntimeError("active pilot event source mapping is not bounded and enabled")
     return digest
 
 
@@ -131,11 +140,26 @@ def _require_alarms_ok(*, stack_name: str, region: str, environment: dict[str, s
 
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--env-file", type=Path, default=Path(".quantify-private/research-task-pilot.env"))
+    source = parser.add_mutually_exclusive_group()
+    source.add_argument("--env-file", type=Path)
+    source.add_argument("--stack-name")
+    parser.add_argument("--region")
+    parser.add_argument("--audit-bucket")
+    parser.add_argument("--mode", choices=("inactive", "active"), default="inactive")
     args = parser.parse_args(argv)
-    if not args.env_file.is_file():
-        parser.error("private pilot environment file is unreadable")
-    environment = _environment(args.env_file)
+    if args.env_file is not None:
+        if not args.env_file.is_file():
+            parser.error("private pilot environment file is unreadable")
+        environment = _environment(args.env_file)
+    elif args.stack_name is not None:
+        if not args.region or not args.audit_bucket:
+            parser.error("--stack-name requires --region and --audit-bucket")
+        environment = {**os.environ, "AWS_REGION": args.region, "AWS_STACK_NAME": args.stack_name, "AUDIT_BUCKET_NAME": args.audit_bucket}
+    else:
+        default = Path(".quantify-private/research-task-pilot.env")
+        if not default.is_file():
+            parser.error("private pilot environment file is unreadable")
+        environment = _environment(default)
     region = _required(environment, "AWS_REGION")
     if region != "us-east-2":
         raise RuntimeError("pilot region must be us-east-2")
@@ -149,9 +173,9 @@ def main(argv: Sequence[str] | None = None) -> None:
     _require_queue(queue_url=resources["TaskDlq"], region=region, environment=environment, dlq=True)
     _require_bucket(bucket_name=resources["PolicyArtifactBucket"], region=region, environment=environment)
     _require_bucket(bucket_name=audit_bucket, region=region, environment=environment)
-    digest = _require_inactive_worker(worker_name=resources["Worker"], region=region, environment=environment)
+    digest = _require_worker(worker_name=resources["Worker"], region=region, environment=environment, mode=args.mode)
     alarm_count = _require_alarms_ok(stack_name=stack_name, region=region, environment=environment)
-    print(json.dumps({"alarm_count": alarm_count, "image_digest": digest, "mode": "inactive", "stack": stack_name}, sort_keys=True))
+    print(json.dumps({"alarm_count": alarm_count, "image_digest": digest, "mode": args.mode, "stack": stack_name}, sort_keys=True))
 
 
 if __name__ == "__main__":

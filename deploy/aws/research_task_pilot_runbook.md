@@ -6,7 +6,9 @@ public route, live retrieval, account/upload capability, or fallback model.
 The initial foundation deploy sets worker reserved concurrency to `0` and has
 no SQS event-source mapping. Enable consumption only after the indexed-release
 verifier bootstrap, signed active policy artifacts, capacity allocation, and
-the post-deploy checks below are complete.
+the post-deploy checks below are complete. The currently authorized us-east-2
+pilot is active with worker and mapping maxima both at `2`; use the active-mode
+check below for ongoing readiness.
 
 After the foundation is deployed, run the read-only inactive-pilot check before
 publishing any control pointers or considering worker activation:
@@ -15,6 +17,17 @@ publishing any control pointers or considering worker activation:
 QUANTIFY_AUTHORIZE_RESEARCH_TASK_PILOT_CHECK=1 \
   deploy/aws/check_research_task_pilot.sh \
   --env-file .quantify-private/research-task-pilot.env
+~~~
+
+For a deployed pilot whose private environment file is unavailable, pass only
+the non-secret stack and audit-bucket identifiers directly; include
+`--mode active` for the current pilot.
+
+~~~
+QUANTIFY_AUTHORIZE_RESEARCH_TASK_PILOT_CHECK=1 \
+  deploy/aws/check_research_task_pilot.sh \
+  --stack-name quantify-research-task-pilot --region us-east-2 \
+  --audit-bucket <pilot-audit-bucket> --mode active
 ~~~
 
 It must report `mode: inactive`, worker concurrency `0`, no event-source
@@ -49,6 +62,70 @@ QUANTIFY_AUTHORIZE_RESEARCH_TASK_WORKER_BOOTSTRAP_SMOKE=1 \
   --stack-name quantify-research-task-pilot --region us-east-2
 ~~~
 
+An IAM-authorized operator can validate a candidate request without writing
+task, counter, or queue state through the guarded offline admission command.
+It takes a local JSON object with `cik`, `analysis`, and `as_of_date` and
+prints only hashes and selected policy identifiers in `--dry-run` mode. It is
+not a public API and must not be used to enqueue work while the pilot is
+inactive. Admission proves both the base and any approved acquisition snapshot
+exist in the selected immutable release before it reserves capacity or queues
+work.
+
+~~~
+QUANTIFY_AUTHORIZE_RESEARCH_TASK_ADMISSION=1 \
+  deploy/aws/admit_research_task.sh --dry-run \
+  --request /approved/request.json --idempotency-key <operator-key> \
+  --task-table <pilot-task-table> --task-queue-url <pilot-queue-url> \
+  --task-dlq-url <pilot-dlq-url> --policy-bucket <pilot-policy-bucket> \
+  --policy-table <pilot-policy-control-table> \
+  --signing-key-arn <pilot-kms-signing-key-arn> \
+  --shard-count 2 --daily-task-limit 10 \
+  --monthly-reservation-limit-micro-usd 10000 --reservation-micro-usd 500
+~~~
+
+After the dry-run and bootstrap smoke succeed, an explicitly authorized
+operator may activate the private consumer. The procedure verifies current
+KMS-signed controls and the selected archive before it changes the stack. It
+sets worker reserved concurrency to `2` and the SQS mapping maximum to `2`
+(the AWS minimum); it does not create a public route or enqueue a task.
+
+~~~
+QUANTIFY_AUTHORIZE_RESEARCH_TASK_PILOT_ACTIVATION=1 \
+  deploy/aws/activate_research_task_pilot.sh \
+  --stack-name quantify-research-task-pilot --region us-east-2
+~~~
+
+For a task already recorded as `failed_unresolved` or `unavailable`, use one
+new idempotency key with `--retry-task-id <original-task-id>` instead of a new
+request. The service links the retry to the original task and applies a new
+bounded reservation; it never auto-retries or changes provider/model policy.
+
+For safe status, queued-task cancellation, or explicit reconciliation, use the
+operator lifecycle command. It never accepts research text and cannot enqueue
+work. Reconciliation remains fail-closed when no attributable provider lookup
+adapter is available.
+
+~~~
+QUANTIFY_AUTHORIZE_RESEARCH_TASK_OPERATION=1 \
+  deploy/aws/operate_research_task.sh --operation status --task-id <task-id> \
+  --task-table <pilot-task-table> --policy-bucket <pilot-policy-bucket> \
+  --policy-table <pilot-policy-control-table> \
+  --signing-key-arn <pilot-kms-signing-key-arn> \
+  --shard-count 2 --daily-task-limit 10 \
+  --monthly-reservation-limit-micro-usd 10000 --reservation-micro-usd 500
+~~~
+
+To pause consumption for an approved recovery exercise, use the guarded
+deactivation control. It removes only the event-source mapping and sets the
+worker cap to zero; it neither deletes messages nor changes policy pointers.
+Re-activate only through the preflighted activation command above.
+
+~~~
+QUANTIFY_AUTHORIZE_RESEARCH_TASK_PILOT_DEACTIVATION=1 \
+  deploy/aws/deactivate_research_task_pilot.sh \
+  --stack-name quantify-research-task-pilot --region us-east-2
+~~~
+
 For the frozen V1 fixture release, the checked-in
 `fixtures/sec/release_v1_requests.json` declares the complete compile set.
 First compile and replay-check it without AWS writes:
@@ -61,12 +138,6 @@ QUANTIFY_AUTHORIZE_RESEARCH_TASK_RELEASE_COMPILE=1 \
   --requests fixtures/sec/release_v1_requests.json \
   --validate-only
 ~~~
-
-After the release-gate record is approved, repeat the same command with
-`--policy-bucket <pilot-policy-bucket>` instead of `--validate-only`. The
-compiler writes a single encrypted, content-addressed archive and refuses a
-conflicting archive under the same release identity. It never retrieves live
-SEC data and must never run from the worker.
 
 Before archive persistence, produce and retain an immutable release-gate record
 from validated source metadata, measured evaluation results, the exact
@@ -81,13 +152,21 @@ QUANTIFY_AUTHORIZE_RESEARCH_TASK_RELEASE_GATE=1 \
   --evaluation /approved/release-evaluation.json \
   --release-gate-policy /approved/release-gate-policy.json \
   --lane lane_a \
-  --reviewer-approval /approved/reviewer-approval.json
+  --reviewer-approval /approved/reviewer-approval.json \
+  --approval-output /approved/release-approval.json
 ~~~
 
 The command prints a canonical record containing the policy hash, source and
 evaluation hashes, gate reasons, reviewer approval hash, and result. A failed
 gate exits non-zero and cannot be used to publish an archive or select an
 evidence pointer.
+
+After the immutable gate record is approved, repeat the compiler command with
+`--policy-bucket <pilot-policy-bucket> --approval-record /approved/release-approval.json`
+instead of `--validate-only`. The compiler verifies that exact approved record
+before it writes one encrypted, content-addressed archive and refuses a
+conflicting archive under the same release identity. It never retrieves live
+SEC data and must never run from the worker.
 
 Before the authorized archive and policy writes, validate the complete local
 handoff bundle. It checks that the archive, approved gate record, runtime
@@ -132,6 +211,39 @@ For every replacement, use `--expected-current-pointers` with the complete
 three-hash pointer document retrieved and approved from the current control
 state. The publisher refuses a replacement without that compare-and-swap
 document. It is not a worker action and must not be run from Lambda.
+
+## Private release-catalog staging
+
+The catalog is a separate post-gate action. It is stored only in the private
+artifact bucket and has no CloudFront behavior or public-read permission. A
+named reviewer signs the stage action with the offline KMS key. The initial
+stage creates its pointer only if absent; replacement or revocation requires
+the previous action hash, so another reviewer cannot overwrite it silently.
+
+~~~
+QUANTIFY_AUTHORIZE_PRIVATE_CATALOG_STAGE=1 \
+  deploy/aws/stage_private_release_catalog.sh \
+  --action promote --stage private-pilot --reviewer-id <reviewer-id> \
+  --release-id <release-id> --release-manifest-hash <approved-release-hash> \
+  --approval-record /approved/release-approval.json \
+  --catalog-bucket <pilot-policy-bucket> \
+  --signing-key-arn <pilot-kms-signing-key-arn>
+~~~
+
+To revoke staged serving, use `--action revoke` with no release inputs and
+`--expected-current-action-hash <previous-action-hash>`. This records an
+immutable signed revocation and moves only the private stage pointer. Public
+delivery remains prohibited until a separate delivery test and authorization.
+
+Verify the selected pointer, signed action, and referenced catalog through the
+read-only verifier. It returns only hashes, action state, and reviewer identity.
+
+~~~
+QUANTIFY_AUTHORIZE_PRIVATE_CATALOG_CHECK=1 \
+  deploy/aws/check_private_release_catalog.sh \
+  --stage private-pilot --catalog-bucket <pilot-policy-bucket> \
+  --signing-key-arn <pilot-kms-signing-key-arn>
+~~~
 
 Rollback criteria: any audit persistence failure, policy/release revocation, DLQ growth,
 capacity breach, replay mismatch, or unbounded provider ambiguity. Disable the runtime

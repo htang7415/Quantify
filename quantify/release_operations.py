@@ -124,6 +124,41 @@ class ReleaseApprovalRecord:
             "manifest_hash": self.manifest_hash,
         }
 
+    @classmethod
+    def from_dict(cls, payload: object) -> "ReleaseApprovalRecord":
+        if not isinstance(payload, dict):
+            raise ReleaseOperationError("release approval record is invalid")
+        expected = {
+            "release_manifest_hash", "release_gate_policy_hash", "release_gate_record_hash",
+            "source_validation_hashes", "evaluation_hash", "lane", "reasons",
+            "reviewer_approval_record_hash", "approved", "manifest_hash",
+        }
+        if set(payload) != expected:
+            raise ReleaseOperationError("release approval record is invalid")
+        sources, reasons = payload["source_validation_hashes"], payload["reasons"]
+        reviewer = payload["reviewer_approval_record_hash"]
+        if (
+            not isinstance(payload["approved"], bool)
+            or not isinstance(sources, list) or not all(isinstance(item, str) for item in sources)
+            or not isinstance(reasons, list) or not all(isinstance(item, str) for item in reasons)
+            or (reviewer is not None and not isinstance(reviewer, str))
+        ):
+            raise ReleaseOperationError("release approval record is invalid")
+        try:
+            record = cls(
+                release_manifest_hash=str(payload["release_manifest_hash"]),
+                release_gate_policy_hash=str(payload["release_gate_policy_hash"]),
+                release_gate_record_hash=str(payload["release_gate_record_hash"]),
+                source_validation_hashes=tuple(sources), evaluation_hash=str(payload["evaluation_hash"]),
+                lane=ReleaseLane(str(payload["lane"])), reasons=tuple(reasons),
+                reviewer_approval_record_hash=reviewer, approved=payload["approved"],
+            )
+        except (TypeError, ValueError) as error:
+            raise ReleaseOperationError("release approval record is invalid") from error
+        if payload["manifest_hash"] != record.manifest_hash:
+            raise ReleaseOperationError("release approval record does not replay")
+        return record
+
 
 def _source_hash(source: SourceValidation) -> str:
     return sha256(json.dumps({"source_id":source.source_id,"licensed_or_public":source.licensed_or_public,"frozen_payload_hash":source.frozen_payload_hash,"freshness_days":source.freshness_days},sort_keys=True,separators=(",",":")).encode()).hexdigest()

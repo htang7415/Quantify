@@ -46,25 +46,6 @@ def _resources(cf_client: object, *, stack_name: str) -> dict[str, str]:
     return resources
 
 
-def _update_parameters(values: Mapping[str, str], *, concurrency: str) -> list[dict[str, object]]:
-    return [
-        {"ParameterKey": key, "ParameterValue": concurrency if key == "WorkerReservedConcurrency" else "false"}
-        if key in {"WorkerReservedConcurrency", "EnableTaskConsumption"}
-        else {"ParameterKey": key, "UsePreviousValue": True}
-        for key in values
-    ]
-
-
-def _update_stack(cf_client: object, *, stack_name: str, parameters: list[dict[str, object]]) -> None:
-    cf_client.update_stack(
-        StackName=stack_name,
-        UsePreviousTemplate=True,
-        Parameters=parameters,
-        Capabilities=["CAPABILITY_IAM"],
-    )
-    cf_client.get_waiter("stack_update_complete").wait(StackName=stack_name)
-
-
 def bootstrap_smoke(*, cf_client: object, lambda_client: object, stack_name: str) -> dict[str, object]:
     """Run an empty-event bootstrap with a guaranteed inactive restoration."""
 
@@ -86,9 +67,8 @@ def bootstrap_smoke(*, cf_client: object, lambda_client: object, stack_name: str
     activated = False
     invoke_status = None
     try:
-        _update_stack(
-            cf_client, stack_name=stack_name,
-            parameters=_update_parameters(values, concurrency="2"),
+        lambda_client.put_function_concurrency(
+            FunctionName=worker, ReservedConcurrentExecutions=2
         )
         activated = True
         response = lambda_client.invoke(
@@ -101,9 +81,8 @@ def bootstrap_smoke(*, cf_client: object, lambda_client: object, stack_name: str
             raise RuntimeError("empty-event worker bootstrap invocation failed")
     finally:
         if activated:
-            _update_stack(
-                cf_client, stack_name=stack_name,
-                parameters=_update_parameters(values, concurrency="0"),
+            lambda_client.put_function_concurrency(
+                FunctionName=worker, ReservedConcurrentExecutions=0
             )
     restored = lambda_client.get_function_concurrency(FunctionName=worker)
     if restored.get("ReservedConcurrentExecutions") != 0:

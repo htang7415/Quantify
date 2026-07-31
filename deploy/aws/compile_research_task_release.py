@@ -16,6 +16,7 @@ from quantify.indexed_release import IndexedSnapshot, IndexedSnapshotRequest, co
 from quantify.indexed_release_archive import IndexedReleaseArchive, S3IndexedReleaseArchiveStore
 from quantify.production import EmbeddedSecSnapshotProvider, validate_embedded_sec_fixtures
 from quantify.release_factory import EvidenceRelease, build_evidence_release
+from quantify.release_operations import ReleaseApprovalRecord
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,28 +126,83 @@ def compile_release(*, fixtures_directory: Path, declaration_path: Path, request
     return indexed
 
 
+def _approved_record(*, path: Path, release: EvidenceRelease) -> ReleaseApprovalRecord:
+    payload = _load_object(path)
+    try:
+        record = ReleaseApprovalRecord.from_dict(payload)
+    except ValueError as error:
+        raise ValueError("release approval record is invalid") from error
+    if payload["manifest_hash"] != record.manifest_hash or not record.approved:
+        raise ValueError("release approval record is not an approved immutable record")
+    if record.release_manifest_hash != release.manifest_hash:
+        raise ValueError("release approval record selects a different release")
+    return record
+
+
+def persist_approval_record(
+    *, client: object, bucket_name: str, record: ReleaseApprovalRecord
+) -> str:
+    """Persist the approved immutable gate record before its archive.
+
+    A second attempt is permitted only when the stored content is byte-for-byte
+    identical. This is intentionally independent from policy pointers.
+    """
+
+    payload = json.dumps(record.as_dict(), sort_keys=True, separators=(",", ":")).encode()
+    key = (
+        f"evidence-releases/v1/{record.release_manifest_hash}/approval-records/"
+        f"{record.manifest_hash}.json"
+    )
+    try:
+        client.put_object(
+            Bucket=bucket_name, Key=key, Body=payload, ContentType="application/json",
+            ServerSideEncryption="aws:kms", BucketKeyEnabled=True, IfNoneMatch="*",
+        )
+    except Exception as error:
+        response = getattr(error, "response", None)
+        code = response.get("Error", {}).get("Code") if isinstance(response, Mapping) else None
+        if code not in {"PreconditionFailed", "412"}:
+            raise ValueError("release approval record could not be persisted") from error
+        try:
+            existing = client.get_object(Bucket=bucket_name, Key=key)["Body"]
+            existing_payload = existing.read() if hasattr(existing, "read") else existing
+        except Exception as read_error:
+            raise ValueError("existing release approval record cannot be verified") from read_error
+        if existing_payload != payload:
+            raise ValueError("existing release approval record does not match")
+    return key
+
+
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--fixtures-directory", type=Path, required=True)
     parser.add_argument("--release-declaration", type=Path, required=True)
     parser.add_argument("--requests", type=Path, required=True)
     parser.add_argument("--policy-bucket")
+    parser.add_argument("--approval-record", type=Path)
     parser.add_argument("--archive-output", type=Path)
     parser.add_argument("--validate-only", action="store_true")
     args = parser.parse_args(argv)
     if sum(bool(value) for value in (args.policy_bucket, args.archive_output, args.validate_only)) != 1:
         parser.error("provide exactly one of --policy-bucket, --archive-output, or --validate-only")
+    if args.policy_bucket and args.approval_record is None:
+        parser.error("--policy-bucket requires --approval-record")
+    if not args.policy_bucket and args.approval_record is not None:
+        parser.error("--approval-record is only valid with --policy-bucket")
     indexed = compile_release(
         fixtures_directory=args.fixtures_directory,
         declaration_path=args.release_declaration,
         requests_path=args.requests,
     )
     if args.policy_bucket:
+        approval = _approved_record(path=args.approval_record, release=indexed.evidence_release)
         try:
             import boto3
         except ImportError as error:  # pragma: no cover - operational dependency.
             raise RuntimeError("boto3 is required for archive persistence") from error
-        S3IndexedReleaseArchiveStore(bucket_name=args.policy_bucket, client=boto3.client("s3")).persist(indexed)
+        s3_client = boto3.client("s3")
+        persist_approval_record(client=s3_client, bucket_name=args.policy_bucket, record=approval)
+        S3IndexedReleaseArchiveStore(bucket_name=args.policy_bucket, client=s3_client).persist(indexed)
     if args.archive_output:
         with args.archive_output.open("xb") as output:
             output.write(IndexedReleaseArchive.dump(indexed))

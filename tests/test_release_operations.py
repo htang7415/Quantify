@@ -31,3 +31,4 @@ def test_policy_bound_gate_record_replays_its_exact_inputs():
  assert record.approved and record.release_manifest_hash == r.manifest_hash
  assert record.release_gate_policy_hash == policy.content_hash
  assert len(record.manifest_hash) == 64 and record.as_dict()["manifest_hash"] == record.manifest_hash
+ assert ReleaseApprovalRecord.from_dict(record.as_dict()) == record

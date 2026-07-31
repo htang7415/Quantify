@@ -41,4 +41,4 @@ command -v "$aws_bin" >/dev/null 2>&1 || {
   --capabilities CAPABILITY_IAM --no-fail-on-empty-changeset \
   --parameter-overrides "ImageUri=$IMAGE_URI" "ImageDigest=$IMAGE_DIGEST" "AuditBucketName=$AUDIT_BUCKET_NAME" \
     "GeminiSecretArn=$GEMINI_SECRET_ARN" "GeminiSecretVersionId=$GEMINI_SECRET_VERSION_ID" \
-    "WorkerReservedConcurrency=0" "EnableTaskConsumption=false" "TaskMaximumConcurrency=1"
+    "WorkerReservedConcurrency=0" "EnableTaskConsumption=false" "TaskMaximumConcurrency=2"

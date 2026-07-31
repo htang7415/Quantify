@@ -13,6 +13,7 @@ from datetime import date, datetime, timezone
 from enum import StrEnum
 from hashlib import sha256
 import json
+import logging
 from threading import Lock, RLock
 from typing import Callable, Mapping, Protocol
 from uuid import uuid4
@@ -28,6 +29,9 @@ from quantify.policy_control import (
 from quantify.runtime import ModelUnavailableError
 from quantify.service import ApplicationService
 from quantify.harness.sec.client import SecCompanyFactsClient
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class ResearchTaskError(RuntimeError):
@@ -1343,7 +1347,13 @@ class ResearchTaskWorker:
             task = self._store.transition(task_id=task.task_id, next_state=TaskState.UNAVAILABLE)
             self._queue.acknowledge(message=message)
             return self._service._safe_status(task)
-        except Exception:
+        except Exception as error:
+            # Preserve failure observability without emitting request text,
+            # provider payloads, credentials, or private operational details.
+            _LOGGER.warning(
+                "research task processing reached failed_unresolved; error_type=%s",
+                type(error).__name__,
+            )
             task = self._store.transition(
                 task_id=task.task_id, next_state=TaskState.FAILED_UNRESOLVED
             )
