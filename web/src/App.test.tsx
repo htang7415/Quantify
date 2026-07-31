@@ -22,11 +22,12 @@ describe("Quantify web app", () => {
   });
   it("shows the product boundary", () => {
     render(<App />);
-    expect(screen.getByRole("heading", { name: "Publish research. Prove every claim." })).toBeInTheDocument();
-    expect(screen.getAllByText("Source-constrained").length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: "Research teams need proof, not another opinion." })).toBeInTheDocument();
-    expect(screen.getByText("Explainable")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Is this claim supported by the declared evidence?" })).toBeInTheDocument();
+    expect(screen.getAllByText("Exact scope").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Evidence before explanation." })).toBeInTheDocument();
+    expect(screen.getByText("Traceable")).toBeInTheDocument();
     expect(screen.getByText("Ready when you are.")).toBeInTheDocument();
+    expect(screen.getByText(/Do not use this tool for price predictions/)).toBeInTheDocument();
   });
 
   it("does not pretend sign-in works before public Cognito is configured", async () => {
@@ -60,6 +61,8 @@ describe("Quantify web app", () => {
     expect(await screen.findByText("revenue-growth")).toBeInTheDocument();
     expect(screen.getByText("SEC EDGAR · 10-K")).toBeInTheDocument();
     expect(screen.getByText("This is not investment advice.")).toBeInTheDocument();
+    expect(screen.getByText("e".repeat(64))).toBeInTheDocument();
+    expect(screen.getByText("a".repeat(64))).toBeInTheDocument();
     expect(screen.queryByText("private source report must never render")).not.toBeInTheDocument();
     const storedValues = Object.keys(window.sessionStorage).map((key) => window.sessionStorage.getItem(key)).join(" ");
     expect(storedValues).not.toContain("Microsoft revenue increased");
@@ -73,5 +76,17 @@ describe("Quantify web app", () => {
     await user.click(screen.getByRole("button", { name: /verify analysis/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("250 words or fewer");
+  });
+
+  it("makes review-required results prominent without changing the safe contract", async () => {
+    const user = userEvent.setup();
+    render(<App verifier={async () => ({ ...result, requires_agent_resolution: true, verdicts: [{ claim_id: "ambiguous-claim", verdict: "requires_agent_resolution" }] })} />);
+
+    await user.type(screen.getByLabelText("Company analysis"), "An ambiguous claim.");
+    await user.click(screen.getByRole("button", { name: /verify analysis/i }));
+
+    expect(await screen.findByText("Review required.")).toBeInTheDocument();
+    expect(screen.getByText("Do not publish automatically; the declared evidence could not resolve this result.")).toBeInTheDocument();
+    expect(screen.getByText("Review required", { selector: ".result-badge" })).toBeInTheDocument();
   });
 });

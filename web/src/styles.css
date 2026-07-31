@@ -140,17 +140,24 @@ textarea { line-height: 1.55; resize: vertical; }
 .label-row label { margin: 0; }
 .label-row span { color: #8a718c; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
 .field-note { color: #7b697e; font-size: 12px; line-height: 1.55; margin: 11px 0 0; }
+.safety-note { border-left: 2px solid #9a6298; color: #6f536f; font-size: 12px; line-height: 1.5; margin: 13px 0 0; padding-left: 10px; }
 .trial-notice { color: #70419a; font-size: 12px; font-weight: 700; line-height: 1.45; margin: 8px 0 0; }
 .form-error { color: #ff9f9f; font-size: 13px; margin: 15px 0 0; }
 .button-submit { align-self: flex-start; margin-top: 24px; }
 .results { background: radial-gradient(circle at 100% 0, rgba(255, 210, 233, .28), transparent 42%), var(--brand-gradient); border: 1px solid rgba(116, 69, 161, .18); box-shadow: 0 18px 48px rgba(85, 49, 109, .2); color: #fffaff; min-height: 404px; }
 .results-empty { display: flex; flex-direction: column; justify-content: center; }
+.results-progress { display: flex; flex-direction: column; justify-content: center; }
+.results-progress h3 { font-size: 30px; font-weight: 570; letter-spacing: -.06em; margin-bottom: 14px; }
+.results-progress > p:last-child { color: rgba(255, 244, 255, .82); font-size: 13px; line-height: 1.55; margin: 19px 0 0; }
+.progress-list { counter-reset: progress; display: grid; gap: 10px; list-style: none; margin: 8px 0 0; padding: 0; }
+.progress-list li { align-items: center; background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .18); border-radius: 9px; color: #fff7fc; display: flex; font-size: 13px; gap: 10px; padding: 12px; }
+.progress-list li::before { background: rgba(255, 255, 255, .18); border-radius: 50%; content: counter(progress); counter-increment: progress; display: inline-grid; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; height: 21px; place-items: center; width: 21px; }
 .results-empty h3 { font-size: 30px; font-weight: 570; letter-spacing: -.06em; margin-bottom: 10px; }
 .results-empty p:last-child { color: rgba(255, 244, 255, .78); font-size: 15px; line-height: 1.58; max-width: 370px; }
 .results .card-label { color: #f4d4eb; }
 .results-heading { align-items: flex-start; display: flex; justify-content: space-between; }
 .results h3 { font-size: 29px; font-weight: 570; letter-spacing: -.055em; margin-bottom: 0; }
-.result-badge { background: rgba(255, 238, 249, .18); border: 1px solid rgba(255, 234, 247, .42); border-radius: 99px; color: #fff0f9; font-size: 11px; font-weight: 800; letter-spacing: .05em; padding: 7px 10px; text-transform: uppercase; }
+.result-badge { background: rgba(255, 238, 249, .18); border: 1px solid rgba(255, 234, 247, .42); border-radius: 99px; color: #fff0f9; font-size: 11px; font-weight: 800; letter-spacing: .05em; max-width: 145px; padding: 7px 10px; text-align: center; text-transform: uppercase; }
 .verdict-list { display: grid; gap: 11px; margin-top: 25px; }
 .verdict { background: rgba(255, 255, 255, .13); border: 1px solid rgba(255, 255, 255, .2); border-left: 3px solid #ead8f8; border-radius: 10px; padding: 16px; }
 .verdict-defeated { border-left-color: #ff8f9d; }
@@ -163,6 +170,7 @@ textarea { line-height: 1.55; resize: vertical; }
 .result-details div { display: grid; font-size: 13px; gap: 18px; grid-template-columns: 120px 1fr; }
 .result-details dt, .limitation { color: #f1cae4; }
 .result-details dd { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; margin: 0; overflow-wrap: anywhere; }
+.hash-value { font-size: 11px; line-height: 1.45; }
 .limitation { font-size: 12px; line-height: 1.55; margin: 22px 0 0; }
 
 .how { padding-block: 60px 110px; }
