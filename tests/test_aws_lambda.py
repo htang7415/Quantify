@@ -10,6 +10,9 @@ import pytest
 
 from quantify.aws_lambda import (
     DynamoMonthlyCostGuard,
+    DynamoDbPolicyControlStore,
+    DynamoDbPolicyControlPublisher,
+    DynamoDbReloadingPolicyControlPlane,
     S3AuditManifestStore,
     S3SignedPolicyArtifactLoader,
     S3SignedPolicyArtifactStore,
@@ -20,7 +23,14 @@ from quantify.aws_lambda import (
     load_pinned_gemini_api_key,
 )
 from quantify.harness.audit import AuditManifest
-from quantify.policy_control import ArtifactKind, HmacPolicySigner, RuntimePolicyBundle
+from quantify.policy_control import (
+    ArtifactKind,
+    HmacPolicySigner,
+    PolicyUnavailableError,
+    PolicyControlPointers,
+    ReleaseGatePolicy,
+    RuntimePolicyBundle,
+)
 from quantify.api import create_app
 from quantify.production import ProductionConfigurationError
 from quantify.runtime import MonthlyCostLimitError
@@ -313,6 +323,123 @@ def test_policy_loader_accepts_only_the_expected_signed_content_addressed_artifa
     record["artifact_hash"] = "b" * 64
     with pytest.raises(ProductionConfigurationError, match="cannot be read or verified"):
         loader.load(kind=ArtifactKind.RUNTIME_POLICY, artifact_hash=bundle.content_hash)
+
+
+def test_reloading_policy_plane_rejects_a_revoked_queued_task_before_side_effect() -> None:
+    class _ControlClient:
+        def __init__(self, *, pointers: dict[str, str], statuses: dict[str, str]) -> None:
+            self.pointers = pointers
+            self.statuses = statuses
+
+        def get_item(self, **kwargs: object) -> dict[str, object]:
+            pk = kwargs["Key"]["pk"]["S"]
+            if pk == "CONTROL#POINTERS":
+                return {"Item": {field: {"S": value} for field, value in self.pointers.items()}}
+            return {"Item": {"status": {"S": self.statuses[pk]}}}
+
+    class _ArtifactClient:
+        def __init__(self, records: dict[str, dict[str, object]]) -> None:
+            self.records = records
+
+        def get_object(self, **kwargs: object) -> dict[str, object]:
+            return {"Body": io.BytesIO(json.dumps(self.records[kwargs["Key"]]).encode())}
+
+    signer = HmacPolicySigner(key_id="policy-test-key", key=b"k" * 32)
+    runtime = RuntimePolicyBundle(
+        schema_version="1.0.0", policy_id="runtime-v1", planner_provider="google",
+        planner_model="gemini-3.1-flash-lite", planner_model_version="2026-07",
+        secret_version="secret-version-1", prompt_hash="a" * 64, maximum_model_calls=1,
+        maximum_input_tokens=4_000, maximum_output_tokens=500,
+        allowed_tools=("verify_claims",), disabled_tools=(), allowed_sources=("structured_fact",),
+        prohibited_actions=("arbitrary_url_fetch", "live_sec_retrieval", "private_document_access", "policy_mutation", "verdict_composition", "trade_execution"),
+        admission_policy_version="admission-v1", cache_policy_version="cache-v1",
+    )
+    gate = ReleaseGatePolicy(
+        schema_version="1.0.0", policy_id="gate-v1", minimum_automated_pass_rate_basis_points=9_900,
+        maximum_review_exception_rate_basis_points=100, maximum_correction_rate_basis_points=25,
+        maximum_source_age_days=30, lane_a_spot_review_required=True,
+        lane_b_reviewer_approval_required=True,
+    )
+    runtime_envelope = signer.sign(kind=ArtifactKind.RUNTIME_POLICY, artifact=runtime)
+    gate_envelope = signer.sign(kind=ArtifactKind.RELEASE_GATE_POLICY, artifact=gate)
+
+    def record(envelope: object) -> dict[str, object]:
+        return {
+            "policy_storage_schema_version": "1.0.0",
+            "kind": envelope.kind.value,
+            "artifact_hash": envelope.artifact_hash,
+            "signer_key_id": envelope.signer_key_id,
+            "signature_algorithm": envelope.signature_algorithm,
+            "signature": envelope.signature,
+            "artifact": envelope.artifact.payload(),
+        }
+
+    evidence_hash = "e" * 64
+    pointers = {
+        "evidence_release_manifest_hash": evidence_hash,
+        "runtime_policy_bundle_hash": runtime.content_hash,
+        "release_gate_policy_hash": gate.content_hash,
+    }
+    statuses = {
+        f"CONTROL#STATUS#evidence_release#{evidence_hash}": "active",
+        f"CONTROL#STATUS#runtime_policy#{runtime.content_hash}": "active",
+        f"CONTROL#STATUS#release_gate_policy#{gate.content_hash}": "active",
+    }
+    artifacts = {
+        f"policy-artifacts/v1/runtime_policy/{runtime.content_hash}.json": record(runtime_envelope),
+        f"policy-artifacts/v1/release_gate_policy/{gate.content_hash}.json": record(gate_envelope),
+    }
+    plane = DynamoDbReloadingPolicyControlPlane(
+        registry=DynamoDbPolicyControlStore(
+            table_name="policy-control", client=_ControlClient(pointers=pointers, statuses=statuses)
+        ),
+        artifacts=S3SignedPolicyArtifactLoader(
+            bucket_name="policy-artifacts", client=_ArtifactClient(artifacts), signer=signer
+        ),
+        signer=signer,
+    )
+    task_pointers = plane.current_pointers()
+    assert plane.authorize_tool(task_pointers=task_pointers, tool_name="verify_claims") == runtime
+
+    statuses[f"CONTROL#STATUS#runtime_policy#{runtime.content_hash}"] = "revoked"
+    with pytest.raises(PolicyUnavailableError, match="not active"):
+        plane.authorize_tool(task_pointers=task_pointers, tool_name="verify_claims")
+
+
+def test_policy_publisher_writes_statuses_and_three_pointers_in_one_transaction() -> None:
+    class _DynamoClient:
+        def __init__(self) -> None:
+            self.calls: list[dict[str, object]] = []
+
+        def transact_write_items(self, **kwargs: object) -> dict[str, object]:
+            self.calls.append(kwargs)
+            return {}
+
+    signer = HmacPolicySigner(key_id="policy-test-key", key=b"k" * 32)
+    runtime = RuntimePolicyBundle(
+        schema_version="1.0.0", policy_id="runtime-publish-v1", planner_provider="google",
+        planner_model="gemini-3.1-flash-lite", planner_model_version="2026-07",
+        secret_version="secret-version-1", prompt_hash="a" * 64, maximum_model_calls=1,
+        maximum_input_tokens=4_000, maximum_output_tokens=500,
+        allowed_tools=("verify_claims",), disabled_tools=(), allowed_sources=("structured_fact",),
+        prohibited_actions=("arbitrary_url_fetch", "live_sec_retrieval", "private_document_access", "policy_mutation", "verdict_composition", "trade_execution"),
+        admission_policy_version="admission-v1", cache_policy_version="cache-v1",
+    )
+    gate = ReleaseGatePolicy(
+        schema_version="1.0.0", policy_id="gate-publish-v1", minimum_automated_pass_rate_basis_points=9_900,
+        maximum_review_exception_rate_basis_points=100, maximum_correction_rate_basis_points=25,
+        maximum_source_age_days=30, lane_a_spot_review_required=True, lane_b_reviewer_approval_required=True,
+    )
+    client = _DynamoClient()
+    pointers = PolicyControlPointers("e" * 64, runtime.content_hash, gate.content_hash)
+    DynamoDbPolicyControlPublisher(table_name="controls", client=client, signer=signer).publish(
+        runtime=signer.sign(kind=ArtifactKind.RUNTIME_POLICY, artifact=runtime),
+        release_gate=signer.sign(kind=ArtifactKind.RELEASE_GATE_POLICY, artifact=gate),
+        pointers=pointers,
+    )
+    transaction = client.calls[0]["TransactItems"]
+    assert len(transaction) == 4
+    assert transaction[-1]["Put"]["Item"]["runtime_policy_bundle_hash"]["S"] == runtime.content_hash
 
 
 def test_monthly_cost_guard_reserves_before_a_model_call() -> None:

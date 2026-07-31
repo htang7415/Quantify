@@ -353,6 +353,62 @@ class KmsVerifyClient(Protocol):
     def verify(self, **kwargs: object) -> Mapping[str, object]: ...
 
 
+class KmsPolicySigner:
+    """Offline publisher signer for one asymmetric KMS key.
+
+    This is deliberately separate from ``KmsPolicyVerifier``: workers receive
+    only the latter and therefore cannot issue a policy that grants themselves
+    broader authority.
+    """
+
+    algorithm = KmsPolicyVerifier.algorithm
+
+    def __init__(
+        self, *, key_id: str, signer_key_id: str, client: "KmsSignClient"
+    ) -> None:
+        if not key_id or len(key_id) > 2048:
+            raise ValueError("KMS policy signing key is invalid")
+        _validate_identifier(signer_key_id, field="signer_key_id")
+        self._key_id = key_id
+        self._signer_key_id = signer_key_id
+        self._client = client
+
+    def sign(self, *, kind: ArtifactKind, artifact: Artifact) -> SignedPolicyEnvelope[Artifact]:
+        _validate_artifact_kind(kind=kind, artifact=artifact)
+        artifact_hash = artifact.content_hash
+        try:
+            response = self._client.sign(
+                KeyId=self._key_id,
+                Message=KmsPolicyVerifier._signature_payload(
+                    kind=kind,
+                    artifact_hash=artifact_hash,
+                    signer_key_id=self._signer_key_id,
+                ),
+                SigningAlgorithm=self.algorithm,
+                MessageType="RAW",
+            )
+            signature = response.get("Signature")
+            if not isinstance(signature, bytes):
+                raise ValueError("KMS signing response is invalid")
+        except Exception as error:
+            raise PolicyControlError("KMS policy signing is unavailable") from error
+        return SignedPolicyEnvelope(
+            kind=kind,
+            artifact=artifact,
+            artifact_hash=artifact_hash,
+            signer_key_id=self._signer_key_id,
+            signature_algorithm=self.algorithm,
+            signature=base64.b64encode(signature).decode("ascii"),
+        )
+
+    def verify(self, envelope: SignedPolicyEnvelope[Artifact]) -> None:
+        KmsPolicyVerifier(key_id=self._key_id, client=self._client).verify(envelope)
+
+
+class KmsSignClient(KmsVerifyClient, Protocol):
+    def sign(self, **kwargs: object) -> Mapping[str, object]: ...
+
+
 def _validate_artifact_kind(*, kind: ArtifactKind, artifact: Artifact) -> None:
     if kind is ArtifactKind.RUNTIME_POLICY and isinstance(artifact, RuntimePolicyBundle):
         return

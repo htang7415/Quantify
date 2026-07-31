@@ -473,6 +473,81 @@ class InMemoryResearchTaskQueue:
             self._messages.append(message)
 
 
+class LambdaSqsBatchQueue:
+    """One Lambda SQS batch exposed through the normal bounded worker queue.
+
+    Lambda, rather than this adapter, owns acknowledgement and redrive.  A
+    failed message is returned in ``batchItemFailures`` so the event-source
+    mapping applies its configured retry/DLQ policy.  Invalid bodies are never
+    logged or interpreted as task input.
+    """
+
+    def __init__(self, *, event: Mapping[str, object]) -> None:
+        records = event.get("Records")
+        if not isinstance(records, list):
+            raise TaskQueueUnavailableError("SQS batch event is invalid")
+        self._messages: list[QueueMessage] = []
+        self._failures: list[str] = []
+        for record in records:
+            if not isinstance(record, Mapping):
+                raise TaskQueueUnavailableError("SQS batch event is invalid")
+            message_id = record.get("messageId")
+            body = record.get("body")
+            if not isinstance(message_id, str) or not message_id:
+                raise TaskQueueUnavailableError("SQS batch event is invalid")
+            try:
+                payload = json.loads(body) if isinstance(body, str) else None
+                task_id = payload.get("task_id") if isinstance(payload, Mapping) else None
+            except json.JSONDecodeError:
+                task_id = None
+            if not isinstance(task_id, str) or not task_id:
+                self._failures.append(message_id)
+                continue
+            self._messages.append(
+                QueueMessage(task_id=task_id, receipt_handle=message_id, receive_count=1)
+            )
+
+    def enqueue(self, *, task_id: str) -> None:
+        del task_id
+        raise TaskQueueUnavailableError("Lambda SQS batch queue cannot enqueue work")
+
+    def receive(self) -> QueueMessage | None:
+        return self._messages.pop(0) if self._messages else None
+
+    def acknowledge(self, *, message: QueueMessage) -> None:
+        del message
+
+    def fail(self, *, message: QueueMessage) -> None:
+        self._failures.append(message.receipt_handle)
+
+    @property
+    def has_pending_messages(self) -> bool:
+        return bool(self._messages)
+
+    def response(self) -> dict[str, object]:
+        return {
+            "batchItemFailures": [
+                {"itemIdentifier": message_id} for message_id in sorted(set(self._failures))
+            ]
+        }
+
+
+class LambdaSqsBatchProcessor:
+    """Adapt one SQS event to the existing deterministic task worker."""
+
+    def __init__(
+        self, *, worker_factory: Callable[[ResearchTaskQueue], "ResearchTaskWorker"]
+    ) -> None:
+        self._worker_factory = worker_factory
+
+    def process(self, *, event: Mapping[str, object]) -> dict[str, object]:
+        queue = LambdaSqsBatchQueue(event=event)
+        worker = self._worker_factory(queue)
+        while queue.has_pending_messages:
+            worker.run_once()
+        return queue.response()
+
+
 @dataclass(slots=True)
 class _TaskRecord:
     task_id: str

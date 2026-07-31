@@ -27,6 +27,7 @@ from quantify.indexed_release import (
     NarrativeDisclosureChunk,
     compile_indexed_release,
 )
+from quantify.indexed_release_archive import IndexedReleaseArchive, S3IndexedReleaseArchiveStore
 from quantify.production import EmbeddedSecSnapshotProvider, validate_embedded_sec_fixtures
 from quantify.release_factory import build_evidence_release
 from quantify.service import ApplicationService
@@ -155,6 +156,30 @@ def test_compiler_builds_a_release_scoped_exact_fact_index_for_the_v1_release() 
     assert record.fact_id != record.evidence.evidence_id
     assert len(record.fact_id) == 64
     assert indexed.manifest_hash
+
+
+def test_indexed_release_archive_replays_exact_snapshot_and_rejects_tampering() -> None:
+    indexed, _, request = _compiled_msft_release()
+    archive = IndexedReleaseArchive.dump(indexed)
+    provider = IndexedReleaseArchive.load(archive)
+    assert provider.build(cik=request.cik, as_of_date=request.as_of_date, forms=request.forms).snapshot.manifest_hash == indexed.snapshot_for(request=request).snapshot.manifest_hash
+    tampered = archive.replace(b'"snapshot_manifest_hash":"', b'"snapshot_manifest_hash":"0', 1)
+    with pytest.raises(IndexedReleaseError, match="archived"):
+        IndexedReleaseArchive.load(tampered)
+
+
+def test_s3_indexed_release_archive_store_is_encrypted_content_addressed_and_reloads() -> None:
+    class _Body:
+        def __init__(self, value): self.value=value
+        def read(self): return self.value
+    class _S3:
+        def __init__(self): self.calls=[]; self.objects={}
+        def put_object(self, **kwargs): self.calls.append(kwargs); self.objects[kwargs["Key"]]=kwargs["Body"]; return {}
+        def get_object(self, **kwargs): return {"Body":_Body(self.objects[kwargs["Key"]])}
+    indexed, _, request = _compiled_msft_release(); client=_S3(); store=S3IndexedReleaseArchiveStore(bucket_name="releases",client=client)
+    manifest=store.persist(indexed)
+    assert client.calls[0]["ServerSideEncryption"] == "aws:kms"
+    assert store.load(evidence_release_manifest_hash=manifest).build(cik=request.cik,as_of_date=request.as_of_date,forms=request.forms).snapshot.manifest_hash == indexed.snapshot_for(request=request).snapshot.manifest_hash
 
 
 def test_exact_fact_lookup_fails_closed_for_any_non_exact_key_or_release() -> None:

@@ -23,7 +23,10 @@ from fastapi import FastAPI
 from quantify.harness.audit import AuditManifest
 from quantify.policy_control import (
     ArtifactKind,
+    PolicyControlPlane,
+    PolicyControlPointers,
     PolicySigner,
+    PolicyStatus,
     ReleaseGatePolicy,
     RuntimePolicyBundle,
     SignedPolicyEnvelope,
@@ -287,6 +290,187 @@ class S3SignedPolicyArtifactLoader:
                 raise ValueError("release-gate policy payload schema is invalid")
             return ReleaseGatePolicy(**payload)
         raise ValueError("only signed policy artifacts can be loaded")
+
+
+class DynamoDbPolicyControlStore:
+    """Read the independently managed policy pointers and status registry.
+
+    This adapter deliberately has no mutation methods: publishing and
+    emergency control changes belong to an offline, separately authorized
+    control path.  Workers use strongly consistent reads so a revoked or
+    superseded policy cannot be hidden behind a stale task process cache.
+    """
+
+    def __init__(self, *, table_name: str, client: object) -> None:
+        if not table_name:
+            raise ValueError("policy control table name is required")
+        self._table_name = table_name
+        self._client = client
+
+    def _read(self, *, pk: str, sk: str) -> Mapping[str, object]:
+        try:
+            response = self._client.get_item(
+                TableName=self._table_name,
+                Key={"pk": {"S": pk}, "sk": {"S": sk}},
+                ConsistentRead=True,
+            )
+            item = response.get("Item")
+            if not isinstance(item, Mapping):
+                raise ValueError("policy control record is missing")
+            return item
+        except Exception as error:
+            raise ProductionConfigurationError("policy control record is unavailable") from error
+
+    @staticmethod
+    def _string(item: Mapping[str, object], *, field: str) -> str:
+        value = item.get(field)
+        if not isinstance(value, Mapping) or not isinstance(value.get("S"), str):
+            raise ProductionConfigurationError("policy control record is malformed")
+        return value["S"]
+
+    def current_pointers(self) -> PolicyControlPointers:
+        item = self._read(pk="CONTROL#POINTERS", sk="CURRENT")
+        try:
+            return PolicyControlPointers(
+                evidence_release_manifest_hash=self._string(
+                    item, field="evidence_release_manifest_hash"
+                ),
+                runtime_policy_bundle_hash=self._string(
+                    item, field="runtime_policy_bundle_hash"
+                ),
+                release_gate_policy_hash=self._string(
+                    item, field="release_gate_policy_hash"
+                ),
+            )
+        except (TypeError, ValueError) as error:
+            raise ProductionConfigurationError("policy control pointers are malformed") from error
+
+    def status(self, *, kind: ArtifactKind, artifact_hash: str) -> PolicyStatus:
+        item = self._read(pk=f"CONTROL#STATUS#{kind.value}#{artifact_hash}", sk="STATUS")
+        try:
+            return PolicyStatus(self._string(item, field="status"))
+        except ValueError as error:
+            raise ProductionConfigurationError("policy control status is malformed") from error
+
+
+class DynamoDbPolicyControlPublisher:
+    """Offline transactional publisher for statuses and the three pointers."""
+
+    def __init__(self, *, table_name: str, client: object, signer: PolicySigner) -> None:
+        if not table_name:
+            raise ValueError("policy control table name is required")
+        self._table_name = table_name
+        self._client = client
+        self._signer = signer
+
+    def publish(
+        self,
+        *,
+        runtime: SignedPolicyEnvelope[RuntimePolicyBundle],
+        release_gate: SignedPolicyEnvelope[ReleaseGatePolicy],
+        pointers: PolicyControlPointers,
+        expected_current: PolicyControlPointers | None = None,
+    ) -> None:
+        self._signer.verify(runtime)
+        self._signer.verify(release_gate)
+        if runtime.artifact_hash != pointers.runtime_policy_bundle_hash or release_gate.artifact_hash != pointers.release_gate_policy_hash:
+            raise ProductionConfigurationError("policy artifact does not match requested pointers")
+        items: list[dict[str, object]] = []
+        for kind, artifact_hash in (
+            (ArtifactKind.EVIDENCE_RELEASE, pointers.evidence_release_manifest_hash),
+            (ArtifactKind.RUNTIME_POLICY, runtime.artifact_hash),
+            (ArtifactKind.RELEASE_GATE_POLICY, release_gate.artifact_hash),
+        ):
+            items.append({"Put": {"TableName": self._table_name, "Item": {
+                "pk": {"S": f"CONTROL#STATUS#{kind.value}#{artifact_hash}"},
+                "sk": {"S": "STATUS"}, "status": {"S": PolicyStatus.ACTIVE.value},
+            }}})
+        values = {
+            ":evidence": {"S": pointers.evidence_release_manifest_hash},
+            ":runtime": {"S": pointers.runtime_policy_bundle_hash},
+            ":gate": {"S": pointers.release_gate_policy_hash},
+        }
+        pointer_put: dict[str, object] = {"TableName": self._table_name, "Item": {
+            "pk": {"S": "CONTROL#POINTERS"}, "sk": {"S": "CURRENT"},
+            "evidence_release_manifest_hash": values[":evidence"],
+            "runtime_policy_bundle_hash": values[":runtime"],
+            "release_gate_policy_hash": values[":gate"],
+        }}
+        if expected_current is not None:
+            values.update({
+                ":old_evidence": {"S": expected_current.evidence_release_manifest_hash},
+                ":old_runtime": {"S": expected_current.runtime_policy_bundle_hash},
+                ":old_gate": {"S": expected_current.release_gate_policy_hash},
+            })
+            pointer_put["ConditionExpression"] = (
+                "evidence_release_manifest_hash = :old_evidence AND "
+                "runtime_policy_bundle_hash = :old_runtime AND release_gate_policy_hash = :old_gate"
+            )
+            pointer_put["ExpressionAttributeValues"] = values
+        else:
+            pointer_put["ConditionExpression"] = "attribute_not_exists(pk)"
+        items.append({"Put": pointer_put})
+        try:
+            self._client.transact_write_items(TransactItems=items)
+        except Exception as error:
+            raise ProductionConfigurationError("policy control publication did not complete") from error
+
+
+class DynamoDbReloadingPolicyControlPlane:
+    """Fail-closed policy facade that reloads controls before every decision."""
+
+    def __init__(
+        self,
+        *,
+        registry: DynamoDbPolicyControlStore,
+        artifacts: S3SignedPolicyArtifactLoader,
+        signer: PolicySigner,
+    ) -> None:
+        self._registry = registry
+        self._artifacts = artifacts
+        self._signer = signer
+
+    def _load(self) -> PolicyControlPlane:
+        pointers = self._registry.current_pointers()
+        runtime = self._artifacts.load(
+            kind=ArtifactKind.RUNTIME_POLICY,
+            artifact_hash=pointers.runtime_policy_bundle_hash,
+        )
+        gate = self._artifacts.load(
+            kind=ArtifactKind.RELEASE_GATE_POLICY,
+            artifact_hash=pointers.release_gate_policy_hash,
+        )
+        plane = PolicyControlPlane(signer=self._signer)
+        plane.publish(runtime)
+        plane.publish(gate)
+        plane.register_evidence_release(
+            manifest_hash=pointers.evidence_release_manifest_hash
+        )
+        for kind, artifact_hash in (
+            (ArtifactKind.EVIDENCE_RELEASE, pointers.evidence_release_manifest_hash),
+            (ArtifactKind.RUNTIME_POLICY, pointers.runtime_policy_bundle_hash),
+            (ArtifactKind.RELEASE_GATE_POLICY, pointers.release_gate_policy_hash),
+        ):
+            plane.set_status(
+                kind=kind,
+                artifact_hash=artifact_hash,
+                status=self._registry.status(kind=kind, artifact_hash=artifact_hash),
+            )
+        plane.set_pointers(pointers)
+        return plane
+
+    def current_pointers(self) -> PolicyControlPointers:
+        return self._load().current_pointers()
+
+    def authorize_tool(
+        self, *, task_pointers: PolicyControlPointers, tool_name: str
+    ) -> RuntimePolicyBundle:
+        return self._load().authorize_tool(
+            task_pointers=task_pointers, tool_name=tool_name
+        )
+
+    def authorize_serving(self, *, task_pointers: PolicyControlPointers) -> None:
+        self._load().authorize_serving(task_pointers=task_pointers)
 
 
 def load_pinned_gemini_api_key(

@@ -56,6 +56,39 @@ Cognito/IAM, DynamoDB, encrypted S3 audit storage, KMS, Secrets Manager, ECR,
 and CloudWatch in us-east-2. It is not yet a multi-tool research agent, a
 live-data terminal, or an async task platform.
 
+### Private research-task pilot foundation
+
+The repository contains an IAM-only research-task pilot foundation. It is not
+deployed, exposes no HTTP route, and is intentionally non-consuming by
+default: worker reserved concurrency is `0`, no SQS event-source mapping is
+present, and the Lambda handler fails closed until an indexed-release worker
+composition is installed. This is an infrastructure and adapter boundary, not
+authorization to accept or process research tasks.
+
+The foundation includes an encrypted, point-in-time-recoverable DynamoDB task
+table; encrypted SQS queue and DLQ; a digest-pinned Lambda image contract; a
+30-day worker log group; and alarms for queue age, DLQ depth, worker errors,
+and throttles. Its deployment script requires explicit authorization and
+restricts the region to us-east-2. No deploy, queue consumption, concurrency
+increase, or event-source mapping is authorized merely by the presence of this
+foundation.
+
+It also establishes the storage boundary for policy control: a separate,
+encrypted, versioned, public-blocked policy-artifact bucket; a separate
+encrypted policy-control table; and an asymmetric RSA-4096 KMS SIGN_VERIFY
+key. Offline publishers can create signed policy envelopes, while worker-side
+verification uses KMS verification and strongly consistent reads of the
+independently managed pointers and status records. The runtime policy-control
+adapter reloads those records before each authorization decision so a queued
+task cannot continue after a policy or evidence release is revoked. The
+worker-side code provides no policy-publication operation.
+
+The SQS batch adapter returns only failed message identifiers for retry and
+redrive handling; it does not log or interpret malformed message bodies as
+research input. The production worker composition still requires the indexed
+release verifier, durable task store, active signed artifacts, capacity
+allocation, and post-deploy checks before it may be enabled.
+
 The target fact index does not create a second verifier. Initially, the async
 path will use the existing deterministic engine through an indexed evidence
 snapshot adapter that has replay parity with the approved embedded release.
@@ -207,6 +240,13 @@ create_review_task, release-scoped narrative context, then watchlist alerts.
 The planner cannot call arbitrary URLs, inspect private documents, alter policy,
 write a verdict, trade, or access live filings.
 
+The private pilot foundation implements only the SQS batch-adaptation and
+control-plane boundaries described above. It does not implement the
+indexed-release worker composition or authorize any asynchronous HTTP surface.
+The V1 public and private verification routes remain the only active product
+contracts until the prerequisites in Section 8 are satisfied and separately
+authorized.
+
 ## 6. Safe results and provenance
 
 Every visible statement is labelled verified fact, qualification,
@@ -260,11 +300,11 @@ planner request path.
 This is an ordered plan, not a timing promise. Build and test each step before
 relying on the next.
 
-1. Publish signed policy-bundle, status-registry, release-gate schemas, independent pointers, revocation behavior, and three-hash audit fields. Test emergency tool disable without code deployment.
+1. **Policy-control and pilot foundation — partially implemented, inactive.** The repository contains signed-envelope types, an offline KMS signing boundary, a KMS verification boundary, content-addressed artifact loading, a strongly consistent DynamoDB policy-control reader, and a reload-on-authorization policy facade. The private pilot template creates the isolated storage, signing, queue, worker, and alarm resources but defaults worker concurrency to zero and configures no event source. Remaining work: separately authorize and operate an offline publication path; publish active runtime and release-gate artifacts plus evidence status/pointers; verify actual KMS/S3/DynamoDB access in the target account; populate all three audit hashes; and test emergency disable without code deployment.
 2. Compile the exact fact and release-scoped narrative indexes for one approved release. Test exact matching, manifest filtering, and that narrative output cannot enter verdict evaluation.
-3. Build the minimum async vertical slice for verify_claims: canonical hashing, idempotency collision rejection, sharded admission, SQS, bounded worker, DLQ, task status, and safe audit output. It uses the existing deterministic engine through the indexed snapshot adapter; keep V1 on embedded fixtures until dual-read replay parity passes.
+3. **Async worker boundary — partially implemented, inactive.** Canonical hashing, idempotency collision rejection, sharded admission, bounded queues, task state, and SQS batch failure reporting exist as code-level boundaries. Before activation, compose the worker with the indexed snapshot provider and durable stores; prove dual-read replay parity with the embedded release; configure an authorized event-source mapping and bounded concurrency; and run the private post-deploy checks. Keep V1 on embedded fixtures until parity proves identical verdicts, qualifications, counterevidence, and audit inputs.
 4. Prove failure/recovery semantics: provider-not-started, completed, ambiguous, reconciliation-unavailable, manual retry, cancellation, and reservation reconciliation. No automatic model retry or fallback.
-5. Load and abuse test public access: sharded hard caps, burst behavior, queue saturation, WAF/rate enforcement, cache behavior, and telemetry separation.
+5. Load and abuse test public access: sharded hard caps, burst behavior, queue saturation, WAF/rate enforcement, cache behavior, and telemetry separation. Do not expose a research-task route until these tests and an explicit authorization approve it.
 6. Operationalize the factory: source validation, normalization, evaluations, Lane A/B gate records, immutable manifests, CDN catalog publication, rollback/revocation tests, and reviewer workflow.
 7. Add approved-release search, review tasks, and narrative context one at a time. Each needs a typed contract, policy allowlist, evaluation, provenance, and revocation test.
 8. Expand issuer coverage according to measured release-factory throughput; maintain SDK/tool adapters that preserve the safe contract. Reassess storage only from observed query patterns.

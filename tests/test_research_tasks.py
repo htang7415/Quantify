@@ -18,6 +18,7 @@ from quantify.research_tasks import (
     IdempotencyConflictError,
     InMemoryResearchTaskQueue,
     InMemoryResearchTaskStore,
+    LambdaSqsBatchProcessor,
     ResearchTaskRequest,
     ResearchTaskService,
     ResearchTaskWorker,
@@ -533,6 +534,36 @@ def test_sqs_queue_adapter_bounds_failures_and_hands_exhausted_messages_to_its_d
         ("send", {"QueueUrl": "dlq", "MessageBody": '{"task_id":"task-1"}'}),
         ("delete", {"QueueUrl": "queue", "ReceiptHandle": "receipt-1"}),
     ]
+
+
+def test_lambda_sqs_batch_processor_returns_only_failed_message_identifiers() -> None:
+    class _Worker:
+        def __init__(self, queue) -> None:
+            self.queue = queue
+
+        def run_once(self) -> None:
+            message = self.queue.receive()
+            assert message is not None
+            self.queue.fail(message=message)
+
+    processor = LambdaSqsBatchProcessor(worker_factory=lambda queue: _Worker(queue))
+
+    response = processor.process(
+        event={
+            "Records": [
+                {"messageId": "valid-but-unavailable", "body": '{"task_id":"task-1"}'},
+                {"messageId": "malformed", "body": "private input must not appear"},
+            ]
+        }
+    )
+
+    assert response == {
+        "batchItemFailures": [
+            {"itemIdentifier": "malformed"},
+            {"itemIdentifier": "valid-but-unavailable"},
+        ]
+    }
+    assert "private input" not in str(response)
 
 
 def test_dynamodb_task_store_admits_task_idempotency_and_capacity_in_one_transaction() -> None:

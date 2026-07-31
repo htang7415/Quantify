@@ -3,6 +3,11 @@
 Scope: IAM-only `verify_claims` tasks against one approved indexed release. No
 public route, live retrieval, account/upload capability, or fallback model.
 
+The initial foundation deploy sets worker reserved concurrency to `0` and has
+no SQS event-source mapping. Enable consumption only after the indexed-release
+verifier bootstrap, signed active policy artifacts, capacity allocation, and
+the post-deploy checks below are complete.
+
 Before deployment, verify:
 
 - Signed active runtime and release-gate policy hashes match the selected release.

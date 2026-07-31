@@ -1,8 +1,19 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Private IAM-only Quantify research-task pilot; no public API resources.
 Parameters:
-  ImageUri: {Type: String}
+  ImageUri: {Type: String, AllowedPattern: '^.+@sha256:[0-9a-f]{64}$'}
   AuditBucketName: {Type: String}
+  WorkerReservedConcurrency: {Type: Number, Default: 0, AllowedValues: [0, 2]}
+  DailyTaskLimit: {Type: Number, Default: 10, MinValue: 1}
+  MonthlyReservationLimitMicroUsd: {Type: Number, Default: 10000, MinValue: 1}
+  ReservationMicroUsd: {Type: Number, Default: 500, MinValue: 1}
+  AdmissionShardCount: {Type: Number, Default: 2, MinValue: 1}
+  GeminiSecretArn: {Type: String}
+  GeminiSecretVersionId: {Type: String, AllowedPattern: '^[A-Za-z0-9-]{32,64}$'}
+  EnableTaskConsumption: {Type: String, Default: 'false', AllowedValues: ['false', 'true']}
+  TaskMaximumConcurrency: {Type: Number, Default: 1, MinValue: 1, MaxValue: 1}
+Conditions:
+  ConsumeTasks: !Equals [!Ref EnableTaskConsumption, 'true']
 Resources:
   TaskTable:
     Type: AWS::DynamoDB::Table
@@ -11,6 +22,42 @@ Resources:
       AttributeDefinitions: [{AttributeName: pk, AttributeType: S}, {AttributeName: sk, AttributeType: S}]
       KeySchema: [{AttributeName: pk, KeyType: HASH}, {AttributeName: sk, KeyType: RANGE}]
       PointInTimeRecoverySpecification: {PointInTimeRecoveryEnabled: true}
+      SSESpecification: {SSEEnabled: true}
+  PolicyControlTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{AttributeName: pk, AttributeType: S}, {AttributeName: sk, AttributeType: S}]
+      KeySchema: [{AttributeName: pk, KeyType: HASH}, {AttributeName: sk, KeyType: RANGE}]
+      PointInTimeRecoverySpecification: {PointInTimeRecoveryEnabled: true}
+      SSESpecification: {SSEEnabled: true}
+  PolicyArtifactBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: true
+            ServerSideEncryptionByDefault: {SSEAlgorithm: aws:kms}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration: {Status: Enabled}
+  PolicySigningKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Offline signing key for immutable research-task policy artifacts.
+      KeySpec: RSA_4096
+      KeyUsage: SIGN_VERIFY
+      EnableKeyRotation: false
+  PolicySigningKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/${AWS::StackName}-policy-signing'
+      TargetKeyId: !Ref PolicySigningKey
   TaskDlq:
     Type: AWS::SQS::Queue
     Properties: {MessageRetentionPeriod: 1209600, KmsMasterKeyId: alias/aws/sqs}
@@ -24,18 +71,72 @@ Resources:
     Properties:
       AssumeRolePolicyDocument: {Version: '2012-10-17', Statement: [{Effect: Allow, Principal: {Service: lambda.amazonaws.com}, Action: 'sts:AssumeRole'}]}
       ManagedPolicyArns: ['arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole']
+      Policies:
+        - PolicyName: PrivateResearchTaskDataOnly
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:UpdateItem, dynamodb:TransactWriteItems]
+                Resource: [!GetAtt TaskTable.Arn, !GetAtt PolicyControlTable.Arn]
+              - Effect: Allow
+                Action: [s3:GetObject]
+                Resource:
+                  - !Sub '${PolicyArtifactBucket.Arn}/policy-artifacts/v1/*'
+                  - !Sub '${PolicyArtifactBucket.Arn}/evidence-releases/v1/*'
+              - Effect: Allow
+                Action: [kms:Verify]
+                Resource: !GetAtt PolicySigningKey.Arn
+              - Effect: Allow
+                Action: [secretsmanager:GetSecretValue]
+                Resource: !Ref GeminiSecretArn
+              - Effect: Allow
+                Action: [s3:PutObject]
+                Resource: !Sub 'arn:${AWS::Partition}:s3:::${AuditBucketName}/audit-manifests/v1/*'
+              - Effect: Allow
+                Action: [sqs:ReceiveMessage, sqs:DeleteMessage, sqs:GetQueueAttributes, sqs:ChangeMessageVisibility]
+                Resource: !GetAtt TaskQueue.Arn
+  WorkerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-research-task-worker'
+      RetentionInDays: 30
   Worker:
     Type: AWS::Lambda::Function
     Properties:
       PackageType: Image
       Code: {ImageUri: !Ref ImageUri}
       Role: !GetAtt WorkerRole.Arn
-      ReservedConcurrentExecutions: 2
+      # Zero keeps the foundation inert until indexed-release worker bootstrap
+      # and account concurrency allocation are both approved.
+      ReservedConcurrentExecutions: !Ref WorkerReservedConcurrency
       Timeout: 30
-      Environment: {Variables: {QUANTIFY_RESEARCH_TASK_TABLE_NAME: !Ref TaskTable, QUANTIFY_RESEARCH_TASK_QUEUE_URL: !Ref TaskQueue, QUANTIFY_RESEARCH_TASK_DLQ_URL: !Ref TaskDlq, QUANTIFY_AUDIT_BUCKET_NAME: !Ref AuditBucketName}}
+      ImageConfig: {Command: [quantify.research_task_lambda.handler]}
+      Environment: {Variables: {QUANTIFY_RESEARCH_TASK_TABLE_NAME: !Ref TaskTable, QUANTIFY_RESEARCH_TASK_QUEUE_URL: !Ref TaskQueue, QUANTIFY_RESEARCH_TASK_DLQ_URL: !Ref TaskDlq, QUANTIFY_AUDIT_BUCKET_NAME: !Ref AuditBucketName, QUANTIFY_POLICY_ARTIFACT_BUCKET_NAME: !Ref PolicyArtifactBucket, QUANTIFY_POLICY_CONTROL_TABLE_NAME: !Ref PolicyControlTable, QUANTIFY_POLICY_SIGNING_KEY_ARN: !GetAtt PolicySigningKey.Arn, QUANTIFY_GEMINI_SECRET_ARN: !Ref GeminiSecretArn, QUANTIFY_GEMINI_SECRET_VERSION_ID: !Ref GeminiSecretVersionId, QUANTIFY_RESEARCH_TASK_DAILY_LIMIT: !Ref DailyTaskLimit, QUANTIFY_RESEARCH_TASK_MONTHLY_RESERVATION_LIMIT_MICRO_USD: !Ref MonthlyReservationLimitMicroUsd, QUANTIFY_RESEARCH_TASK_RESERVATION_MICRO_USD: !Ref ReservationMicroUsd, QUANTIFY_RESEARCH_TASK_SHARD_COUNT: !Ref AdmissionShardCount}}
+  TaskEventSource:
+    Type: AWS::Lambda::EventSourceMapping
+    Condition: ConsumeTasks
+    Properties:
+      EventSourceArn: !GetAtt TaskQueue.Arn
+      FunctionName: !Ref Worker
+      BatchSize: 1
+      ScalingConfig: {MaximumConcurrency: !Ref TaskMaximumConcurrency}
+      FunctionResponseTypes: [ReportBatchItemFailures]
   QueueAgeAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties: {Namespace: AWS/SQS, MetricName: ApproximateAgeOfOldestMessage, Dimensions: [{Name: QueueName, Value: !GetAtt TaskQueue.QueueName}], ComparisonOperator: GreaterThanThreshold, Threshold: 300, EvaluationPeriods: 1, Period: 60, Statistic: Maximum}
+  DlqMessagesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties: {Namespace: AWS/SQS, MetricName: ApproximateNumberOfMessagesVisible, Dimensions: [{Name: QueueName, Value: !GetAtt TaskDlq.QueueName}], ComparisonOperator: GreaterThanThreshold, Threshold: 0, EvaluationPeriods: 1, Period: 60, Statistic: Maximum}
+  WorkerErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties: {Namespace: AWS/Lambda, MetricName: Errors, Dimensions: [{Name: FunctionName, Value: !Ref Worker}], ComparisonOperator: GreaterThanThreshold, Threshold: 0, EvaluationPeriods: 1, Period: 60, Statistic: Sum}
+  WorkerThrottlesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties: {Namespace: AWS/Lambda, MetricName: Throttles, Dimensions: [{Name: FunctionName, Value: !Ref Worker}], ComparisonOperator: GreaterThanThreshold, Threshold: 0, EvaluationPeriods: 1, Period: 60, Statistic: Sum}
 Outputs:
   TaskQueueUrl: {Value: !Ref TaskQueue}
   TaskTableName: {Value: !Ref TaskTable}
+  PolicyControlTableName: {Value: !Ref PolicyControlTable}
+  PolicyArtifactBucketName: {Value: !Ref PolicyArtifactBucket}
+  PolicySigningKeyArn: {Value: !GetAtt PolicySigningKey.Arn}

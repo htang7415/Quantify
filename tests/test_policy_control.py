@@ -10,6 +10,7 @@ from quantify.policy_control import (
     HmacPolicySigner,
     InvalidPolicyArtifactError,
     KmsPolicyVerifier,
+    KmsPolicySigner,
     PolicyControlPlane,
     PolicyControlError,
     PolicyStatus,
@@ -133,6 +134,28 @@ def test_kms_policy_verifier_has_no_signing_path_and_verifies_the_exact_envelope
         verifier.sign(kind=ArtifactKind.RUNTIME_POLICY, artifact=runtime)
     with pytest.raises(InvalidPolicyArtifactError, match="signature is invalid"):
         verifier.verify(replace(envelope, signature=base64.b64encode(b"rejected").decode()))
+
+
+def test_kms_policy_signer_encodes_a_publisher_signature_that_worker_verifier_accepts() -> None:
+    class _KmsClient:
+        def sign(self, **kwargs: object) -> dict[str, object]:
+            assert kwargs["SigningAlgorithm"] == "RSASSA_PSS_SHA_256"
+            return {"Signature": b"publisher-signature"}
+
+        def verify(self, **kwargs: object) -> dict[str, object]:
+            return {"SignatureValid": kwargs["Signature"] == b"publisher-signature"}
+
+    client = _KmsClient()
+    signer = KmsPolicySigner(
+        key_id="arn:aws:kms:us-east-2:123456789012:key/test",
+        signer_key_id="offline-publisher-v1",
+        client=client,
+    )
+    envelope = signer.sign(kind=ArtifactKind.RUNTIME_POLICY, artifact=_runtime())
+
+    assert envelope.signature_algorithm == "RSASSA_PSS_SHA_256"
+    assert envelope.signature == base64.b64encode(b"publisher-signature").decode()
+    signer.verify(envelope)
 
 
 def test_runtime_policy_requires_all_non_bypassable_prohibitions() -> None:
