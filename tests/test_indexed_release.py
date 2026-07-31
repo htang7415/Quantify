@@ -166,6 +166,10 @@ def test_indexed_release_archive_replays_exact_snapshot_and_rejects_tampering() 
     tampered = archive.replace(b'"snapshot_manifest_hash":"', b'"snapshot_manifest_hash":"0', 1)
     with pytest.raises(IndexedReleaseError, match="archived"):
         IndexedReleaseArchive.load(tampered)
+    malformed_index = json.loads(archive)
+    malformed_index["exact_fact_index_hash"] = "0" * 64
+    with pytest.raises(IndexedReleaseError, match="index hashes"):
+        IndexedReleaseArchive.load(json.dumps(malformed_index).encode())
 
 
 def test_s3_indexed_release_archive_store_is_encrypted_content_addressed_and_reloads() -> None:
@@ -180,6 +184,30 @@ def test_s3_indexed_release_archive_store_is_encrypted_content_addressed_and_rel
     manifest=store.persist(indexed)
     assert client.calls[0]["ServerSideEncryption"] == "aws:kms"
     assert store.load(evidence_release_manifest_hash=manifest).build(cik=request.cik,as_of_date=request.as_of_date,forms=request.forms).snapshot.manifest_hash == indexed.snapshot_for(request=request).snapshot.manifest_hash
+
+
+def test_indexed_archive_rejects_an_existing_object_that_does_not_replay() -> None:
+    class _Body:
+        def __init__(self, value): self.value=value
+        def read(self): return self.value
+    class _S3:
+        def __init__(self): self.objects={}
+        def put_object(self, **kwargs):
+            if kwargs["Key"] in self.objects:
+                error = RuntimeError("already exists")
+                error.response = {"Error": {"Code": "PreconditionFailed"}}  # type: ignore[attr-defined]
+                raise error
+            self.objects[kwargs["Key"]]=kwargs["Body"]
+            return {}
+        def get_object(self, **kwargs): return {"Body":_Body(self.objects[kwargs["Key"]])}
+    indexed, _, _ = _compiled_msft_release()
+    client = _S3()
+    store = S3IndexedReleaseArchiveStore(bucket_name="releases", client=client)
+    manifest = store.persist(indexed)
+    key = f"evidence-releases/v1/{manifest}/indexed-release.json"
+    client.objects[key] = b"{}"
+    with pytest.raises(IndexedReleaseError, match="unavailable"):
+        store.persist(indexed)
 
 
 def test_exact_fact_lookup_fails_closed_for_any_non_exact_key_or_release() -> None:
@@ -278,6 +306,12 @@ def test_narrative_context_is_manifest_filtered_and_cannot_change_a_verdict() ->
     )
     indexed, embedded, request = _compiled_msft_release(narrative_chunks=(chunk,))
     retriever = NarrativeContextRetriever(narrative_index=indexed.narrative_context)
+    archived = IndexedReleaseArchive.load(IndexedReleaseArchive.dump(indexed))
+
+    assert archived.indexed_release.narrative_context.context(
+        evidence_release_manifest_hash=release.manifest_hash,
+        cik=request.cik,
+    ) == (chunk,)
 
     assert retriever.context(
         evidence_release_manifest_hash=release.manifest_hash, cik=request.cik

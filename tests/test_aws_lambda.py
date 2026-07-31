@@ -440,6 +440,41 @@ def test_policy_publisher_writes_statuses_and_three_pointers_in_one_transaction(
     transaction = client.calls[0]["TransactItems"]
     assert len(transaction) == 4
     assert transaction[-1]["Put"]["Item"]["runtime_policy_bundle_hash"]["S"] == runtime.content_hash
+    DynamoDbPolicyControlPublisher(table_name="controls", client=client, signer=signer).publish(
+        runtime=signer.sign(kind=ArtifactKind.RUNTIME_POLICY, artifact=runtime),
+        release_gate=signer.sign(kind=ArtifactKind.RELEASE_GATE_POLICY, artifact=gate),
+        pointers=pointers,
+        expected_current=PolicyControlPointers("c" * 64, "d" * 64, "e" * 64),
+    )
+    expected_values = client.calls[1]["TransactItems"][-1]["Put"]["ExpressionAttributeValues"]
+    assert set(expected_values) == {":old_evidence", ":old_runtime", ":old_gate"}
+
+
+def test_policy_publisher_distinguishes_authorization_and_compare_and_swap_rejection() -> None:
+    signer = HmacPolicySigner(key_id="policy-test-key", key=b"k" * 32)
+    runtime = RuntimePolicyBundle(
+        schema_version="1.0.0", policy_id="runtime-publish-v1", planner_provider="google",
+        planner_model="gemini-3.1-flash-lite", planner_model_version="2026-07",
+        secret_version="secret-version-1", prompt_hash="a" * 64, maximum_model_calls=1,
+        maximum_input_tokens=4_000, maximum_output_tokens=500,
+        allowed_tools=("verify_claims",), disabled_tools=(), allowed_sources=("structured_fact",),
+        prohibited_actions=("arbitrary_url_fetch", "live_sec_retrieval", "private_document_access", "policy_mutation", "verdict_composition", "trade_execution"),
+        admission_policy_version="admission-v1", cache_policy_version="cache-v1",
+    )
+    gate = ReleaseGatePolicy("1.0.0", "gate-publish-v1", 9_900, 100, 25, 30, True, True)
+    pointers = PolicyControlPointers("e" * 64, runtime.content_hash, gate.content_hash)
+    class _Rejected:
+        def __init__(self, code): self.code = code
+        def transact_write_items(self, **kwargs):
+            error = RuntimeError("rejected")
+            error.response = {"Error": {"Code": self.code}}  # type: ignore[attr-defined]
+            raise error
+    publisher = DynamoDbPolicyControlPublisher(table_name="controls", client=_Rejected("TransactionCanceledException"), signer=signer)
+    with pytest.raises(ProductionConfigurationError, match="compare-and-swap"):
+        publisher.publish(runtime=signer.sign(kind=ArtifactKind.RUNTIME_POLICY, artifact=runtime), release_gate=signer.sign(kind=ArtifactKind.RELEASE_GATE_POLICY, artifact=gate), pointers=pointers)
+    publisher = DynamoDbPolicyControlPublisher(table_name="controls", client=_Rejected("AccessDeniedException"), signer=signer)
+    with pytest.raises(ProductionConfigurationError, match="not authorized"):
+        publisher.publish(runtime=signer.sign(kind=ArtifactKind.RUNTIME_POLICY, artifact=runtime), release_gate=signer.sign(kind=ArtifactKind.RELEASE_GATE_POLICY, artifact=gate), pointers=pointers)
 
 
 def test_monthly_cost_guard_reserves_before_a_model_call() -> None:

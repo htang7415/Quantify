@@ -31,7 +31,7 @@ def test_sqs_lambda_entrypoint_delegates_to_the_bounded_batch_processor() -> Non
 
 
 def test_default_lambda_entrypoint_fails_closed_without_indexed_release_composition() -> None:
-    with pytest.raises(ProductionConfigurationError, match="indexed-release worker"):
+    with pytest.raises(ProductionConfigurationError, match="bootstrap failed"):
         handler({"Records": []}, object())
 
 
@@ -66,6 +66,47 @@ def test_indexed_verifier_records_current_hashes_and_replays_archived_release() 
     assert audit["evidence_release_manifest_hash"] == pointers.evidence_release_manifest_hash
     assert audit["runtime_policy_bundle_hash"] == pointers.runtime_policy_bundle_hash
     assert audit["release_gate_policy_hash"] == pointers.release_gate_policy_hash
+
+
+def test_indexed_verifier_rejects_an_invalid_image_digest() -> None:
+    release, _, _ = _compiled_msft_release()
+    provider = IndexedReleaseArchive.load(IndexedReleaseArchive.dump(release))
+    pointers = PolicyControlPointers(release.evidence_release.manifest_hash, "a" * 64, "b" * 64)
+    with pytest.raises(ProductionConfigurationError, match="image digest"):
+        create_indexed_verifier(
+            snapshot_provider=provider,
+            pointers=pointers,
+            extractor=_MicrosoftGrowthExtractor(),
+            extraction_model="test-model",
+            prompt_hash="c" * 64,
+            temperature=0.0,
+            image_digest="sha256:not-a-digest",
+        )
+
+
+def test_indexed_verifier_fails_closed_when_required_audit_persistence_fails() -> None:
+    release, _, request = _compiled_msft_release()
+    provider = IndexedReleaseArchive.load(IndexedReleaseArchive.dump(release))
+    pointers = PolicyControlPointers(release.evidence_release.manifest_hash, "a" * 64, "b" * 64)
+    service = create_indexed_verifier(
+        snapshot_provider=provider,
+        pointers=pointers,
+        extractor=_MicrosoftGrowthExtractor(),
+        extraction_model="test-model",
+        prompt_hash="c" * 64,
+        temperature=0.0,
+        image_digest="sha256:" + "d" * 64,
+        audit_manifest_sink=lambda manifest: (_ for _ in ()).throw(RuntimeError("storage unavailable")),
+    )
+    with pytest.raises(Exception, match="audit manifest persistence"):
+        service.verify(
+            cik=request.cik,
+            request=VerifyRequest(
+                analysis="Microsoft revenue increased.",
+                as_of_date=date(2024, 7, 30),
+                forms=("10-K",),
+            ),
+        )
 
 def test_capacity_policy_requires_explicit_valid_environment() -> None:
     env={"QUANTIFY_RESEARCH_TASK_SHARD_COUNT":"2","QUANTIFY_RESEARCH_TASK_DAILY_LIMIT":"10","QUANTIFY_RESEARCH_TASK_MONTHLY_RESERVATION_LIMIT_MICRO_USD":"10000","QUANTIFY_RESEARCH_TASK_RESERVATION_MICRO_USD":"500"}

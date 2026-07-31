@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from typing import Protocol
 import os
+import re
 
 from quantify.production import ProductionConfigurationError
 from quantify.research_tasks import LambdaSqsBatchProcessor, ResearchTaskQueue, ResearchTaskWorker
@@ -24,6 +25,9 @@ class _Worker(Protocol):
 
 
 WorkerFactory = Callable[[ResearchTaskQueue], _Worker]
+
+
+_IMAGE_DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 def load_capacity_policy(*, environment=None):
     """Load explicit bounded worker admission settings; never default silently."""
@@ -84,7 +88,7 @@ def create_indexed_verifier(
     before_model_call=None,
 ) -> ApplicationService:
     """Build the sole deterministic verdict authority for archived evidence."""
-    if not image_digest.startswith("sha256:"):
+    if not _IMAGE_DIGEST_PATTERN.fullmatch(image_digest):
         raise ProductionConfigurationError("research-task image digest is required")
     return ApplicationService(
         snapshot_provider=snapshot_provider,
@@ -118,12 +122,29 @@ def create_sqs_handler(*, worker_factory: WorkerFactory) -> Callable[[Mapping[st
 
 
 def handler(event: Mapping[str, object], context: object) -> dict[str, object]:
-    """Fail closed until an indexed-release worker composition is installed."""
-
-    del event, context
-    raise ProductionConfigurationError(
-        "research-task Lambda requires an indexed-release worker composition"
-    )
+    """Process one private SQS batch through the pinned archived verifier."""
+    try:
+        import boto3
+        from quantify.aws_lambda import DynamoDbPolicyControlStore, DynamoDbReloadingPolicyControlPlane, S3AuditManifestStore, S3SignedPolicyArtifactLoader, load_pinned_gemini_api_key
+        from quantify.harness import GeminiExtractionConfig, GeminiStructuredExtractor
+        from quantify.indexed_release_archive import S3IndexedReleaseArchiveStore
+        from quantify.policy_control import KmsPolicyVerifier
+        from quantify.research_tasks import DynamoDbResearchTaskStore, DeterministicShardedAdmission, InMemoryResearchTaskQueue, ResearchTaskService
+        env=os.environ; ddb=boto3.client("dynamodb"); s3=boto3.client("s3"); kms=boto3.client("kms")
+        signer=KmsPolicyVerifier(key_id=env["QUANTIFY_POLICY_SIGNING_KEY_ARN"],client=kms)
+        plane=DynamoDbReloadingPolicyControlPlane(registry=DynamoDbPolicyControlStore(table_name=env["QUANTIFY_POLICY_CONTROL_TABLE_NAME"],client=ddb),artifacts=S3SignedPolicyArtifactLoader(bucket_name=env["QUANTIFY_POLICY_ARTIFACT_BUCKET_NAME"],client=s3,signer=signer),signer=signer)
+        pointers=activation_preflight(policy_control=plane,archive_store=S3IndexedReleaseArchiveStore(bucket_name=env["QUANTIFY_POLICY_ARTIFACT_BUCKET_NAME"],client=s3))
+        policy=load_capacity_policy(environment=env); store=DynamoDbResearchTaskStore(table_name=env["QUANTIFY_RESEARCH_TASK_TABLE_NAME"],client=ddb,policy=policy)
+        service=ResearchTaskService(policy_control=plane,admission=DeterministicShardedAdmission(policy=policy),store=store,queue=InMemoryResearchTaskQueue())
+        runtime=plane.authorize_tool(task_pointers=pointers,tool_name="verify_claims")
+        config=GeminiExtractionConfig(model=runtime.planner_model,max_output_tokens=runtime.maximum_output_tokens)
+        extractor=GeminiStructuredExtractor(api_key=load_pinned_gemini_api_key(environment=env),config=config)
+        archive=S3IndexedReleaseArchiveStore(bucket_name=env["QUANTIFY_POLICY_ARTIFACT_BUCKET_NAME"],client=s3)
+        audit_store=S3AuditManifestStore(bucket_name=env["QUANTIFY_AUDIT_BUCKET_NAME"],client=s3)
+        factory=create_indexed_worker_factory(archive_store=archive,policy_control=plane,task_service=service,task_store=store,verifier_factory=lambda provider, selected: create_indexed_verifier(snapshot_provider=provider,pointers=selected,extractor=extractor,extraction_model=config.model,prompt_hash=config.prompt_hash,temperature=config.temperature,image_digest=env["QUANTIFY_IMAGE_DIGEST"],audit_manifest_sink=audit_store.persist))
+        return create_sqs_handler(worker_factory=factory)(event,context)
+    except Exception as error:
+        raise ProductionConfigurationError("research-task Lambda bootstrap failed") from error
 
 
 def activation_preflight(*, policy_control: object, archive_store: object) -> PolicyControlPointers:

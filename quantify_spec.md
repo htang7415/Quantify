@@ -85,9 +85,13 @@ worker-side code provides no policy-publication operation.
 
 The SQS batch adapter returns only failed message identifiers for retry and
 redrive handling; it does not log or interpret malformed message bodies as
-research input. The production worker composition still requires the indexed
-release verifier, durable task store, active signed artifacts, capacity
-allocation, and post-deploy checks before it may be enabled.
+research input. The repository now contains a fail-closed indexed-release
+worker composition: it rebuilds and verifies the archived exact-fact index,
+reloads signed controls, binds all three audit hashes, requires encrypted audit
+persistence, and records the digest-pinned worker image. It remains inactive
+until active signed artifacts and evidence pointers exist in the target
+account, actual capacity is allocated, and the required post-deploy checks
+pass.
 
 The target fact index does not create a second verifier. Initially, the async
 path will use the existing deterministic engine through an indexed evidence
@@ -302,7 +306,7 @@ relying on the next.
 
 1. **Policy-control and pilot foundation — partially implemented, inactive.** The repository contains signed-envelope types, an offline KMS signing boundary, a KMS verification boundary, content-addressed artifact loading, a strongly consistent DynamoDB policy-control reader, and a reload-on-authorization policy facade. The private pilot template creates the isolated storage, signing, queue, worker, and alarm resources but defaults worker concurrency to zero and configures no event source. Remaining work: separately authorize and operate an offline publication path; publish active runtime and release-gate artifacts plus evidence status/pointers; verify actual KMS/S3/DynamoDB access in the target account; populate all three audit hashes; and test emergency disable without code deployment.
 2. Compile the exact fact and release-scoped narrative indexes for one approved release. Test exact matching, manifest filtering, and that narrative output cannot enter verdict evaluation.
-3. **Async worker boundary — partially implemented, inactive.** Canonical hashing, idempotency collision rejection, sharded admission, bounded queues, task state, and SQS batch failure reporting exist as code-level boundaries. Before activation, compose the worker with the indexed snapshot provider and durable stores; prove dual-read replay parity with the embedded release; configure an authorized event-source mapping and bounded concurrency; and run the private post-deploy checks. Keep V1 on embedded fixtures until parity proves identical verdicts, qualifications, counterevidence, and audit inputs.
+3. **Async worker boundary — partially implemented, inactive.** Canonical hashing, idempotency collision rejection, sharded admission, bounded queues, task state, SQS batch failure reporting, and the fail-closed indexed worker composition exist as code-level boundaries. The archived provider rebuilds the exact-fact and context-only narrative indexes and proves their hashes before it can serve a task. Before activation, publish and select an actual approved indexed release; prove dual-read replay parity with the embedded release for its full approved corpus; configure an authorized event-source mapping and bounded concurrency; and run the private post-deploy checks. Keep V1 on embedded fixtures until parity proves identical verdicts, qualifications, counterevidence, and audit inputs.
 4. Prove failure/recovery semantics: provider-not-started, completed, ambiguous, reconciliation-unavailable, manual retry, cancellation, and reservation reconciliation. No automatic model retry or fallback.
 5. Load and abuse test public access: sharded hard caps, burst behavior, queue saturation, WAF/rate enforcement, cache behavior, and telemetry separation. Do not expose a research-task route until these tests and an explicit authorization approve it.
 6. Operationalize the factory: source validation, normalization, evaluations, Lane A/B gate records, immutable manifests, CDN catalog publication, rollback/revocation tests, and reviewer workflow.

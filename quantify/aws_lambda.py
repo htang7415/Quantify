@@ -385,34 +385,40 @@ class DynamoDbPolicyControlPublisher:
                 "pk": {"S": f"CONTROL#STATUS#{kind.value}#{artifact_hash}"},
                 "sk": {"S": "STATUS"}, "status": {"S": PolicyStatus.ACTIVE.value},
             }}})
-        values = {
-            ":evidence": {"S": pointers.evidence_release_manifest_hash},
-            ":runtime": {"S": pointers.runtime_policy_bundle_hash},
-            ":gate": {"S": pointers.release_gate_policy_hash},
-        }
         pointer_put: dict[str, object] = {"TableName": self._table_name, "Item": {
             "pk": {"S": "CONTROL#POINTERS"}, "sk": {"S": "CURRENT"},
-            "evidence_release_manifest_hash": values[":evidence"],
-            "runtime_policy_bundle_hash": values[":runtime"],
-            "release_gate_policy_hash": values[":gate"],
+            "evidence_release_manifest_hash": {"S": pointers.evidence_release_manifest_hash},
+            "runtime_policy_bundle_hash": {"S": pointers.runtime_policy_bundle_hash},
+            "release_gate_policy_hash": {"S": pointers.release_gate_policy_hash},
         }}
         if expected_current is not None:
-            values.update({
+            expected_values = {
                 ":old_evidence": {"S": expected_current.evidence_release_manifest_hash},
                 ":old_runtime": {"S": expected_current.runtime_policy_bundle_hash},
                 ":old_gate": {"S": expected_current.release_gate_policy_hash},
-            })
+            }
             pointer_put["ConditionExpression"] = (
                 "evidence_release_manifest_hash = :old_evidence AND "
                 "runtime_policy_bundle_hash = :old_runtime AND release_gate_policy_hash = :old_gate"
             )
-            pointer_put["ExpressionAttributeValues"] = values
+            pointer_put["ExpressionAttributeValues"] = expected_values
         else:
             pointer_put["ConditionExpression"] = "attribute_not_exists(pk)"
         items.append({"Put": pointer_put})
         try:
             self._client.transact_write_items(TransactItems=items)
         except Exception as error:
+            response = getattr(error, "response", None)
+            details = response.get("Error", {}) if isinstance(response, Mapping) else {}
+            code = details.get("Code")
+            if code == "TransactionCanceledException":
+                raise ProductionConfigurationError(
+                    "policy control publication compare-and-swap was rejected"
+                ) from error
+            if code in {"AccessDeniedException", "UnauthorizedOperation"}:
+                raise ProductionConfigurationError(
+                    "policy control publisher is not authorized for the transaction"
+                ) from error
             raise ProductionConfigurationError("policy control publication did not complete") from error
 
 

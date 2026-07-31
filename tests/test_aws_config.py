@@ -228,6 +228,11 @@ def test_aws_scripts_refuse_external_actions_without_explicit_authorization() ->
         ("smoke_staging.sh", "QUANTIFY_AUTHORIZE_AWS_STAGING_SMOKE"),
         ("validate_observability.sh", "QUANTIFY_AUTHORIZE_AWS_OBSERVABILITY_CHECK"),
         ("check_production_beta.sh", "QUANTIFY_AUTHORIZE_AWS_PRODUCTION_BETA_CHECK"),
+        ("check_research_task_pilot.sh", "QUANTIFY_AUTHORIZE_RESEARCH_TASK_PILOT_CHECK"),
+        ("publish_research_task_policy.sh", "QUANTIFY_AUTHORIZE_RESEARCH_TASK_POLICY_PUBLISH"),
+        ("compile_research_task_release.sh", "QUANTIFY_AUTHORIZE_RESEARCH_TASK_RELEASE_COMPILE"),
+        ("gate_research_task_release.sh", "QUANTIFY_AUTHORIZE_RESEARCH_TASK_RELEASE_GATE"),
+        ("validate_research_task_bundle.sh", "QUANTIFY_AUTHORIZE_RESEARCH_TASK_BUNDLE_CHECK"),
     ):
         result = subprocess.run(
             ["bash", str(DEPLOYMENT / script)],
