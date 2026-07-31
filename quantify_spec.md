@@ -270,6 +270,18 @@ relying on the next.
 8. Expand issuer coverage according to measured release-factory throughput; maintain SDK/tool adapters that preserve the safe contract. Reassess storage only from observed query patterns.
 9. Treat accounts, uploads, workspaces, RBAC, retention, legal hold, and private-data classification as a separate institutional program.
 
+### 8.1 Institutional private-data prerequisite
+
+Before any account, workspace, upload, or private-source route is exposed,
+publish a versioned private-data policy defining data classes, retention,
+deletion, legal hold, workspace ownership, role permissions, audit fields,
+incident response, and access-review cadence. Private material is isolated by
+workspace and may never enter a public evidence release, public catalog,
+public telemetry, or a deterministic verdict unless a separately versioned
+private-evidence contract explicitly permits it. Initial implementation may
+provide only internal policy and authorization primitives; it must not imply
+authorization to accept private material.
+
 ## 9. Web experience
 
 The visual direction describes the target public experience. The deployed web

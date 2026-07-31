@@ -47,6 +47,9 @@ class AuditManifest:
     prompt_hash: str | None = None
     temperature: float | None = None
     evidence_fixture_manifest_hash: str | None = None
+    evidence_release_manifest_hash: str | None = None
+    runtime_policy_bundle_hash: str | None = None
+    release_gate_policy_hash: str | None = None
     deployment_image_digest: str | None = None
     canonical_claim_source_spans: tuple[tuple[str, tuple[str, ...]], ...] = ()
 
@@ -98,7 +101,7 @@ def build_audit_manifest(
         )
     )
     return AuditManifest(
-        manifest_version="1.5.0",
+        manifest_version="1.6.0",
         analysis_as_of_date=selection.as_of_date,
         snapshot_id=snapshot.snapshot_id,
         snapshot_manifest_hash=snapshot.manifest_hash,

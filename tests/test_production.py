@@ -135,6 +135,12 @@ def test_production_request_uses_one_model_call_and_embedded_evidence_only(monke
             (DEFAULT_FIXTURES_DIRECTORY / "manifest.json").read_bytes()
         ).hexdigest()
     )
+    audit = first.json()["audit_manifest"]
+    assert audit["evidence_release_manifest_hash"] == audit[
+        "evidence_fixture_manifest_hash"
+    ]
+    assert len(audit["runtime_policy_bundle_hash"]) == 64
+    assert len(audit["release_gate_policy_hash"]) == 64
 
 
 def test_production_persists_the_canonical_manifest_before_returning_a_verdict() -> None:

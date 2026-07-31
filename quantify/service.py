@@ -68,6 +68,9 @@ class ApplicationService:
         clock: Callable[[], float] = perf_counter,
         sec_network_call_count: Callable[[], int] | None = None,
         evidence_fixture_manifest_hash: str | None = None,
+        evidence_release_manifest_hash: str | None = None,
+        runtime_policy_bundle_hash: str | None = None,
+        release_gate_policy_hash: str | None = None,
         deployment_image_digest: str | None = None,
     ) -> None:
         if verify is not None and (snapshot_provider is not None or extractor is not None):
@@ -90,6 +93,9 @@ class ApplicationService:
         self._clock = clock
         self._sec_network_call_count = sec_network_call_count
         self._evidence_fixture_manifest_hash = evidence_fixture_manifest_hash
+        self._evidence_release_manifest_hash = evidence_release_manifest_hash
+        self._runtime_policy_bundle_hash = runtime_policy_bundle_hash
+        self._release_gate_policy_hash = release_gate_policy_hash
         self._deployment_image_digest = deployment_image_digest
 
     def verify(self, *, cik: str, request: VerifyRequest) -> dict:
@@ -188,6 +194,9 @@ class ApplicationService:
             temperature=self._temperature,
             disclosure_detector_version=self._disclosure_detector_version,
             evidence_fixture_manifest_hash=self._evidence_fixture_manifest_hash,
+            evidence_release_manifest_hash=self._evidence_release_manifest_hash,
+            runtime_policy_bundle_hash=self._runtime_policy_bundle_hash,
+            release_gate_policy_hash=self._release_gate_policy_hash,
             deployment_image_digest=self._deployment_image_digest,
         )
         cache_key = self._cache.key(

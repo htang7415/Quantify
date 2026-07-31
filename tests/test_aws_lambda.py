@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import json
 from dataclasses import asdict
 from datetime import date
@@ -10,6 +11,8 @@ import pytest
 from quantify.aws_lambda import (
     DynamoMonthlyCostGuard,
     S3AuditManifestStore,
+    S3SignedPolicyArtifactLoader,
+    S3SignedPolicyArtifactStore,
     create_api_gateway_handler,
     create_aws_production_app,
     load_audit_manifest_store,
@@ -17,6 +20,7 @@ from quantify.aws_lambda import (
     load_pinned_gemini_api_key,
 )
 from quantify.harness.audit import AuditManifest
+from quantify.policy_control import ArtifactKind, HmacPolicySigner, RuntimePolicyBundle
 from quantify.api import create_app
 from quantify.production import ProductionConfigurationError
 from quantify.runtime import MonthlyCostLimitError
@@ -199,6 +203,116 @@ def test_audit_manifest_store_writes_only_the_canonical_encrypted_record() -> No
 def test_audit_store_configuration_is_required() -> None:
     with pytest.raises(ProductionConfigurationError, match="QUANTIFY_AUDIT_BUCKET_NAME"):
         load_audit_manifest_store(environment={})
+
+
+def test_signed_policy_store_persists_only_a_verified_encrypted_content_addressed_bundle() -> None:
+    client = _S3Client()
+    signer = HmacPolicySigner(key_id="policy-test-key", key=b"k" * 32)
+    bundle = RuntimePolicyBundle(
+        schema_version="1.0.0",
+        policy_id="runtime-v1",
+        planner_provider="google",
+        planner_model="gemini-3.1-flash-lite",
+        planner_model_version="2026-07",
+        secret_version="secret-version-1",
+        prompt_hash="a" * 64,
+        maximum_model_calls=1,
+        maximum_input_tokens=4_000,
+        maximum_output_tokens=500,
+        allowed_tools=("verify_claims",),
+        disabled_tools=(),
+        allowed_sources=("structured_fact",),
+        prohibited_actions=(
+            "arbitrary_url_fetch",
+            "live_sec_retrieval",
+            "private_document_access",
+            "policy_mutation",
+            "verdict_composition",
+            "trade_execution",
+        ),
+        admission_policy_version="admission-v1",
+        cache_policy_version="cache-v1",
+    )
+    envelope = signer.sign(kind=ArtifactKind.RUNTIME_POLICY, artifact=bundle)
+
+    S3SignedPolicyArtifactStore(
+        bucket_name="private-policies", client=client, signer=signer
+    ).persist(envelope)
+
+    call = client.calls[0]
+    assert call["Key"] == (
+        f"policy-artifacts/v1/runtime_policy/{bundle.content_hash}.json"
+    )
+    assert call["ServerSideEncryption"] == "aws:kms"
+    assert call["BucketKeyEnabled"] is True
+    assert call["IfNoneMatch"] == "*"
+    persisted = json.loads(call["Body"])
+    assert persisted["artifact_hash"] == bundle.content_hash
+    assert persisted["artifact"]["secret_version"] == "secret-version-1"
+    assert "secret" not in persisted["artifact"]
+
+
+def test_policy_loader_accepts_only_the_expected_signed_content_addressed_artifact() -> None:
+    class _ReadClient:
+        def __init__(self, record: dict[str, object]) -> None:
+            self.record = record
+            self.calls: list[dict[str, object]] = []
+
+        def get_object(self, **kwargs: object) -> dict[str, object]:
+            self.calls.append(kwargs)
+            return {"Body": io.BytesIO(json.dumps(self.record).encode())}
+
+    signer = HmacPolicySigner(key_id="policy-test-key", key=b"k" * 32)
+    bundle = RuntimePolicyBundle(
+        schema_version="1.0.0",
+        policy_id="runtime-v1",
+        planner_provider="google",
+        planner_model="gemini-3.1-flash-lite",
+        planner_model_version="2026-07",
+        secret_version="secret-version-1",
+        prompt_hash="a" * 64,
+        maximum_model_calls=1,
+        maximum_input_tokens=4_000,
+        maximum_output_tokens=500,
+        allowed_tools=("verify_claims",),
+        disabled_tools=(),
+        allowed_sources=("structured_fact",),
+        prohibited_actions=(
+            "arbitrary_url_fetch",
+            "live_sec_retrieval",
+            "private_document_access",
+            "policy_mutation",
+            "verdict_composition",
+            "trade_execution",
+        ),
+        admission_policy_version="admission-v1",
+        cache_policy_version="cache-v1",
+    )
+    envelope = signer.sign(kind=ArtifactKind.RUNTIME_POLICY, artifact=bundle)
+    record = {
+        "policy_storage_schema_version": "1.0.0",
+        "kind": envelope.kind.value,
+        "artifact_hash": envelope.artifact_hash,
+        "signer_key_id": envelope.signer_key_id,
+        "signature_algorithm": envelope.signature_algorithm,
+        "signature": envelope.signature,
+        "artifact": envelope.artifact.payload(),
+    }
+    client = _ReadClient(record)
+    loader = S3SignedPolicyArtifactLoader(
+        bucket_name="private-policies", client=client, signer=signer
+    )
+
+    loaded = loader.load(kind=ArtifactKind.RUNTIME_POLICY, artifact_hash=bundle.content_hash)
+
+    assert loaded.artifact == bundle
+    assert client.calls == [{
+        "Bucket": "private-policies",
+        "Key": f"policy-artifacts/v1/runtime_policy/{bundle.content_hash}.json",
+    }]
+    record["artifact_hash"] = "b" * 64
+    with pytest.raises(ProductionConfigurationError, match="cannot be read or verified"):
+        loader.load(kind=ArtifactKind.RUNTIME_POLICY, artifact_hash=bundle.content_hash)
 
 
 def test_monthly_cost_guard_reserves_before_a_model_call() -> None:

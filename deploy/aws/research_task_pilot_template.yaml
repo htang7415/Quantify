@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Private IAM-only Quantify research-task pilot; no public API resources.
+Parameters:
+  ImageUri: {Type: String}
+  AuditBucketName: {Type: String}
+Resources:
+  TaskTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{AttributeName: pk, AttributeType: S}, {AttributeName: sk, AttributeType: S}]
+      KeySchema: [{AttributeName: pk, KeyType: HASH}, {AttributeName: sk, KeyType: RANGE}]
+      PointInTimeRecoverySpecification: {PointInTimeRecoveryEnabled: true}
+  TaskDlq:
+    Type: AWS::SQS::Queue
+    Properties: {MessageRetentionPeriod: 1209600, KmsMasterKeyId: alias/aws/sqs}
+  TaskQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      KmsMasterKeyId: alias/aws/sqs
+      RedrivePolicy: {deadLetterTargetArn: !GetAtt TaskDlq.Arn, maxReceiveCount: 3}
+  WorkerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: {Version: '2012-10-17', Statement: [{Effect: Allow, Principal: {Service: lambda.amazonaws.com}, Action: 'sts:AssumeRole'}]}
+      ManagedPolicyArns: ['arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole']
+  Worker:
+    Type: AWS::Lambda::Function
+    Properties:
+      PackageType: Image
+      Code: {ImageUri: !Ref ImageUri}
+      Role: !GetAtt WorkerRole.Arn
+      ReservedConcurrentExecutions: 2
+      Timeout: 30
+      Environment: {Variables: {QUANTIFY_RESEARCH_TASK_TABLE_NAME: !Ref TaskTable, QUANTIFY_RESEARCH_TASK_QUEUE_URL: !Ref TaskQueue, QUANTIFY_RESEARCH_TASK_DLQ_URL: !Ref TaskDlq, QUANTIFY_AUDIT_BUCKET_NAME: !Ref AuditBucketName}}
+  QueueAgeAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties: {Namespace: AWS/SQS, MetricName: ApproximateAgeOfOldestMessage, Dimensions: [{Name: QueueName, Value: !GetAtt TaskQueue.QueueName}], ComparisonOperator: GreaterThanThreshold, Threshold: 300, EvaluationPeriods: 1, Period: 60, Statistic: Maximum}
+Outputs:
+  TaskQueueUrl: {Value: !Ref TaskQueue}
+  TaskTableName: {Value: !Ref TaskTable}

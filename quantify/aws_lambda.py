@@ -21,6 +21,13 @@ from urllib.parse import unquote
 from fastapi import FastAPI
 
 from quantify.harness.audit import AuditManifest
+from quantify.policy_control import (
+    ArtifactKind,
+    PolicySigner,
+    ReleaseGatePolicy,
+    RuntimePolicyBundle,
+    SignedPolicyEnvelope,
+)
 from quantify.cost_guard import GeminiCostPolicy
 from quantify.production import ProductionConfigurationError, create_production_app
 from quantify.runtime import (
@@ -37,6 +44,7 @@ _AUDIT_BUCKET_ENV = "QUANTIFY_AUDIT_BUCKET_NAME"
 _COST_LEDGER_TABLE_ENV = "QUANTIFY_COST_LEDGER_TABLE_NAME"
 _MONTHLY_COST_LIMIT_ENV = "QUANTIFY_MONTHLY_COST_LIMIT_MICRO_USD"
 _AUDIT_STORAGE_SCHEMA_VERSION = "1.0.0"
+_POLICY_STORAGE_SCHEMA_VERSION = "1.0.0"
 _MANIFEST_HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -46,6 +54,10 @@ class SecretsManagerClient(Protocol):
 
 class S3Client(Protocol):
     def put_object(self, **kwargs: object) -> Mapping[str, object]: ...
+
+
+class S3PolicyReadClient(Protocol):
+    def get_object(self, **kwargs: object) -> Mapping[str, object]: ...
 
 
 class DynamoDbClient(Protocol):
@@ -137,6 +149,144 @@ class S3AuditManifestStore:
             },
             manifest_hash,
         )
+
+
+class S3SignedPolicyArtifactStore:
+    """Persist only verified, canonical policy artifacts under content hashes."""
+
+    def __init__(self, *, bucket_name: str, client: S3Client, signer: PolicySigner) -> None:
+        self._bucket_name = bucket_name
+        self._client = client
+        self._signer = signer
+
+    def persist(self, envelope: SignedPolicyEnvelope) -> None:
+        self._signer.verify(envelope)
+        record = {
+            "policy_storage_schema_version": _POLICY_STORAGE_SCHEMA_VERSION,
+            "kind": envelope.kind.value,
+            "artifact_hash": envelope.artifact_hash,
+            "signer_key_id": envelope.signer_key_id,
+            "signature_algorithm": envelope.signature_algorithm,
+            "signature": envelope.signature,
+            "artifact": envelope.artifact.payload(),
+        }
+        try:
+            self._client.put_object(
+                Bucket=self._bucket_name,
+                Key=(
+                    "policy-artifacts/v1/"
+                    f"{envelope.kind.value}/{envelope.artifact_hash}.json"
+                ),
+                Body=json.dumps(record, sort_keys=True, separators=(",", ":")).encode(),
+                ContentType="application/json",
+                ServerSideEncryption="aws:kms",
+                BucketKeyEnabled=True,
+                IfNoneMatch="*",
+                Metadata={
+                    "policy-storage-schema-version": _POLICY_STORAGE_SCHEMA_VERSION,
+                    "artifact-hash": envelope.artifact_hash,
+                    "artifact-kind": envelope.kind.value,
+                },
+            )
+        except Exception as error:
+            response = getattr(error, "response", None)
+            code = response.get("Error", {}).get("Code") if isinstance(response, Mapping) else None
+            if code in {"PreconditionFailed", "412"}:
+                return
+            raise AuditPersistenceError("policy artifact persistence did not complete") from error
+
+
+class S3SignedPolicyArtifactLoader:
+    """Read and verify one exact, content-addressed policy artifact from S3.
+
+    The caller supplies the expected kind and hash, so an object cannot select
+    a different policy merely by changing its JSON payload or key.  Parsing,
+    signature verification, and hash verification all happen before the
+    artifact is returned.
+    """
+
+    def __init__(
+        self, *, bucket_name: str, client: S3PolicyReadClient, signer: PolicySigner
+    ) -> None:
+        if not bucket_name:
+            raise ValueError("policy artifact bucket is required")
+        self._bucket_name = bucket_name
+        self._client = client
+        self._signer = signer
+
+    def load(
+        self, *, kind: ArtifactKind, artifact_hash: str
+    ) -> SignedPolicyEnvelope[RuntimePolicyBundle | ReleaseGatePolicy]:
+        if not _MANIFEST_HASH_PATTERN.fullmatch(artifact_hash):
+            raise ProductionConfigurationError("policy artifact hash is invalid")
+        try:
+            response = self._client.get_object(
+                Bucket=self._bucket_name,
+                Key=f"policy-artifacts/v1/{kind.value}/{artifact_hash}.json",
+            )
+            body = response["Body"]
+            payload_bytes = body.read() if hasattr(body, "read") else body
+            if not isinstance(payload_bytes, bytes):
+                raise TypeError("policy artifact body is not bytes")
+            record = json.loads(payload_bytes)
+            if not isinstance(record, dict) or set(record) != {
+                "policy_storage_schema_version",
+                "kind",
+                "artifact_hash",
+                "signer_key_id",
+                "signature_algorithm",
+                "signature",
+                "artifact",
+            }:
+                raise ValueError("policy artifact record schema is invalid")
+            if record["policy_storage_schema_version"] != _POLICY_STORAGE_SCHEMA_VERSION:
+                raise ValueError("policy artifact storage schema is unsupported")
+            if record["kind"] != kind.value or record["artifact_hash"] != artifact_hash:
+                raise ValueError("policy artifact identity does not match its object key")
+            artifact = self._artifact_from_payload(kind=kind, payload=record["artifact"])
+            envelope = SignedPolicyEnvelope(
+                kind=kind,
+                artifact=artifact,
+                artifact_hash=record["artifact_hash"],
+                signer_key_id=record["signer_key_id"],
+                signature_algorithm=record["signature_algorithm"],
+                signature=record["signature"],
+            )
+            self._signer.verify(envelope)
+            return envelope
+        except ProductionConfigurationError:
+            raise
+        except Exception as error:
+            raise ProductionConfigurationError(
+                "pinned policy artifact cannot be read or verified"
+            ) from error
+
+    @staticmethod
+    def _artifact_from_payload(
+        *, kind: ArtifactKind, payload: object
+    ) -> RuntimePolicyBundle | ReleaseGatePolicy:
+        if not isinstance(payload, dict):
+            raise ValueError("policy artifact payload is invalid")
+        if kind is ArtifactKind.RUNTIME_POLICY:
+            expected = set(RuntimePolicyBundle.__dataclass_fields__)
+            if set(payload) != expected:
+                raise ValueError("runtime policy payload schema is invalid")
+            normalized = dict(payload)
+            for field in (
+                "allowed_tools",
+                "disabled_tools",
+                "allowed_sources",
+                "prohibited_actions",
+            ):
+                if not isinstance(normalized[field], list):
+                    raise ValueError("runtime policy list field is invalid")
+                normalized[field] = tuple(normalized[field])
+            return RuntimePolicyBundle(**normalized)
+        if kind is ArtifactKind.RELEASE_GATE_POLICY:
+            if set(payload) != set(ReleaseGatePolicy.__dataclass_fields__):
+                raise ValueError("release-gate policy payload schema is invalid")
+            return ReleaseGatePolicy(**payload)
+        raise ValueError("only signed policy artifacts can be loaded")
 
 
 def load_pinned_gemini_api_key(

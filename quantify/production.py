@@ -34,6 +34,7 @@ from quantify.harness.observability import request_metrics_as_dict
 from quantify.harness.sec.client import SecCompanyFactsClient, SecPayload
 from quantify.harness.gemini import JsonTransport
 from quantify.harness.sec.normalize import INITIAL_METRIC_ROUTES
+from quantify.policy_control import ReleaseGatePolicy, RuntimePolicyBundle
 from quantify.service import ApplicationService
 
 
@@ -46,6 +47,52 @@ _REQUEST_METRICS_LOGGER.setLevel(logging.INFO)
 
 class ProductionConfigurationError(RuntimeError):
     """The immutable production composition cannot be assembled safely."""
+
+
+def _v1_policy_hashes(*, config: GeminiExtractionConfig) -> tuple[str, str]:
+    """Identify V1's fixed serving controls in every replay manifest.
+
+    The signed registry governs the future asynchronous research-task surface.
+    V1 has fixed embedded controls, so these content hashes preserve its public
+    contract while recording exactly which controls assembled the response.
+    """
+
+    runtime = RuntimePolicyBundle(
+        schema_version="1.0.0",
+        policy_id="v1-runtime-policy",
+        planner_provider="google",
+        planner_model=config.model,
+        planner_model_version="v1",
+        secret_version="legacy-v1-unversioned",
+        prompt_hash=config.prompt_hash,
+        maximum_model_calls=1,
+        maximum_input_tokens=0,
+        maximum_output_tokens=config.max_output_tokens,
+        allowed_tools=("verify_claims",),
+        disabled_tools=(),
+        allowed_sources=("structured_fact",),
+        prohibited_actions=(
+            "arbitrary_url_fetch",
+            "live_sec_retrieval",
+            "policy_mutation",
+            "private_document_access",
+            "trade_execution",
+            "verdict_composition",
+        ),
+        admission_policy_version="v1",
+        cache_policy_version="v1",
+    )
+    release_gate = ReleaseGatePolicy(
+        schema_version="1.0.0",
+        policy_id="v1-release-gate-policy",
+        minimum_automated_pass_rate_basis_points=10_000,
+        maximum_review_exception_rate_basis_points=0,
+        maximum_correction_rate_basis_points=0,
+        maximum_source_age_days=0,
+        lane_a_spot_review_required=True,
+        lane_b_reviewer_approval_required=True,
+    )
+    return runtime.content_hash, release_gate.content_hash
 
 
 def emit_request_metrics(metrics: RequestMetrics) -> None:
@@ -248,6 +295,9 @@ def create_production_app(
         input_price_per_million_usd=0.25,
         output_price_per_million_usd=1.50,
     )
+    runtime_policy_bundle_hash, release_gate_policy_hash = _v1_policy_hashes(
+        config=config
+    )
     extractor = GeminiStructuredExtractor(
         api_key=api_key, config=config, transport=transport
     )
@@ -261,6 +311,9 @@ def create_production_app(
         temperature=config.temperature,
         disclosure_detector_version="disabled-v1",
         evidence_fixture_manifest_hash=manifest_hash,
+        evidence_release_manifest_hash=manifest_hash,
+        runtime_policy_bundle_hash=runtime_policy_bundle_hash,
+        release_gate_policy_hash=release_gate_policy_hash,
         deployment_image_digest=image_digest,
         metrics_sink=emit_request_metrics,
         audit_manifest_sink=audit_manifest_sink,
