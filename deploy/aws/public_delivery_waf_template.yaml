@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Global, blocking rate control for Quantify's CloudFront public delivery distribution.
+
+Parameters:
+  RateLimit:
+    Type: Number
+    MinValue: 100
+    Description: Approved maximum requests per five-minute window for one aggregation key.
+  AggregateKeyType:
+    Type: String
+    AllowedValues: [IP, FORWARDED_IP]
+    Description: Approved WAF aggregation key; select FORWARDED_IP only behind a trusted proxy.
+  ForwardedIpHeader:
+    Type: String
+    Default: X-Forwarded-For
+    MinLength: 1
+    Description: Header used only when AggregateKeyType is FORWARDED_IP.
+
+Conditions:
+  UseForwardedIp: !Equals [!Ref AggregateKeyType, FORWARDED_IP]
+
+Resources:
+  PublicDeliveryWebAcl:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: !Sub ${AWS::StackName}-cloudfront
+      Scope: CLOUDFRONT
+      DefaultAction: {Allow: {}}
+      VisibilityConfig:
+        CloudWatchMetricsEnabled: true
+        MetricName: !Sub ${AWS::StackName}-cloudfront
+        SampledRequestsEnabled: false
+      Rules:
+        - Name: block-rate-limit
+          Priority: 0
+          Action: {Block: {}}
+          Statement:
+            RateBasedStatement:
+              Limit: !Ref RateLimit
+              AggregateKeyType: !Ref AggregateKeyType
+              ForwardedIPConfig: !If
+                - UseForwardedIp
+                - {HeaderName: !Ref ForwardedIpHeader, FallbackBehavior: MATCH}
+                - !Ref AWS::NoValue
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: block-rate-limit
+            SampledRequestsEnabled: false
+
+Outputs:
+  PublicDeliveryWebAclArn:
+    Description: Pass this approved global Web ACL ARN to the web-preview stack for association.
+    Value: !GetAtt PublicDeliveryWebAcl.Arn

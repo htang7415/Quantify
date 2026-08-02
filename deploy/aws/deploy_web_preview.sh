@@ -57,6 +57,9 @@ preview_parameters=(
 if [[ -n "$TRIAL_ORIGIN_KEY" ]]; then
   preview_parameters+=("TrialOriginKey=$TRIAL_ORIGIN_KEY")
 fi
+if [[ -n "${PUBLIC_DELIVERY_WEB_ACL_ARN:-}" ]]; then
+  preview_parameters+=("PublicDeliveryWebAclArn=$PUBLIC_DELIVERY_WEB_ACL_ARN")
+fi
 
 "$aws_bin" cloudformation deploy --template-file deploy/aws/web_preview_template.yaml \
   --stack-name="$WEB_PREVIEW_STACK_NAME" --region="$AWS_REGION" \

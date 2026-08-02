@@ -64,3 +64,10 @@ def test_monitor_rejects_an_expired_trial(monkeypatch) -> None:
         assert "disabled or expired" in str(error)
     else:
         raise AssertionError("expected an expired trial to be rejected")
+
+
+def test_daily_usage_treats_a_missing_current_day_item_as_zero(monkeypatch) -> None:
+    module = _module()
+    monkeypatch.setattr(module, "_aws", lambda *arguments: "")
+
+    assert module._daily_usage(table_name="trial-ledger", day="2026-08-01", region="us-east-2") == (0, 0)

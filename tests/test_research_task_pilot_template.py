@@ -19,6 +19,9 @@ def test_private_pilot_template_has_no_api_gateway_and_has_recovery_controls():
  assert "TaskMaximumConcurrency: {Type: Number, Default: 2, MinValue: 2, MaxValue: 2}" in t and "MaximumConcurrency: !Ref TaskMaximumConcurrency" in t
  assert "WorkerErrorsAlarm" in t and "DlqMessagesAlarm" in t
  assert "TreatMissingData: notBreaching" in t
+ assert "DlqMessagesAlarm:\n    Type: AWS::CloudWatch::Alarm\n    Properties:" in t
+ assert "MetricName: ApproximateNumberOfMessagesVisible" in t.split("DlqMessagesAlarm:", 1)[1].split("WorkerErrorsAlarm:", 1)[0]
+ assert "TreatMissingData: notBreaching" in t.split("DlqMessagesAlarm:", 1)[1].split("WorkerErrorsAlarm:", 1)[0]
 
 
 def test_private_pilot_deploy_script_requires_explicit_authorization_and_digest_image():

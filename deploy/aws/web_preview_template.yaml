@@ -23,6 +23,13 @@ Parameters:
     NoEcho: true
     MaxLength: 256
     Description: Secret header added only by CloudFront when proxying anonymous trials.
+  PublicDeliveryWebAclArn:
+    Type: String
+    Default: ""
+    Description: Optional approved global WAFv2 Web ACL ARN for CloudFront association.
+
+Conditions:
+  HasPublicDeliveryWebAcl: !Not [!Equals [!Ref PublicDeliveryWebAclArn, ""]]
 
 Resources:
   PreviewBucket:
@@ -109,6 +116,7 @@ Resources:
     Properties:
       DistributionConfig:
         Enabled: true
+        WebACLId: !If [HasPublicDeliveryWebAcl, !Ref PublicDeliveryWebAclArn, !Ref AWS::NoValue]
         DefaultRootObject: index.html
         HttpVersion: http2
         PriceClass: PriceClass_100

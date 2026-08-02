@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Explicitly configured CloudWatch notification for Quantify's CloudFront WAF rate rule.
+
+Parameters:
+  WebAclMetricName:
+    Type: String
+    MinLength: 1
+    Description: Exact AWS WAF WebACL metric name to monitor.
+  RuleMetricName:
+    Type: String
+    MinLength: 1
+    Description: Exact AWS WAF rule metric name to monitor.
+  BlockedRequestsThreshold:
+    Type: Number
+    MinValue: 1
+    Description: Approved number of blocked requests that triggers an alarm in one five-minute period.
+  AlarmEmail:
+    Type: String
+    MinLength: 3
+    Description: Approved recipient. The recipient must confirm the SNS email subscription.
+
+Resources:
+  PublicDeliveryWafAlerts:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub ${AWS::StackName}-notifications
+
+  PublicDeliveryWafAlertSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      Endpoint: !Ref AlarmEmail
+      TopicArn: !Ref PublicDeliveryWafAlerts
+
+  PublicDeliveryWafBlockedRequestsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-blocked-requests
+      AlarmDescription: !Sub ${BlockedRequestsThreshold} WAF rate-rule blocks in five minutes.
+      Namespace: AWS/WAFV2
+      MetricName: BlockedRequests
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: !Ref BlockedRequestsThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref PublicDeliveryWafAlerts
+      Dimensions:
+        - Name: WebACL
+          Value: !Ref WebAclMetricName
+        - Name: Rule
+          Value: !Ref RuleMetricName
+
+Outputs:
+  PublicDeliveryWafAlertTopicArn:
+    Description: Regional SNS topic for the approved WAF block notification.
+    Value: !Ref PublicDeliveryWafAlerts
+  PublicDeliveryWafBlockedRequestsAlarmName:
+    Description: Alarm that watches the approved WAF rate rule.
+    Value: !Ref PublicDeliveryWafBlockedRequestsAlarm

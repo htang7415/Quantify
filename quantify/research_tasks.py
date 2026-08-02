@@ -9,11 +9,13 @@ reauthorization, queueing, and safe result composition outside the verifier.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from enum import StrEnum
 from hashlib import sha256
+import hmac
 import json
 import logging
+import secrets
 from threading import Lock, RLock
 from typing import Callable, Mapping, Protocol
 from uuid import uuid4
@@ -56,6 +58,10 @@ class TaskStoreUnavailableError(ResearchTaskError):
 
 class InvalidTaskTransitionError(ResearchTaskError):
     """A task attempted an illegal state transition."""
+
+
+class TaskCapabilityError(ResearchTaskError):
+    """A public task capability is absent, invalid, or expired."""
 
 
 class TaskState(StrEnum):
@@ -131,6 +137,10 @@ class UnavailableProviderReconciler:
 
 def _canonical_json(value: Mapping[str, object]) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+
+
+def _task_capability_hash(value: str) -> str:
+    return sha256(value.encode()).hexdigest()
 
 
 @dataclass(frozen=True, slots=True)
@@ -566,6 +576,8 @@ class _TaskRecord:
     retry_of_task_id: str | None = None
     manual_retry_task_id: str | None = None
     reservation_released: bool = False
+    task_capability_hash: str | None = None
+    task_capability_expires_at: datetime | None = None
 
 
 class InMemoryResearchTaskStore:
@@ -719,6 +731,12 @@ class DynamoDbResearchTaskStore:
                 "retry_of_task_id": record.retry_of_task_id,
                 "manual_retry_task_id": record.manual_retry_task_id,
                 "reservation_released": record.reservation_released,
+                "task_capability_hash": record.task_capability_hash,
+                "task_capability_expires_at": (
+                    record.task_capability_expires_at.isoformat()
+                    if record.task_capability_expires_at is not None
+                    else None
+                ),
             },
             sort_keys=True,
             separators=(",", ":"),
@@ -740,6 +758,21 @@ class DynamoDbResearchTaskStore:
                     EvidenceRequestType(value) for value in request_raw["evidence_requests"]
                 ),
             )
+            capability_hash = raw.get("task_capability_hash")
+            expires_at_raw = raw.get("task_capability_expires_at")
+            if (capability_hash is None) != (expires_at_raw is None):
+                raise ValueError("task capability metadata is incomplete")
+            if capability_hash is not None:
+                if not isinstance(capability_hash, str) or len(capability_hash) != 64:
+                    raise ValueError("task capability hash is invalid")
+                int(capability_hash, 16)
+                if not isinstance(expires_at_raw, str):
+                    raise ValueError("task capability expiry is invalid")
+                capability_expires_at = datetime.fromisoformat(expires_at_raw)
+                if capability_expires_at.tzinfo is None:
+                    raise ValueError("task capability expiry is invalid")
+            else:
+                capability_expires_at = None
             return _TaskRecord(
                 task_id=raw["task_id"],
                 request=request,
@@ -753,6 +786,8 @@ class DynamoDbResearchTaskStore:
                 retry_of_task_id=raw["retry_of_task_id"],
                 manual_retry_task_id=raw["manual_retry_task_id"],
                 reservation_released=raw["reservation_released"],
+                task_capability_hash=capability_hash,
+                task_capability_expires_at=capability_expires_at,
             )
         except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
             raise TaskStoreUnavailableError("stored research task is invalid") from error
@@ -906,6 +941,8 @@ class DynamoDbResearchTaskStore:
             retry_of_task_id=previous.retry_of_task_id,
             manual_retry_task_id=previous.manual_retry_task_id,
             reservation_released=previous.reservation_released,
+            task_capability_hash=previous.task_capability_hash,
+            task_capability_expires_at=previous.task_capability_expires_at,
         )
         return self._replace(previous=previous, updated=updated)
 
@@ -926,6 +963,8 @@ class DynamoDbResearchTaskStore:
             retry_of_task_id=previous.retry_of_task_id,
             manual_retry_task_id=previous.manual_retry_task_id,
             reservation_released=True,
+            task_capability_hash=previous.task_capability_hash,
+            task_capability_expires_at=previous.task_capability_expires_at,
         )
         self._replace(previous=previous, updated=updated)
 
@@ -946,6 +985,8 @@ class DynamoDbResearchTaskStore:
             retry_of_task_id=previous.retry_of_task_id,
             manual_retry_task_id=previous.manual_retry_task_id,
             reservation_released=True,
+            task_capability_hash=previous.task_capability_hash,
+            task_capability_expires_at=previous.task_capability_expires_at,
         )
         reservation = previous.reservation
         try:
@@ -1021,6 +1062,8 @@ class DynamoDbResearchTaskStore:
             retry_of_task_id=previous.retry_of_task_id,
             manual_retry_task_id=previous.manual_retry_task_id,
             reservation_released=previous.reservation_released,
+            task_capability_hash=previous.task_capability_hash,
+            task_capability_expires_at=previous.task_capability_expires_at,
         )
         try:
             self._client.transact_write_items(
@@ -1072,6 +1115,8 @@ class DynamoDbResearchTaskStore:
             retry_of_task_id=previous.retry_of_task_id,
             manual_retry_task_id=retry_task_id,
             reservation_released=previous.reservation_released,
+            task_capability_hash=previous.task_capability_hash,
+            task_capability_expires_at=previous.task_capability_expires_at,
         )
         self._replace(previous=previous, updated=updated)
 
@@ -1111,8 +1156,47 @@ class ResearchTaskService:
                 request=request, idempotency_key=idempotency_key, retry_of_task_id=None
             )
 
+    def submit_with_task_capability(
+        self,
+        *,
+        request: ResearchTaskRequest,
+        idempotency_key: str,
+        capability_ttl_seconds: int,
+    ) -> dict[str, object]:
+        """Create a no-sign-up task and return its raw capability exactly once."""
+
+        if capability_ttl_seconds <= 0:
+            raise ValueError("task capability lifetime is invalid")
+        if not idempotency_key or len(idempotency_key) > 256:
+            raise ValueError("idempotency key is invalid")
+        with self._submit_lock:
+            existing = self._store.existing_for_idempotency(
+                idempotency_key=idempotency_key,
+                canonical_request_hash=request.canonical_request_hash,
+            )
+            if existing is not None:
+                # The raw capability is deliberately never retained, even to
+                # replay an idempotent request.  The caller must keep it.
+                return self._safe_status(existing)
+            capability = secrets.token_urlsafe(32)
+            expires_at = self._clock() + timedelta(seconds=capability_ttl_seconds)
+            result = self._submit_locked(
+                request=request,
+                idempotency_key=idempotency_key,
+                retry_of_task_id=None,
+                task_capability_hash=_task_capability_hash(capability),
+                task_capability_expires_at=expires_at,
+            )
+            return {**result, "task_capability": capability}
+
     def _submit_locked(
-        self, *, request: ResearchTaskRequest, idempotency_key: str, retry_of_task_id: str | None
+        self,
+        *,
+        request: ResearchTaskRequest,
+        idempotency_key: str,
+        retry_of_task_id: str | None,
+        task_capability_hash: str | None = None,
+        task_capability_expires_at: datetime | None = None,
     ) -> dict[str, object]:
         canonical_request_hash = request.canonical_request_hash
         existing = self._store.existing_for_idempotency(
@@ -1149,6 +1233,8 @@ class ResearchTaskService:
             state=TaskState.ACCEPTED,
             state_history=[TaskState.ACCEPTED],
             retry_of_task_id=retry_of_task_id,
+            task_capability_hash=task_capability_hash,
+            task_capability_expires_at=task_capability_expires_at,
         )
         try:
             create_with_reservation = getattr(self._store, "create_with_reservation", None)
@@ -1175,8 +1261,17 @@ class ResearchTaskService:
         self._policy_control.authorize_serving(task_pointers=task.policy_pointers)
         return self._safe_status(task)
 
+    def status_with_task_capability(
+        self, *, task_id: str, task_capability: str
+    ) -> dict[str, object]:
+        self._require_task_capability(task_id=task_id, task_capability=task_capability)
+        return self.status(task_id=task_id)
+
     def cancel(self, *, task_id: str) -> dict[str, object]:
         task = self._store.get(task_id=task_id)
+        # Cancellation changes durable task/capacity state.  A task whose
+        # controls were revoked must not continue through an unrecorded path.
+        self._policy_control.authorize_serving(task_pointers=task.policy_pointers)
         if task.state is TaskState.QUEUED:
             task = self._store.transition(task_id=task_id, next_state=TaskState.CANCELED)
             self._release_if_unstarted(task=task)
@@ -1187,6 +1282,12 @@ class ResearchTaskService:
         else:
             raise InvalidTaskTransitionError("task cannot be canceled in its current state")
         return self._safe_status(task)
+
+    def cancel_with_task_capability(
+        self, *, task_id: str, task_capability: str
+    ) -> dict[str, object]:
+        self._require_task_capability(task_id=task_id, task_capability=task_capability)
+        return self.cancel(task_id=task_id)
 
     def retry(self, *, task_id: str, idempotency_key: str) -> dict[str, object]:
         if not idempotency_key or len(idempotency_key) > 256:
@@ -1201,6 +1302,33 @@ class ResearchTaskService:
                 request=original.request,
                 idempotency_key=idempotency_key,
                 retry_of_task_id=original.task_id,
+            )
+            self._store.link_manual_retry(
+                task_id=original.task_id, retry_task_id=str(created["task_id"])
+            )
+            return created
+
+    def retry_with_task_capability(
+        self, *, task_id: str, task_capability: str, idempotency_key: str
+    ) -> dict[str, object]:
+        """Retry an accessible unresolved task without minting a second secret."""
+
+        if not idempotency_key or len(idempotency_key) > 256:
+            raise ValueError("idempotency key is invalid")
+        with self._submit_lock:
+            original = self._require_task_capability(
+                task_id=task_id, task_capability=task_capability
+            )
+            if original.state not in {TaskState.UNAVAILABLE, TaskState.FAILED_UNRESOLVED}:
+                raise InvalidTaskTransitionError("only an unresolved task may be retried")
+            if original.manual_retry_task_id is not None or original.retry_of_task_id is not None:
+                raise InvalidTaskTransitionError("only one controlled retry is permitted")
+            created = self._submit_locked(
+                request=original.request,
+                idempotency_key=idempotency_key,
+                retry_of_task_id=original.task_id,
+                task_capability_hash=original.task_capability_hash,
+                task_capability_expires_at=original.task_capability_expires_at,
             )
             self._store.link_manual_retry(
                 task_id=original.task_id, retry_task_id=str(created["task_id"])
@@ -1264,6 +1392,26 @@ class ResearchTaskService:
             return
         self._admission.release(reservation_id=task_id)
         self._store.mark_reservation_released(task_id=task_id)
+
+    def _require_task_capability(
+        self, *, task_id: str, task_capability: str
+    ) -> _TaskRecord:
+        try:
+            task = self._store.get(task_id=task_id)
+        except TaskStoreUnavailableError as error:
+            raise TaskCapabilityError("research task is unavailable") from error
+        current = self._clock()
+        if (
+            not task_capability
+            or task.task_capability_hash is None
+            or task.task_capability_expires_at is None
+            or current >= task.task_capability_expires_at
+            or not hmac.compare_digest(
+                task.task_capability_hash, _task_capability_hash(task_capability)
+            )
+        ):
+            raise TaskCapabilityError("research task is unavailable")
+        return task
 
     @staticmethod
     def _safe_status(task: _TaskRecord) -> dict[str, object]:

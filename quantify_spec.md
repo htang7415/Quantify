@@ -56,6 +56,17 @@ Cognito/IAM, DynamoDB, encrypted S3 audit storage, KMS, Secrets Manager, ECR,
 and CloudWatch in us-east-2. It is not yet a multi-tool research agent, a
 live-data terminal, or an async task platform.
 
+Regional placement is explicit. `us-east-2` is the sole V1 operating region
+for compute, APIs, identity, queues, databases, evidence and audit storage,
+policy control, logs, and regional alarms. CloudFront is global; its required
+WAFv2 Web ACL, WAF metrics, and any WAF-block notification topic/alarm are the
+narrow AWS-required exception and are managed in `us-east-1`. That global
+control-plane exception stores no Quantify evidence, audit, policy, identity,
+or user-request content and must not be used to introduce a second operating
+region. Deployment configuration names the primary region `AWS_REGION` and
+the exception `CLOUDFRONT_WAF_REGION` so a WAF deployment cannot silently
+redirect regional application resources.
+
 ### Private research-task pilot foundation
 
 The repository contains an IAM-only research-task pilot foundation. Its
@@ -222,6 +233,15 @@ The API canonicalizes requests before admission. One idempotency record maps an
 idempotency key, canonical request hash, task, and reservation. Reusing a key
 with the same request returns the existing task. Reusing it with different
 content returns 409 Conflict and creates no work or cost reservation.
+
+For a no-sign-up research task, creation returns an opaque, high-entropy,
+short-lived task capability with the task ID. The service stores only a
+one-way hash of that capability. Status, retry, and cancel require both values,
+use constant-time comparison, and return an indistinguishable not-found result
+when either is invalid or expired. A retry inherits the same still-valid
+capability for its linked task; no raw capability is placed in an audit record,
+log, queue message, cache key, or idempotency record. Cognito-principal task
+access is a separate future contract and does not weaken this boundary.
 
 ~~~
 accepted → admitted → queued → running → completed

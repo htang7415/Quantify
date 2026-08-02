@@ -121,6 +121,8 @@ def test_public_agent_template_keeps_the_authenticated_route_and_bounds_the_tria
     assert "COGNITO_MACHINE_CLIENT_SECRET_FILE" in example
     assert "quantify-production-core" in example
     assert "WEB_PREVIEW_STACK_NAME=" in example
+    assert "AWS_REGION=us-east-2" in example
+    assert "CLOUDFRONT_WAF_REGION=us-east-1" in example
 
 
 def test_web_preview_uses_a_no_secret_pkce_client_and_proxies_only_the_safe_route() -> None:

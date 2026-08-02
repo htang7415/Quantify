@@ -88,6 +88,11 @@ def _daily_usage(*, table_name: str, day: str, region: str) -> tuple[int, int]:
         "--output",
         "json",
     )
+    # AWS CLI emits no JSON document for a missing DynamoDB item. A new UTC
+    # day has no ledger row until its first admitted trial request, which is
+    # valid zero usage rather than a monitor failure.
+    if not payload:
+        return 0, 0
     item = json.loads(payload).get("Item", {})
     if not isinstance(item, dict):
         raise RuntimeError("anonymous trial ledger response is invalid")

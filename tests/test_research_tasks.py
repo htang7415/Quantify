@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+import json
 
 import pytest
 
@@ -9,6 +10,7 @@ from quantify.policy_control import (
     HmacPolicySigner,
     PolicyControlPlane,
     PolicyControlPointers,
+    PolicyStatus,
     ReleaseGatePolicy,
     RuntimePolicyBundle,
 )
@@ -26,6 +28,7 @@ from quantify.research_tasks import (
     ProviderReconciliationState,
     SqsResearchTaskQueue,
     TaskCapacityExceededError,
+    TaskCapabilityError,
     TaskCapacityPolicy,
     TaskState,
     _TaskRecord,
@@ -179,6 +182,88 @@ def test_submit_canonicalizes_idempotency_and_records_three_pinned_hashes() -> N
         "admitted",
         "queued",
     ]
+
+
+def test_no_signup_task_capability_is_hashed_expiring_and_required_for_status() -> None:
+    service, store, _, _, _, _ = _task_service()
+    created = service.submit_with_task_capability(
+        request=_request(), idempotency_key="capability", capability_ttl_seconds=60
+    )
+    capability = created.pop("task_capability")
+
+    assert isinstance(capability, str) and len(capability) >= 32
+    record = store.get(task_id="task-1")
+    assert capability not in repr(record)
+    assert record.task_capability_hash is not None
+    assert record.task_capability_hash != capability
+    assert record.task_capability_expires_at == datetime(2026, 7, 30, 0, 1, tzinfo=timezone.utc)
+    assert service.status_with_task_capability(
+        task_id="task-1", task_capability=capability
+    ) == created
+    with pytest.raises(TaskCapabilityError, match="unavailable"):
+        service.status_with_task_capability(task_id="task-1", task_capability="wrong")
+    with pytest.raises(TaskCapabilityError, match="unavailable"):
+        service.status_with_task_capability(task_id="not-a-task", task_capability=capability)
+
+    replay = service.submit_with_task_capability(
+        request=_request(), idempotency_key="capability", capability_ttl_seconds=60
+    )
+    assert replay == created
+    assert "task_capability" not in replay
+
+
+def test_task_capability_expiry_and_controlled_retry_keep_the_boundary_intact() -> None:
+    service, store, _, _, _, _ = _task_service()
+    created = service.submit_with_task_capability(
+        request=_request(), idempotency_key="capability", capability_ttl_seconds=60
+    )
+    capability = str(created["task_capability"])
+    store.transition(task_id="task-1", next_state=TaskState.RUNNING)
+    store.transition(task_id="task-1", next_state=TaskState.FAILED_UNRESOLVED)
+
+    retried = service.retry_with_task_capability(
+        task_id="task-1", task_capability=capability, idempotency_key="retry-capability"
+    )
+    retry = store.get(task_id=str(retried["task_id"]))
+    assert retry.task_capability_hash == store.get(task_id="task-1").task_capability_hash
+    assert retry.task_capability_expires_at == store.get(task_id="task-1").task_capability_expires_at
+    assert service.status_with_task_capability(
+        task_id=str(retried["task_id"]), task_capability=capability
+    ) == retried
+
+    retry.task_capability_expires_at = datetime(2026, 7, 29, tzinfo=timezone.utc)
+    with pytest.raises(TaskCapabilityError, match="unavailable"):
+        service.status_with_task_capability(task_id=retry.task_id, task_capability=capability)
+
+
+def test_cancel_reauthorizes_policy_before_changing_task_state() -> None:
+    service, store, _, plane, _, runtime = _task_service()
+    service.submit(request=_request(), idempotency_key="cancel")
+    plane.set_status(
+        kind=ArtifactKind.RUNTIME_POLICY,
+        artifact_hash=runtime.content_hash,
+        status=PolicyStatus.REVOKED,
+    )
+
+    with pytest.raises(Exception, match="not active"):
+        service.cancel(task_id="task-1")
+    assert store.get(task_id="task-1").state is TaskState.QUEUED
+
+
+def test_durable_task_capability_metadata_is_hashed_and_fails_closed_when_invalid() -> None:
+    service, store, _, _, _, _ = _task_service()
+    created = service.submit_with_task_capability(
+        request=_request(), idempotency_key="capability", capability_ttl_seconds=60
+    )
+    capability = str(created["task_capability"])
+    payload = DynamoDbResearchTaskStore._record_payload(store.get(task_id="task-1"))
+    assert capability not in payload
+    assert DynamoDbResearchTaskStore._record_from_payload(payload).task_capability_hash
+
+    corrupt = json.loads(payload)
+    corrupt["task_capability_expires_at"] = "2026-07-30T00:01:00"
+    with pytest.raises(Exception, match="stored research task is invalid"):
+        DynamoDbResearchTaskStore._record_from_payload(json.dumps(corrupt))
 
 
 def test_idempotency_collision_rejects_work_and_reserves_no_second_task() -> None:

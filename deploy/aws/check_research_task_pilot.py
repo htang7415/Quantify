@@ -132,10 +132,28 @@ def _require_worker(*, worker_name: str, region: str, environment: dict[str, str
 
 
 def _require_alarms_ok(*, stack_name: str, region: str, environment: dict[str, str]) -> int:
-    states = _json("cloudwatch", "describe-alarms", "--alarm-name-prefix", stack_name, "--region", region, "--query", "MetricAlarms[].StateValue", "--output", "json", environment=environment)
-    if not isinstance(states, list) or len(states) < 4 or any(state != "OK" for state in states):
+    alarms = _json(
+        "cloudwatch", "describe-alarms", "--alarm-name-prefix", stack_name,
+        "--region", region, "--query", "MetricAlarms[].{name:AlarmName,state:StateValue}",
+        "--output", "json", environment=environment,
+    )
+    if not isinstance(alarms, list) or len(alarms) < 4:
         raise RuntimeError("pilot alarms are missing or non-OK")
-    return len(states)
+    for alarm in alarms:
+        if not isinstance(alarm, dict):
+            raise RuntimeError("pilot alarms are missing or non-OK")
+        name, state = alarm.get("name"), alarm.get("state")
+        # SQS emits no idle-DLQ datapoint until a message is present.  This
+        # single known sparse metric is acceptable; every other alarm must be
+        # demonstrably healthy before the active pilot is considered ready.
+        if state == "OK" or (
+            isinstance(name, str)
+            and "DlqMessagesAlarm" in name
+            and state == "INSUFFICIENT_DATA"
+        ):
+            continue
+        raise RuntimeError("pilot alarms are missing or non-OK")
+    return len(alarms)
 
 
 def main(argv: Sequence[str] | None = None) -> None:

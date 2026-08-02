@@ -129,7 +129,19 @@ Resources:
     Properties: {Namespace: AWS/SQS, MetricName: ApproximateAgeOfOldestMessage, Dimensions: [{Name: QueueName, Value: !GetAtt TaskQueue.QueueName}], ComparisonOperator: GreaterThanThreshold, Threshold: 300, EvaluationPeriods: 1, Period: 60, Statistic: Maximum}
   DlqMessagesAlarm:
     Type: AWS::CloudWatch::Alarm
-    Properties: {Namespace: AWS/SQS, MetricName: ApproximateNumberOfMessagesVisible, Dimensions: [{Name: QueueName, Value: !GetAtt TaskDlq.QueueName}], ComparisonOperator: GreaterThanThreshold, Threshold: 0, EvaluationPeriods: 1, Period: 60, Statistic: Maximum}
+    Properties:
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions: [{Name: QueueName, Value: !GetAtt TaskDlq.QueueName}]
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 0
+      EvaluationPeriods: 1
+      Period: 60
+      Statistic: Maximum
+      # An idle DLQ may emit no metric.  It is safe only when missing data is
+      # explicitly non-breaching; otherwise the pilot readiness gate cannot
+      # distinguish an idle queue from a monitoring outage.
+      TreatMissingData: notBreaching
   WorkerErrorsAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:

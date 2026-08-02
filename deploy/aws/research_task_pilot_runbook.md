@@ -34,6 +34,19 @@ It must report `mode: inactive`, worker concurrency `0`, no event-source
 mapping, an immutable image digest, protected storage, and healthy alarms. It
 does not publish a policy, enqueue work, enable the worker, or expose a route.
 
+Before and after any authorized queue-saturation exercise, retain the result of
+the read-only queue-depth check. Its maximums are supplied by the approved
+exercise plan; it neither sends nor consumes messages and fails when the DLQ
+contains any message.
+
+~~~
+QUANTIFY_AUTHORIZE_RESEARCH_TASK_QUEUE_LOAD_CHECK=1 \
+  deploy/aws/check_research_task_queue_load.sh \
+  --queue-url <pilot-task-queue-url> --dlq-url <pilot-task-dlq-url> \
+  --region us-east-2 --maximum-in-flight <approved-limit> \
+  --maximum-backlog <approved-limit>
+~~~
+
 Before deployment, verify:
 
 - Signed active runtime and release-gate policy hashes match the selected release.

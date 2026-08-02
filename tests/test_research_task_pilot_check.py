@@ -53,7 +53,10 @@ def test_inactive_pilot_check_reports_only_aggregate_readiness(tmp_path: Path, m
         if "list-event-source-mappings" in command:
             return json.dumps({"EventSourceMappings": []})
         if "describe-alarms" in command:
-            return json.dumps(["OK", "OK", "OK", "OK"])
+            return json.dumps([
+                {"name": "queue", "state": "OK"}, {"name": "dlq", "state": "OK"},
+                {"name": "worker-errors", "state": "OK"}, {"name": "worker-throttles", "state": "OK"},
+            ])
         raise AssertionError(command)
 
     monkeypatch.setattr(check_research_task_pilot, "_aws", fake_aws)
@@ -111,7 +114,12 @@ def test_active_pilot_check_requires_one_enabled_bounded_mapping(tmp_path: Path,
         if "get-function-concurrency" in command: return json.dumps({"ReservedConcurrentExecutions": 2})
         if "get-function-configuration" in command: return json.dumps({"Environment": {"Variables": {"QUANTIFY_IMAGE_DIGEST": "sha256:" + "a" * 64}}})
         if "list-event-source-mappings" in command: return json.dumps({"EventSourceMappings": [{"State": "Enabled", "ScalingConfig": {"MaximumConcurrency": 2}}]})
-        if "describe-alarms" in command: return json.dumps(["OK", "OK", "OK", "OK"])
+        if "describe-alarms" in command: return json.dumps([
+            {"name": "queue", "state": "OK"},
+            {"name": "DlqMessagesAlarm", "state": "INSUFFICIENT_DATA"},
+            {"name": "worker-errors", "state": "OK"},
+            {"name": "worker-throttles", "state": "OK"},
+        ])
         raise AssertionError(command)
 
     monkeypatch.setattr(check_research_task_pilot, "_aws", fake_aws)
@@ -139,3 +147,15 @@ def test_pilot_check_allows_explicit_nonsecret_operational_arguments(monkeypatch
         "alarm_count": 4, "image_digest": "sha256:" + "a" * 64,
         "mode": "active", "stack": "pilot",
     }
+
+
+def test_pilot_check_rejects_insufficient_data_for_any_non_dlq_alarm(monkeypatch) -> None:
+    def fake_json(*arguments: str, environment: dict[str, str]) -> object:
+        del arguments, environment
+        return [{"name": "QueueAgeAlarm", "state": "INSUFFICIENT_DATA"}]
+
+    monkeypatch.setattr(check_research_task_pilot, "_json", fake_json)
+    with pytest.raises(RuntimeError, match="alarms are missing or non-OK"):
+        check_research_task_pilot._require_alarms_ok(
+            stack_name="pilot", region="us-east-2", environment={}
+        )
