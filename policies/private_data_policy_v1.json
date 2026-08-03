@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0.0",
+  "version": "private-data-v1",
+  "data_classes": [
+    "public_release",
+    "private_workspace",
+    "private_source",
+    "user_request",
+    "audit_record",
+    "operational_secret"
+  ],
+  "retention": {
+    "retention_days": 30,
+    "deletion_sla_days": 30,
+    "legal_hold_supported": true
+  },
+  "workspace": {
+    "ownership_required": true,
+    "role_permissions": [
+      {"role": "owner", "actions": ["read", "manage"]},
+      {"role": "reviewer", "actions": ["read", "review"]},
+      {"role": "member", "actions": ["read"]}
+    ]
+  },
+  "audit_fields": [
+    "audit_id",
+    "occurred_at",
+    "actor_id",
+    "workspace_id",
+    "event_type",
+    "data_class",
+    "policy_version",
+    "decision"
+  ],
+  "incident_response_steps": [
+    "detect_and_triage",
+    "contain_access",
+    "preserve_audit_record",
+    "investigate_scope",
+    "notify_under_applicable_policy",
+    "recover_and_review"
+  ],
+  "access_review_days": 90,
+  "private_data_intake_enabled": false
+}

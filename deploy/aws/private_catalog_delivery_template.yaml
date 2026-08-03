@@ -1,0 +1,116 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Private signed-URL delivery for one immutable Quantify release catalog.
+
+Parameters:
+  TrustedPublicKeyId:
+    Type: String
+  CloudFrontWebAclArn:
+    Type: String
+    AllowedPattern: '^arn:aws:wafv2:us-east-1:[0-9]{12}:global/webacl/.+$'
+
+Resources:
+  CatalogDeliveryKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Encrypts the private CloudFront-delivered release catalog only.
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: EnableAccountKeyAdministration
+            Effect: Allow
+            Principal: {AWS: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:root'}
+            Action: 'kms:*'
+            Resource: '*'
+          # The delivery bucket policy below confines reads to this distribution.
+          # KMS cannot reference the distribution directly here because the
+          # bucket encryption dependency would otherwise form a cycle.
+          - Sid: AllowAccountCloudFrontDistributionsViaS3
+            Effect: Allow
+            Principal: {Service: cloudfront.amazonaws.com}
+            Action: [kms:Decrypt, kms:GenerateDataKey]
+            Resource: '*'
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+                kms:ViaService: !Sub 's3.${AWS::Region}.${AWS::URLSuffix}'
+              StringLike:
+                AWS:SourceArn: !Sub 'arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/*'
+
+  CatalogDeliveryBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: true
+            ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !GetAtt CatalogDeliveryKey.Arn
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration: {Status: Enabled}
+
+  CatalogOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub ${AWS::StackName}-catalog-oac
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  CatalogKeyGroup:
+    Type: AWS::CloudFront::KeyGroup
+    Properties:
+      KeyGroupConfig:
+        Name: !Sub ${AWS::StackName}-catalog-readers
+        Items: [!Ref TrustedPublicKeyId]
+
+  CatalogDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: Private Quantify release catalog; CloudFront signed URLs are required.
+        WebACLId: !Ref CloudFrontWebAclArn
+        DefaultCacheBehavior:
+          TargetOriginId: catalog-origin
+          ViewerProtocolPolicy: https-only
+          Compress: true
+          TrustedKeyGroups: [!Ref CatalogKeyGroup]
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+        Origins:
+          - Id: catalog-origin
+            DomainName: !GetAtt CatalogDeliveryBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt CatalogOriginAccessControl.Id
+            # OAC replaces legacy identities, but CloudFront's S3 origin
+            # schema still requires this field to be explicitly empty.
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+
+  CatalogBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref CatalogDeliveryBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontReadOnlyCatalogObjects
+            Effect: Allow
+            Principal: {Service: cloudfront.amazonaws.com}
+            Action: s3:GetObject
+            Resource: !Sub ${CatalogDeliveryBucket.Arn}/release-catalogs/v1/*
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${CatalogDistribution}
+
+Outputs:
+  DistributionId: {Value: !Ref CatalogDistribution}
+  DistributionDomainName: {Value: !GetAtt CatalogDistribution.DomainName}
+  DeliveryBucketName: {Value: !Ref CatalogDeliveryBucket}
+  DeliveryKmsKeyArn: {Value: !GetAtt CatalogDeliveryKey.Arn}

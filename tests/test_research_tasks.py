@@ -380,12 +380,13 @@ def test_worker_uses_the_indexed_snapshot_adapter_and_existing_deterministic_eng
 def test_worker_routes_review_required_verdicts_without_changing_verifier_output() -> None:
     service, store, queue, plane, _, _ = _task_service()
     service.submit(request=_request(), idempotency_key="review")
+    verifier = _Verifier(pointers=plane.current_pointers(), review=True)
     worker = ResearchTaskWorker(
         service=service,
         store=store,
         queue=queue,
         policy_control=plane,
-        verifier=_Verifier(pointers=plane.current_pointers(), review=True),  # type: ignore[arg-type]
+        verifier=verifier,  # type: ignore[arg-type]
     )
 
     result = worker.run_once()
@@ -393,6 +394,12 @@ def test_worker_routes_review_required_verdicts_without_changing_verifier_output
     assert result is not None
     assert result["state"] == TaskState.REQUIRES_REVIEW.value
     assert result["result"]["requires_agent_resolution"] is True  # type: ignore[index]
+
+    queue.enqueue(task_id=str(result["task_id"]))
+    replay = worker.run_once()
+
+    assert replay is not None and replay["state"] == TaskState.REQUIRES_REVIEW.value
+    assert verifier.calls == 1
 
 
 def test_runtime_policy_disable_stops_queued_work_before_the_verifier_runs() -> None:
@@ -521,6 +528,46 @@ def test_not_started_reconciliation_releases_reservation_and_permits_one_manual_
     assert store.get(task_id="task-1").manual_retry_task_id == "task-2"
     with pytest.raises(Exception, match="one controlled retry"):
         service.retry(task_id="task-1", idempotency_key="second-retry")
+
+
+def test_cancellation_during_ambiguous_provider_start_stays_cancel_requested_until_reconciled() -> None:
+    reconciler = _Reconciler(
+        ProviderReconciliation(state=ProviderReconciliationState.NOT_STARTED)
+    )
+    service, store, queue, plane, _, _ = _task_service(
+        capacity=TaskCapacityPolicy(
+            shard_count=1,
+            daily_task_limit=1,
+            monthly_reservation_limit_micro_usd=1_000,
+            reservation_micro_usd=500,
+        ),
+        reconciler=reconciler,
+    )
+    service.submit(request=_request(), idempotency_key="cancel-ambiguous")
+
+    class _CancelThenUnavailableVerifier:
+        def verify(self, *, cik: str, request: object) -> dict[str, object]:
+            del cik, request
+            assert service.cancel(task_id="task-1")["state"] == TaskState.CANCEL_REQUESTED.value
+            raise ModelUnavailableError("provider start state is ambiguous")
+
+    pending = _worker(
+        service=service,
+        store=store,
+        queue=queue,
+        plane=plane,
+        verifier=_CancelThenUnavailableVerifier(),
+    ).run_once()
+
+    assert pending is not None
+    assert pending["state"] == TaskState.CANCEL_REQUESTED.value
+    assert reconciler.calls == 0
+
+    reconciled = service.reconcile(task_id="task-1")
+
+    assert reconciled["state"] == TaskState.CANCELED.value
+    assert store.get(task_id="task-1").reservation_released
+    assert reconciler.calls == 1
 
 
 def test_completed_reconciliation_recovers_only_a_matching_safe_result_and_settles_cost() -> None:

@@ -227,9 +227,9 @@ document. It is not a worker action and must not be run from Lambda.
 
 ## Private release-catalog staging
 
-The catalog is a separate post-gate action. It is stored only in the private
-artifact bucket and has no CloudFront behavior or public-read permission. A
-named reviewer signs the stage action with the offline KMS key. The initial
+The catalog is a separate post-gate action. Its authoritative staged copy is
+stored only in the private artifact bucket and has no public-read permission.
+A named reviewer signs the stage action with the offline KMS key. The initial
 stage creates its pointer only if absent; replacement or revocation requires
 the previous action hash, so another reviewer cannot overwrite it silently.
 
@@ -246,7 +246,7 @@ QUANTIFY_AUTHORIZE_PRIVATE_CATALOG_STAGE=1 \
 To revoke staged serving, use `--action revoke` with no release inputs and
 `--expected-current-action-hash <previous-action-hash>`. This records an
 immutable signed revocation and moves only the private stage pointer. Public
-delivery remains prohibited until a separate delivery test and authorization.
+delivery remains prohibited until a separate authorization.
 
 Verify the selected pointer, signed action, and referenced catalog through the
 read-only verifier. It returns only hashes, action state, and reviewer identity.
@@ -257,6 +257,58 @@ QUANTIFY_AUTHORIZE_PRIVATE_CATALOG_CHECK=1 \
   --stage private-pilot --catalog-bucket <pilot-policy-bucket> \
   --signing-key-arn <pilot-kms-signing-key-arn>
 ~~~
+
+### Private signed-URL catalog delivery
+
+The private delivery stack is separate from staging. It creates a dedicated,
+versioned, public-blocked delivery bucket with a customer-managed KMS key, a
+CloudFront Origin Access Control, a trusted key group, and a distribution
+bound to the existing global CloudFront WAF. The delivery bucket policy permits
+only `s3:GetObject` for `release-catalogs/v1/*` from that distribution. Never
+give the distribution access to the policy-artifact bucket or use this flow to
+promote a catalog publicly.
+
+Generate and retain an RSA private key outside the repository. Create its
+CloudFront public-key resource once, using only the public PEM:
+
+~~~
+QUANTIFY_AUTHORIZE_PRIVATE_CATALOG_KEY_CREATE=1 \
+CATALOG_PUBLIC_KEY_FILE=/secure/path/catalog-public-key.pem \
+CATALOG_PUBLIC_KEY_NAME=quantify-private-catalog-readers \
+CATALOG_PUBLIC_KEY_CALLER_REFERENCE=<immutable-random-value> \
+deploy/aws/create_private_catalog_public_key.sh
+~~~
+
+Deploy the private distribution with the returned public-key ID and the
+approved global WAF ARN. This action does not copy catalog content or grant
+public read access.
+
+~~~
+QUANTIFY_AUTHORIZE_PRIVATE_CATALOG_DELIVERY_DEPLOY=1 \
+AWS_STACK_NAME=quantify-private-catalog-delivery \
+CATALOG_PUBLIC_KEY_ID=<cloudfront-public-key-id> \
+CLOUDFRONT_WAF_WEB_ACL_ARN=<global-cloudfront-waf-arn> \
+deploy/aws/deploy_private_catalog_delivery.sh
+~~~
+
+After each separately approved stage or revocation, copy only the catalog
+prefix to the delivery bucket. Retrieve `DeliveryBucketName` and
+`DeliveryKmsKeyArn` from the delivery stack outputs. The command is additive:
+it never deletes an object version.
+
+~~~
+QUANTIFY_AUTHORIZE_PRIVATE_CATALOG_DELIVERY_SYNC=1 \
+CATALOG_SOURCE_BUCKET=<pilot-policy-bucket> \
+CATALOG_DELIVERY_BUCKET=<delivery-stack-output> \
+CATALOG_DELIVERY_KMS_KEY_ARN=<delivery-stack-output> \
+deploy/aws/sync_private_catalog_delivery.sh
+~~~
+
+Before accepting a delivery change, verify an unsigned URL returns `403`, an
+expired signed URL returns `403`, and a short-lived valid signed URL returns
+`200`. Do not log a signed URL, its policy, its signature, or any catalog
+body. The RSA private key is never a CloudFormation parameter, stack output,
+or repository artifact.
 
 Rollback criteria: any audit persistence failure, policy/release revocation, DLQ growth,
 capacity breach, replay mismatch, or unbounded provider ambiguity. Disable the runtime

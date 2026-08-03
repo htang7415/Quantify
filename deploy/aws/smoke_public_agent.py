@@ -5,12 +5,15 @@ from __future__ import annotations
 import base64
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+
+_KEYCHAIN_SERVICE = "quantify.public-agent.oauth-client-secret"
 
 def _environment(name: str) -> str:
     value = os.environ.get(name)
@@ -29,10 +32,21 @@ def _request(request: Request) -> tuple[int, bytes]:
 
 def _access_token() -> str:
     client_id = _environment("COGNITO_MACHINE_CLIENT_ID")
-    secret_file = Path(_environment("COGNITO_MACHINE_CLIENT_SECRET_FILE"))
-    client_secret = secret_file.read_text().strip()
+    secret_file = os.environ.get("COGNITO_MACHINE_CLIENT_SECRET_FILE")
+    if secret_file:
+        client_secret = Path(secret_file).read_text().strip()
+    else:
+        keychain = subprocess.run(
+            [
+                "security", "find-generic-password", "-s",
+                os.environ.get("PUBLIC_AGENT_KEYCHAIN_SERVICE", _KEYCHAIN_SERVICE),
+                "-a", client_id, "-w",
+            ],
+            capture_output=True, check=False, text=True,
+        )
+        client_secret = keychain.stdout.strip()
     if not client_secret:
-        raise RuntimeError("Cognito machine client secret is empty")
+        raise RuntimeError("Cognito machine client secret is unavailable")
     basic = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
     body = urlencode(
         {"grant_type": "client_credentials", "scope": _environment("OAUTH_VERIFY_SCOPE")}

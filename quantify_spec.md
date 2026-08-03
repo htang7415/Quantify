@@ -124,6 +124,148 @@ the V1 verifier as the only verdict authority. Identity, private documents,
 workspaces, and enterprise RBAC are later capabilities, not prerequisites for
 the user-first product.
 
+### Commercial product direction
+
+Quantify's commercial direction is a **verified research operating system**
+for public-company analysis. It competes on reproducibility, controlled
+evidence, review workflow, and auditability—not on generic chat, price
+prediction, trade recommendations, or autonomous portfolio action. Every
+published conclusion remains reproducible against its declared evidence
+release, runtime/release-gate policies, deterministic-engine version, and
+model/prompt contract.
+
+The product develops in four independently governed layers:
+
+~~~
+Research workspace
+  → ask, compare releases, review, and export
+
+Evidence-release platform
+  → approved sources, issuer coverage, corrections, revocation, citations
+
+Bounded research workflow agents
+  → verify claims, search approved evidence, create review tasks
+  → never compose a publication verdict
+
+Enterprise trust control plane
+  → deterministic verifier, policy, provider attribution, audit,
+    workspace isolation, RBAC, retention, and legal hold
+~~~
+
+The initial commercial audience is professional research, corporate strategy,
+investor-relations, consulting, and compliance-sensitive knowledge teams. It
+does not provide personalized investment advice. Commercial packaging may
+differentiate verified-release coverage, team workflow, safe API access, and
+enterprise controls; it must never charge for, incentivize, or imply a trading
+recommendation.
+
+Scale uses two distinct execution lanes. The interactive lane serves bounded,
+low-latency verification under admission and cost caps. The offline lane runs
+approved issuer onboarding, historical backfills, evaluation campaigns, and
+correction scans through attributable asynchronous provider jobs. Provider
+attempt records bind Quantify task IDs to provider operation IDs, model and
+prompt contracts, immutable input/output references, status history, and
+attributable usage where available. Provider results are untrusted until they
+pass deterministic validation; a missing or unattributable result fails closed
+and never triggers an automatic model retry or fallback.
+
+### Commercial roadmap
+
+This is a milestone roadmap, not a timing promise or authorization to expose a
+route, acquire data, accept private material, make a regulated service claim,
+or deploy a future capability. Each stage retains the system invariant in this
+specification and passes its stated release, policy, evaluation, security, and
+operational gates before the next stage is relied upon.
+
+1. **Trust foundation — current private-pilot stage.** Complete the
+   deterministic referee, signed policy and evidence releases, attributable
+   provider attempts, bounded workers, recovery/replay proof, encrypted audit,
+   and private delivery controls. An LLM may propose structured research work;
+   it never establishes a fact or composes a publication verdict.
+2. **Verified research product.** Deliver an evidence-backed public-company
+   research workspace for professional research, strategy,
+   investor-relations, consulting, and compliance-sensitive teams. It supports
+   approved-source research, release comparison, review, and export. Evidence
+   scope, qualification, counterevidence, citation, and audit identity are
+   visible in every result.
+3. **Research platform.** Deliver bounded APIs, SDKs, and typed tools for
+   customer applications. All requests remain subject to identity,
+   authorization, tenant boundaries, source entitlements, admission/cost caps,
+   policy, provenance, evaluation, and revocation. Customer systems may make
+   their own decisions; Quantify must not present a response as personalized
+   investment advice or an instruction to trade.
+4. **Business-intelligence workflows.** Add separately evaluated workflows for
+   disclosure, company, regulatory, competitive, and operational research.
+   The shared knowledge layer is time-versioned and permission-aware: every
+   fact, definition, policy, legal or institutional source, and correction has
+   a source, effective period, release/version, entitlement, warrant status,
+   and revocation path. RAG remains context-only; released, deterministically
+   validated facts are the only facts eligible to affect a published verdict.
+5. **Enterprise trust cloud.** Deliver the institutional program for private
+   workspaces, RBAC, private-data connectors, retention, deletion, legal hold,
+   customer-managed policy controls, model/provider attribution, evaluation,
+   and audit export. This stage begins only after the private-data prerequisite
+   in section 8.1 and the required security, data-rights, and contractual
+   approvals are satisfied.
+6. **Specialized deployments.** Consider distinct, separately governed offers
+   for regulated financial institutions and government users. Such offers are
+   not extensions of the public product by default: each requires its own
+   permitted use cases, source rights, deployment boundary, supervision,
+   security review, procurement, legal analysis, and explicit authorization.
+
+The durable architecture across all stages is:
+
+~~~
+authoritative, time-versioned data and policy
+  → evidence releases and deterministic verifier
+  → LLM planner with bounded, typed tools
+  → workspace, API, or customer workflow
+  → human or customer-owned consequential decision
+~~~
+
+Quantify's defensible advantage is the combination of attributable evidence,
+deterministic policy enforcement, correction and replay, entitlement-aware
+access, and measurable quality/cost/latency/failure controls. Data collection
+or RAG alone is not sufficient. The initial commercial wedge remains
+professional research and business teams; retail advice, proprietary trading
+and execution, and government operations remain separate programs rather than
+one undifferentiated first product.
+
+### Commercial positioning and initial wedge
+
+Quantify is a business-to-business **verifiable research and
+decision-workflow** product. It is not positioned as a cheaper financial data
+terminal, a generic financial chat interface, or a system that predicts prices
+or recommends trades. Established data and research platforms validate demand
+for AI-assisted financial research, but their existence does not weaken the
+need for a provider-neutral control layer that can make research output
+reviewable, reproducible, policy-aware, and attributable.
+
+The initial paying users are professional research, corporate strategy,
+investor-relations, consulting, and compliance-sensitive teams. Initial
+commercial workflows are deliberately narrow and measurable:
+
+1. verified SEC and company-disclosure research;
+2. earnings, disclosure-change, competitor, and policy-impact research;
+3. reviewable reports and exports with evidence scope, qualifications,
+   counterevidence, citations, and audit identity; and
+4. safe APIs and typed tools for customers that need the same controls in
+   their own applications.
+
+Commercial value comes from reducing time to a reviewable answer while making
+its basis inspectable and recoverable. Product evaluation therefore measures
+grounded-fact accuracy, warranted conclusion accuracy, counterevidence
+coverage, citation/provenance completeness, reviewer overturn rate, correction
+handling, reproducibility, latency, and attributable cost. A speed or
+engagement metric alone cannot establish product quality.
+
+Licensed, customer-provided, and public sources remain distinct entitlement
+classes. Quantify must neither imply rights to a source nor use a customer or
+licensed source outside its recorded terms. Any future integration with a data
+provider, execution system, adviser, regulated financial institution, or
+government entity requires a separately approved data-rights, legal, policy,
+and deployment review.
+
 ## 3. High-level system design
 
 Quantify has three deliberately separated planes:
@@ -332,10 +474,10 @@ relying on the next.
 
 1. **Policy-control and pilot foundation — complete for one private pilot.** Signed-envelope types, KMS signing and verification boundaries, content-addressed artifact loading, strongly consistent pointer/status reads, and reload-on-authorization are implemented. The target account has active signed runtime and release-gate artifacts, selected evidence pointers, verified KMS/S3/DynamoDB access, replay-visible audit hashes, and a tested emergency disable/restore. Remaining work is recurring operational monitoring and repeating these checks for any new environment or release.
 2. **One approved frozen release — complete for the pilot.** Exact-fact and release-scoped narrative indexes are compiled and replay-checked for the approved embedded corpus. Archive load verifies every index hash; tests prove narrative context cannot enter verdict evaluation. Future releases require the same factory and gate process.
-3. **Async worker boundary — active private pilot.** Canonical hashing, idempotency collision rejection, sharded admission, bounded queues, task state, SQS batch failure reporting, guarded offline IAM-only admission, exact release-scope preflight, and the fail-closed indexed worker composition are implemented. The pilot has a selected approved archive, bounded worker and SQS mapping at `2`, active-mode post-deploy checks, and an end-to-end task with durable safe state and encrypted audit persistence. V1 continues reading embedded fixtures. Remaining work: prove all recovery cases in the target account and repeat the release parity process for every new release.
+3. **Async worker boundary — active private pilot.** Canonical hashing, idempotency collision rejection, sharded admission, bounded queues, task state, SQS batch failure reporting, guarded offline IAM-only admission, exact release-scope preflight, and the fail-closed indexed worker composition are implemented. The pilot has a selected approved archive, bounded worker and SQS mapping at `2`, active-mode post-deploy checks, and an end-to-end task with durable safe state and encrypted audit persistence. Before a terminal transition, the worker durably journals only its validated publication-safe result; a duplicate delivery can finalize that journal without another model call, while a missing journal remains explicitly reconciling and fail-closed. The deployed pilot exercised the journal to a durable `requires_review` result and replayed its terminal SQS message: state and audit binding were unchanged, and the queue and DLQ drained to zero. V1 continues reading embedded fixtures. Remaining work: prove all recovery cases in the target account and repeat the release parity process for every new release.
 4. Prove failure/recovery semantics: provider-not-started, completed, ambiguous, reconciliation-unavailable, manual retry, cancellation, and reservation reconciliation. No automatic model retry or fallback.
 5. Load and abuse test public access: sharded hard caps, burst behavior, queue saturation, WAF/rate enforcement, cache behavior, and telemetry separation. Do not expose a research-task route until these tests and an explicit authorization approve it.
-6. **Private catalog staging foundation — implemented, not publicly exposed.** Source validation, normalization, evaluations, Lane A/B gate records, immutable manifests, and rollback/revocation controls are implemented. A separately KMS-signed named-reviewer action can stage or revoke an immutable catalog in a private IAM-only bucket with compare-and-swap pointer updates; a passed release gate cannot stage it automatically. Remaining work: configure a separately approved private delivery distribution, exercise that delivery path, and obtain a distinct authorization before public CDN promotion.
+6. **Private catalog staging and delivery — complete for one private pilot, not publicly exposed.** Source validation, normalization, evaluations, Lane A/B gate records, immutable manifests, and rollback/revocation controls are implemented. A separately KMS-signed named-reviewer action can stage or revoke an immutable catalog in a private IAM-only bucket with compare-and-swap pointer updates; a passed release gate cannot stage it automatically. The pilot has a distinct versioned, public-blocked delivery bucket encrypted with a customer-managed key, a CloudFront Origin Access Control, trusted key group, existing global WAF, and an S3 policy limited to catalog reads from that distribution. A separately authorized, non-deleting sync copies only `release-catalogs/v1/` into the delivery bucket. Deployment verification proves unsigned and expired signed URLs return `403`, while a short-lived valid signed URL can read the staged pointer. The original policy-artifact bucket remains outside CDN delivery. A distinct authorization is still required before any public CDN promotion.
 7. Add approved-release search, review tasks, and narrative context one at a time. Each needs a typed contract, policy allowlist, evaluation, provenance, and revocation test.
 8. Expand issuer coverage according to measured release-factory throughput; maintain SDK/tool adapters that preserve the safe contract. Reassess storage only from observed query patterns.
 9. Treat accounts, uploads, workspaces, RBAC, retention, legal hold, and private-data classification as a separate institutional program.

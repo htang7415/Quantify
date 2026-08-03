@@ -573,6 +573,7 @@ class _TaskRecord:
     state: TaskState
     state_history: list[TaskState] = field(default_factory=list)
     safe_result: dict[str, object] | None = None
+    reconciliation_safe_result: dict[str, object] | None = None
     retry_of_task_id: str | None = None
     manual_retry_task_id: str | None = None
     reservation_released: bool = False
@@ -636,6 +637,13 @@ class InMemoryResearchTaskStore:
             task.state_history.append(next_state)
             task.safe_result = safe_result
             return task
+
+    def record_reconciliation_result(self, *, task_id: str, safe_result: dict[str, object]) -> None:
+        with self._lock:
+            task = self.get(task_id=task_id)
+            if task.state is not TaskState.RUNNING or task.reconciliation_safe_result is not None:
+                raise TaskStoreUnavailableError("recovery result cannot be recorded")
+            task.reconciliation_safe_result = safe_result
 
     def mark_reservation_released(self, *, task_id: str) -> None:
         with self._lock:
@@ -728,6 +736,7 @@ class DynamoDbResearchTaskStore:
                 "state": record.state.value,
                 "state_history": [state.value for state in record.state_history],
                 "safe_result": record.safe_result,
+                "reconciliation_safe_result": record.reconciliation_safe_result,
                 "retry_of_task_id": record.retry_of_task_id,
                 "manual_retry_task_id": record.manual_retry_task_id,
                 "reservation_released": record.reservation_released,
@@ -783,6 +792,7 @@ class DynamoDbResearchTaskStore:
                 state=TaskState(raw["state"]),
                 state_history=[TaskState(value) for value in raw["state_history"]],
                 safe_result=raw["safe_result"],
+                reconciliation_safe_result=raw.get("reconciliation_safe_result"),
                 retry_of_task_id=raw["retry_of_task_id"],
                 manual_retry_task_id=raw["manual_retry_task_id"],
                 reservation_released=raw["reservation_released"],
@@ -938,6 +948,7 @@ class DynamoDbResearchTaskStore:
             state=next_state,
             state_history=[*previous.state_history, next_state],
             safe_result=safe_result,
+            reconciliation_safe_result=previous.reconciliation_safe_result,
             retry_of_task_id=previous.retry_of_task_id,
             manual_retry_task_id=previous.manual_retry_task_id,
             reservation_released=previous.reservation_released,
@@ -945,6 +956,21 @@ class DynamoDbResearchTaskStore:
             task_capability_expires_at=previous.task_capability_expires_at,
         )
         return self._replace(previous=previous, updated=updated)
+
+    def record_reconciliation_result(self, *, task_id: str, safe_result: dict[str, object]) -> None:
+        previous = self.get(task_id=task_id)
+        if previous.state is not TaskState.RUNNING or previous.reconciliation_safe_result is not None:
+            raise TaskStoreUnavailableError("recovery result cannot be recorded")
+        updated = _TaskRecord(
+            task_id=previous.task_id, request=previous.request, idempotency_key=previous.idempotency_key,
+            canonical_request_hash=previous.canonical_request_hash, policy_pointers=previous.policy_pointers,
+            reservation=previous.reservation, state=previous.state, state_history=previous.state_history,
+            safe_result=previous.safe_result, reconciliation_safe_result=safe_result,
+            retry_of_task_id=previous.retry_of_task_id, manual_retry_task_id=previous.manual_retry_task_id,
+            reservation_released=previous.reservation_released, task_capability_hash=previous.task_capability_hash,
+            task_capability_expires_at=previous.task_capability_expires_at,
+        )
+        self._replace(previous=previous, updated=updated)
 
     def mark_reservation_released(self, *, task_id: str) -> None:
         previous = self.get(task_id=task_id)
@@ -1342,7 +1368,14 @@ class ResearchTaskService:
         outcome = self._reconciler.reconcile(task_id=task.task_id)
         if outcome.state is ProviderReconciliationState.NOT_STARTED:
             self._release_if_unstarted(task=task)
-            task = self._store.transition(task_id=task.task_id, next_state=TaskState.UNAVAILABLE)
+            task = self._store.transition(
+                task_id=task.task_id,
+                next_state=(
+                    TaskState.CANCELED
+                    if task.state is TaskState.CANCEL_REQUESTED
+                    else TaskState.UNAVAILABLE
+                ),
+            )
         elif outcome.state is ProviderReconciliationState.COMPLETED:
             assert outcome.response is not None
             safe_result = ResearchTaskWorker._safe_result(
@@ -1376,9 +1409,15 @@ class ResearchTaskService:
                 safe_result=None if target is TaskState.CANCELED else safe_result,
             )
         else:
-            task = self._store.transition(
-                task_id=task.task_id, next_state=TaskState.FAILED_UNRESOLVED
-            )
+            if task.reconciliation_safe_result is not None:
+                self._policy_control.authorize_serving(task_pointers=task.policy_pointers)
+                task = self._store.transition(
+                    task_id=task.task_id,
+                    next_state=(TaskState.REQUIRES_REVIEW if task.reconciliation_safe_result["requires_agent_resolution"] else TaskState.COMPLETED),
+                    safe_result=task.reconciliation_safe_result,
+                )
+            else:
+                task = self._store.transition(task_id=task.task_id, next_state=TaskState.FAILED_UNRESOLVED)
         return self._safe_status(task)
 
     def _release_if_unstarted(self, *, task: _TaskRecord) -> None:
@@ -1455,7 +1494,20 @@ class ResearchTaskWorker:
         except TaskStoreUnavailableError:
             self._queue.fail(message=message)
             return None
-        if task.state is TaskState.CANCELED:
+        if task.state in {TaskState.CANCELED, TaskState.COMPLETED, TaskState.REQUIRES_REVIEW, TaskState.UNAVAILABLE, TaskState.FAILED_UNRESOLVED}:
+            self._queue.acknowledge(message=message)
+            return self._service._safe_status(task)
+        if task.state is TaskState.RUNNING:
+            if task.reconciliation_safe_result is not None:
+                self._policy_control.authorize_serving(task_pointers=task.policy_pointers)
+                task = self._store.transition(
+                    task_id=task.task_id,
+                    next_state=(TaskState.REQUIRES_REVIEW if task.reconciliation_safe_result["requires_agent_resolution"] else TaskState.COMPLETED),
+                    safe_result=task.reconciliation_safe_result,
+                )
+                self._queue.acknowledge(message=message)
+                return self._service._safe_status(task)
+            task = self._store.transition(task_id=task.task_id, next_state=TaskState.RECONCILING)
             self._queue.acknowledge(message=message)
             return self._service._safe_status(task)
         try:
@@ -1469,6 +1521,10 @@ class ResearchTaskWorker:
             safe_result = self._safe_result(
                 response=response, pointers=task.policy_pointers
             )
+            record_result = getattr(self._store, "record_reconciliation_result", None)
+            if not callable(record_result):
+                raise TaskStoreUnavailableError("recovery result journal is unavailable")
+            record_result(task_id=task.task_id, safe_result=safe_result)
             next_state = (
                 TaskState.REQUIRES_REVIEW
                 if safe_result["requires_agent_resolution"]
@@ -1488,7 +1544,15 @@ class ResearchTaskWorker:
             self._queue.acknowledge(message=message)
             return self._service._safe_status(task)
         except ModelUnavailableError:
-            task = self._store.transition(task_id=task.task_id, next_state=TaskState.RECONCILING)
+            # A cancellation can race a provider-start ambiguity.  Preserve the
+            # cancellation intent so explicit reconciliation cannot later publish
+            # a recovered result.  The request still needs reconciliation because
+            # provider usage is uncertain.
+            task = self._store.get(task_id=task.task_id)
+            if task.state is not TaskState.CANCEL_REQUESTED:
+                task = self._store.transition(
+                    task_id=task.task_id, next_state=TaskState.RECONCILING
+                )
             self._queue.acknowledge(message=message)
             return self._service._safe_status(task)
         except PolicyControlError:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import pytest
 
 from quantify.production import ProductionConfigurationError
@@ -30,9 +31,17 @@ def test_sqs_lambda_entrypoint_delegates_to_the_bounded_batch_processor() -> Non
     assert response == {"batchItemFailures": []}
 
 
-def test_default_lambda_entrypoint_fails_closed_without_indexed_release_composition() -> None:
+def test_default_lambda_entrypoint_fails_closed_without_indexed_release_composition(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.ERROR, logger="quantify.research_task_lambda")
     with pytest.raises(ProductionConfigurationError, match="bootstrap failed"):
-        handler({"Records": []}, object())
+        handler(
+            {"Records": [{"messageId": "message-1", "body": "private request text"}]},
+            object(),
+        )
+    assert "error_type=" in caplog.text
+    assert "private request text" not in caplog.text
 
 
 def test_indexed_worker_factory_loads_only_the_current_pointer_release() -> None:

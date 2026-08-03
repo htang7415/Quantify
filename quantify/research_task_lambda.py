@@ -9,6 +9,7 @@ policy control plane before this entrypoint may be configured.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+import logging
 from typing import Protocol
 import os
 import re
@@ -28,6 +29,7 @@ WorkerFactory = Callable[[ResearchTaskQueue], _Worker]
 
 
 _IMAGE_DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
+_LOGGER = logging.getLogger("quantify.research_task_lambda")
 
 def load_capacity_policy(*, environment=None):
     """Load explicit bounded worker admission settings; never default silently."""
@@ -144,6 +146,10 @@ def handler(event: Mapping[str, object], context: object) -> dict[str, object]:
         factory=create_indexed_worker_factory(archive_store=archive,policy_control=plane,task_service=service,task_store=store,verifier_factory=lambda provider, selected: create_indexed_verifier(snapshot_provider=provider,pointers=selected,extractor=extractor,extraction_model=config.model,prompt_hash=config.prompt_hash,temperature=config.temperature,image_digest=env["QUANTIFY_IMAGE_DIGEST"],audit_manifest_sink=audit_store.persist))
         return create_sqs_handler(worker_factory=factory)(event,context)
     except Exception as error:
+        # Never log event bodies, task data, provider responses, credentials,
+        # or control artifacts.  The exception class is sufficient to connect
+        # the Lambda metric to a replay-visible operational investigation.
+        _LOGGER.error("research task Lambda bootstrap failed; error_type=%s", type(error).__name__)
         raise ProductionConfigurationError("research-task Lambda bootstrap failed") from error
 
 

@@ -70,3 +70,10 @@ def test_queue_load_check_wrapper_requires_explicit_authorization() -> None:
     )
     assert result.returncode == 2
     assert "QUANTIFY_AUTHORIZE_RESEARCH_TASK_QUEUE_LOAD_CHECK" in result.stderr
+
+
+def test_queue_load_check_wrapper_uses_the_project_virtual_environment() -> None:
+    wrapper = (ROOT / "deploy" / "aws" / "check_research_task_queue_load.sh").read_text()
+
+    assert 'python_bin="${QUANTIFY_PYTHON_BIN:-$repository_root/.venv/bin/python}"' in wrapper
+    assert 'exec "$python_bin"' in wrapper
