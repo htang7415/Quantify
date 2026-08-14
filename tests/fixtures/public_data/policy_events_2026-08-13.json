@@ -1,0 +1,82 @@
+{
+  "schema_version": "policy-event-source.v1",
+  "retrieved_at": "2026-08-14T00:03:48Z",
+  "events": [
+    {
+      "event_id": "fomc-2026-07-29-target-range",
+      "category": "monetary_policy",
+      "authority_id": "fomc",
+      "authority_name": "Federal Open Market Committee",
+      "title": "Federal funds target range decision",
+      "action_type": "decision",
+      "status": "active",
+      "published_at": "2026-07-29",
+      "effective_at": "2026-07-30",
+      "source_document_id": "FOMC-2026-07-29",
+      "source_url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20260729a.htm",
+      "source_sha256": "4c7bd23ba2e6a2837f59162a3ef678212d20cb10e26bcb9a880a7a5fc4533053",
+      "details": {
+        "kind": "fomc_decision",
+        "decision": "maintained",
+        "target_range_low_pct": 3.5,
+        "target_range_high_pct": 3.75,
+        "vote_for": 9,
+        "vote_against": 3,
+        "implementation_source_url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20260729a1.htm",
+        "implementation_source_sha256": "cf7392764471c880d228e012c57a0564ac5b4357ab12226bf1aaf49212262a81",
+        "next_meeting_start": "2026-09-15",
+        "next_meeting_end": "2026-09-16",
+        "calendar_source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+        "calendar_source_sha256": "1663e987505419a48da753440c5b3c7893219fdac08a66f0d592ceab3a398d1f"
+      }
+    },
+    {
+      "event_id": "sec-2026-joint-data-standards",
+      "category": "financial_regulation",
+      "authority_id": "sec-joint-agencies",
+      "authority_name": "SEC and eight federal financial regulators",
+      "title": "Financial Data Transparency Act joint data standards",
+      "action_type": "final_rule",
+      "status": "scheduled_effective",
+      "published_at": "2026-06-25",
+      "effective_at": "2026-10-01",
+      "source_document_id": "S7-2024-05",
+      "source_url": "https://www.sec.gov/rules-regulations/2026/05/s7-2024-05",
+      "source_sha256": "b208310921a133bfd3b76daefbd17d1faa4760cc1219052a0da8e59bbfee3710",
+      "details": {
+        "kind": "joint_data_standards",
+        "rule_type": "final",
+        "release_numbers": ["33-11420", "34-105536", "IA-6967", "IC-36163"],
+        "federal_register_publish_date": "2026-06-25",
+        "reporting_requirements_change_at_effective_date": false,
+        "agencies": ["OCC", "Federal Reserve Board", "FDIC", "NCUA", "CFPB", "FHFA", "CFTC", "SEC", "U.S. Treasury"],
+        "standard_domains": ["entity_identifiers", "geographic_identifiers", "dates", "products_and_currencies", "data_transmission", "schema_and_taxonomy_formats"]
+      }
+    },
+    {
+      "event_id": "bis-2026-00789-advanced-computing",
+      "category": "trade_export_controls",
+      "authority_id": "commerce-bis",
+      "authority_name": "Bureau of Industry and Security",
+      "title": "Advanced computing commodity license review policy",
+      "action_type": "final_rule",
+      "status": "active",
+      "published_at": "2026-01-15",
+      "effective_at": "2026-01-15",
+      "source_document_id": "2026-00789",
+      "source_url": "https://www.federalregister.gov/documents/2026/01/15/2026-00789/revision-to-license-review-policy-for-advanced-computing-commodities",
+      "source_sha256": "8f2f9b2447b68cbe1025b7397d7e007d5298f639d08b8efdaabdd496a79d7614",
+      "details": {
+        "kind": "advanced_computing_export_rule",
+        "rule_type": "final",
+        "federal_register_citation": "91 FR 1684",
+        "review_policy_before": "presumption_of_denial",
+        "review_policy_after": "case_by_case_if_conditions_met",
+        "destinations": ["China", "Macau"],
+        "named_products": ["NVIDIA H200", "AMD MI325X"],
+        "related_company_tickers": ["NVDA", "AMD"],
+        "conditions": ["commercial_availability", "us_supply_capacity", "recipient_security_procedures", "independent_us_testing"]
+      }
+    }
+  ]
+}

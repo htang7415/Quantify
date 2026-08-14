@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantify.local/schemas/treasury_rates_catalog.v1.schema.json",
+  "title": "Quantify U.S. Treasury rates catalog v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "release_id", "manifest_hash", "source_record_hash", "observed_at", "published_at", "fresh_until", "source_url", "source_record_id", "methodology", "limitations", "curve", "spreads"],
+  "properties": {
+    "schema_version": { "const": "treasury-rates-catalog.v1" },
+    "release_id": { "type": "string", "minLength": 1 },
+    "manifest_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "source_record_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "observed_at": { "type": "string", "format": "date-time" },
+    "published_at": { "type": "string", "format": "date-time" },
+    "fresh_until": { "type": "string", "format": "date-time" },
+    "source_url": { "type": "string", "format": "uri", "pattern": "^https://home\\.treasury\\.gov/" },
+    "source_record_id": { "type": "string", "format": "uri", "pattern": "^https://home\\.treasury\\.gov/" },
+    "methodology": { "type": "string", "minLength": 1 },
+    "limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "curve": {
+      "type": "array",
+      "minItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["maturity", "years", "yield_pct"],
+        "properties": {
+          "maturity": { "type": "string", "minLength": 1 },
+          "years": { "type": "number", "exclusiveMinimum": 0 },
+          "yield_pct": { "type": "number", "minimum": -5, "maximum": 25 }
+        }
+      }
+    },
+    "spreads": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "value_pp", "derived_from"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "value_pp": { "type": "number", "minimum": -20, "maximum": 20 },
+          "derived_from": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "string", "minLength": 1 } }
+        }
+      }
+    }
+  }
+}

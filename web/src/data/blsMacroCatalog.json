@@ -1,0 +1,75 @@
+{
+  "schema_version": "bls-macro-catalog.v1",
+  "release_id": "bls-macro-2026-07-ce121b93f4f1",
+  "source_record_hash": "31e994d672a6b317cb1e8680cdbd00090429f1e0dc3fe5d2c4e1379f9262b707",
+  "observed_at": "2026-07-31T00:00:00Z",
+  "observed_period": "2026-07",
+  "retrieved_at": "2026-08-13T23:27:50Z",
+  "fresh_until": "2026-09-14T23:59:59Z",
+  "terms_url": "https://www.bls.gov/developers/termsOfService.htm",
+  "methodology": "Headline and core CPI are deterministic year-over-year percent changes from exact not-seasonally-adjusted BLS index observations, rounded to one decimal. Unemployment is the exact seasonally adjusted BLS published rate.",
+  "disclaimer": "BLS.gov cannot vouch for the data or analyses derived from these data after the data have been retrieved from BLS.gov.",
+  "limitations": [
+    "This is a dated BLS observation release, not a live macroeconomic feed or forecast.",
+    "CPI rates are Quantify calculations from the displayed BLS index inputs; unemployment is a published BLS value.",
+    "Revisions after the declared retrieval time are outside this immutable release."
+  ],
+  "observations": [
+    {
+      "metric_id": "headline_cpi_yoy",
+      "label": "Headline CPI",
+      "series_id": "CUUR0000SA0",
+      "value_pct": 3.4,
+      "previous_value_pct": 3.5,
+      "change_pp": -0.1,
+      "period": "2026-07",
+      "previous_period": "2026-06",
+      "seasonal_adjustment": "not_seasonally_adjusted",
+      "derivation": "year_over_year_percent_change",
+      "source_url": "https://api.bls.gov/publicAPI/v1/timeseries/data/CUUR0000SA0",
+      "inputs": [
+        { "period": "2026-07", "value": 333.918 },
+        { "period": "2026-06", "value": 333.952 },
+        { "period": "2025-07", "value": 323.048 },
+        { "period": "2025-06", "value": 322.561 }
+      ]
+    },
+    {
+      "metric_id": "core_cpi_yoy",
+      "label": "Core CPI",
+      "series_id": "CUUR0000SA0L1E",
+      "value_pct": 2.5,
+      "previous_value_pct": 2.6,
+      "change_pp": -0.1,
+      "period": "2026-07",
+      "previous_period": "2026-06",
+      "seasonal_adjustment": "not_seasonally_adjusted",
+      "derivation": "year_over_year_percent_change",
+      "source_url": "https://api.bls.gov/publicAPI/v1/timeseries/data/CUUR0000SA0L1E",
+      "inputs": [
+        { "period": "2026-07", "value": 337.133 },
+        { "period": "2026-06", "value": 336.882 },
+        { "period": "2025-07", "value": 328.98 },
+        { "period": "2025-06", "value": 328.364 }
+      ]
+    },
+    {
+      "metric_id": "unemployment_rate",
+      "label": "Unemployment rate",
+      "series_id": "LNS14000000",
+      "value_pct": 4.1,
+      "previous_value_pct": 4.2,
+      "change_pp": -0.1,
+      "period": "2026-07",
+      "previous_period": "2026-06",
+      "seasonal_adjustment": "seasonally_adjusted",
+      "derivation": "published_value",
+      "source_url": "https://api.bls.gov/publicAPI/v1/timeseries/data/LNS14000000",
+      "inputs": [
+        { "period": "2026-07", "value": 4.1 },
+        { "period": "2026-06", "value": 4.2 }
+      ]
+    }
+  ],
+  "manifest_hash": "ce121b93f4f17aad53ff957c313f28f5a9c2cec5bcd5cd4c9fa3223c999ce4cd"
+}

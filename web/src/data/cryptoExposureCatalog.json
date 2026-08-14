@@ -1,0 +1,57 @@
+{
+  "schema_version": "crypto-exposure-catalog.v1",
+  "release_id": "crypto-exposure-2026-03-31-fba1dc0aa96c",
+  "investor_release_id": "13f-2026-03-31-8330b36adffd",
+  "investor_manifest_hash": "8330b36adffd552c179b0db10c9d59b3a393e8929eb431cf213c815a96989f5b",
+  "report_period": "2026-03-31",
+  "source": "SEC EDGAR Form 13F information tables and reviewed SEC-filed ETP identity",
+  "limitations": [
+    "Exposure values cover only crypto-linked exchange-traded products reported by managers in the declared Quantify 13F release.",
+    "An ETP position is not direct bitcoin or ether ownership by the reporting manager and does not establish investment intent.",
+    "Reported position changes are not ETF flows and are not observed trades.",
+    "No crypto spot price, market capitalization, network metric, wallet attribution, or staking yield is included."
+  ],
+  "assets": [
+    {
+      "asset_id": "bitcoin",
+      "slug": "bitcoin",
+      "name": "Bitcoin",
+      "symbol": "BTC",
+      "network": "Bitcoin",
+      "market_data_status": "unavailable",
+      "reported_etp_value_usd": 2582823,
+      "reporting_manager_count": 1,
+      "positions": [
+        {
+          "manager_slug": "coatue-management",
+          "manager_firm": "Coatue Management",
+          "reporting_manager_name": "COATUE MANAGEMENT LLC",
+          "reporting_manager_cik": "0001135730",
+          "fund_ticker": "IBIT",
+          "fund_name": "iShares Bitcoin Trust ETF",
+          "cusip": "46438F101",
+          "value_usd": 2582823,
+          "shares": 67226.0,
+          "portfolio_weight_pct": 0.01,
+          "change": "unchanged",
+          "share_delta_pct": 0.0,
+          "filing_accession": "0000919574-26-003501",
+          "filing_source_url": "https://www.sec.gov/Archives/edgar/data/1135730/000091957426003501/infotable.xml",
+          "identity_source_url": "https://www.sec.gov/Archives/edgar/data/886982/000119312526051239/gs-20260213.htm"
+        }
+      ]
+    },
+    {
+      "asset_id": "ethereum",
+      "slug": "ethereum",
+      "name": "Ethereum",
+      "symbol": "ETH",
+      "network": "Ethereum",
+      "market_data_status": "unavailable",
+      "reported_etp_value_usd": 0,
+      "reporting_manager_count": 0,
+      "positions": []
+    }
+  ],
+  "manifest_hash": "fba1dc0aa96c7b7e465f9ea15afac36baade93960a2bd2dda1adf968a9406b0e"
+}

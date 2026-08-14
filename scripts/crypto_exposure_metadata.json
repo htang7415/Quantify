@@ -1,0 +1,38 @@
+{
+  "schema_version": "crypto-exposure-metadata.v1",
+  "description": "Reviewed mappings from SEC-reported ETP CUSIPs to crypto assets. These mappings establish security identity only and never direct token ownership.",
+  "assets": [
+    {
+      "asset_id": "bitcoin",
+      "slug": "bitcoin",
+      "name": "Bitcoin",
+      "symbol": "BTC",
+      "network": "Bitcoin",
+      "funds": [
+        {
+          "cusip": "46438F101",
+          "ticker": "IBIT",
+          "name": "iShares Bitcoin Trust ETF",
+          "exposure_type": "exchange_traded_product",
+          "identity_source_url": "https://www.sec.gov/Archives/edgar/data/886982/000119312526051239/gs-20260213.htm"
+        }
+      ]
+    },
+    {
+      "asset_id": "ethereum",
+      "slug": "ethereum",
+      "name": "Ethereum",
+      "symbol": "ETH",
+      "network": "Ethereum",
+      "funds": [
+        {
+          "cusip": "46438R105",
+          "ticker": "ETHA",
+          "name": "iShares Ethereum Trust ETF",
+          "exposure_type": "exchange_traded_product",
+          "identity_source_url": "https://www.sec.gov/Archives/edgar/data/1633061/000089418926004651/xslFormNPORT-P_X01/primary_doc.xml"
+        }
+      ]
+    }
+  ]
+}

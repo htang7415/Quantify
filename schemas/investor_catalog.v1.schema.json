@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantify.local/schemas/investor_catalog.v1.schema.json",
+  "title": "Quantify investor catalog v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "release_id",
+    "manifest_hash",
+    "source",
+    "report_period",
+    "source_fresh_through",
+    "limitations",
+    "managers"
+  ],
+  "properties": {
+    "schema_version": { "const": "investor-catalog.v1" },
+    "release_id": { "type": "string", "minLength": 1 },
+    "manifest_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "source": { "type": "string", "minLength": 1 },
+    "report_period": { "type": "string", "format": "date" },
+    "source_fresh_through": { "type": "string", "format": "date" },
+    "limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "managers": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/manager" } }
+  },
+  "$defs": {
+    "filing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["form", "report_period", "filed_date", "accession", "source_url"],
+      "properties": {
+        "form": { "enum": ["13F-HR", "13F-HR/A"] },
+        "report_period": { "type": "string", "format": "date" },
+        "filed_date": { "type": "string", "format": "date" },
+        "accession": { "type": "string", "pattern": "^[0-9]{10}-[0-9]{2}-[0-9]{6}$" },
+        "source_url": { "type": "string", "format": "uri", "pattern": "^https://www\\.sec\\.gov/" }
+      }
+    },
+    "holding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "security_id", "issuer", "ticker", "cusip", "title", "instrument_type", "put_call",
+        "value_usd", "shares", "weight_pct", "weight_delta_pp", "share_delta_pct", "change", "theme"
+      ],
+      "properties": {
+        "security_id": { "type": "string", "minLength": 1 },
+        "issuer": { "type": "string", "minLength": 1 },
+        "ticker": { "type": ["string", "null"] },
+        "cusip": { "type": "string", "pattern": "^[A-Z0-9]{9}$" },
+        "title": { "type": "string", "minLength": 1 },
+        "instrument_type": { "type": "string", "minLength": 1 },
+        "put_call": { "type": ["string", "null"] },
+        "value_usd": { "type": "number", "minimum": 0 },
+        "previous_value_usd": { "type": "number", "minimum": 0 },
+        "shares": { "type": "number", "minimum": 0 },
+        "weight_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "weight_delta_pp": { "type": "number", "minimum": -100, "maximum": 100 },
+        "share_delta_pct": { "type": ["number", "null"] },
+        "change": { "enum": ["new", "added", "reduced", "exited", "unchanged"] },
+        "theme": { "type": ["string", "null"] }
+      }
+    },
+    "manager": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "slug", "firm", "person", "reporting_manager_name", "reporting_manager_cik", "category",
+        "primary_theme", "latest_filing", "status", "status_reason", "disclosed_portfolio_value_usd",
+        "holdings_count", "top_five_concentration_pct", "classification_coverage_pct", "holdings",
+        "changes", "allocation", "history"
+      ],
+      "properties": {
+        "slug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "firm": { "type": "string", "minLength": 1 },
+        "person": { "type": ["string", "null"] },
+        "reporting_manager_name": { "type": "string", "minLength": 1 },
+        "reporting_manager_cik": { "type": "string", "pattern": "^[0-9]{10}$" },
+        "category": { "type": "string", "minLength": 1 },
+        "primary_theme": { "type": "string", "minLength": 1 },
+        "latest_filing": { "$ref": "#/$defs/filing" },
+        "status": { "enum": ["available", "source_review"] },
+        "status_reason": { "type": ["string", "null"] },
+        "disclosed_portfolio_value_usd": { "type": ["number", "null"], "minimum": 0 },
+        "holdings_count": { "type": ["number", "null"], "minimum": 0 },
+        "top_five_concentration_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "classification_coverage_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "holdings": { "type": "array", "items": { "$ref": "#/$defs/holding" } },
+        "changes": { "type": "array", "items": { "$ref": "#/$defs/holding" } },
+        "allocation": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "weight_pct"],
+            "properties": {
+              "label": { "type": "string", "minLength": 1 },
+              "weight_pct": { "type": "number", "minimum": 0, "maximum": 100 }
+            }
+          }
+        },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["security_id", "issuer", "ticker", "points"],
+            "properties": {
+              "security_id": { "type": "string", "minLength": 1 },
+              "issuer": { "type": "string", "minLength": 1 },
+              "ticker": { "type": ["string", "null"] },
+              "points": {
+                "type": "array",
+                "minItems": 2,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["period", "weight_pct"],
+                  "properties": {
+                    "period": { "type": "string", "format": "date" },
+                    "weight_pct": { "type": "number", "minimum": 0, "maximum": 100 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

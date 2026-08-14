@@ -1,0 +1,96 @@
+{
+  "schema_version": "public-release-index.v1",
+  "generated_at": "2026-08-13T00:00:00Z",
+  "releases": [
+    {
+      "catalog": "investors",
+      "status": "available",
+      "release_id": "13f-2026-03-31-8330b36adffd",
+      "manifest_hash": "8330b36adffd552c179b0db10c9d59b3a393e8929eb431cf213c815a96989f5b",
+      "observed_at": "2026-05-15T00:00:00Z",
+      "freshness": "not_applicable",
+      "limitations": ["Positions cover only the declared frozen Form 13F reporting scope."]
+    },
+    {
+      "catalog": "markets",
+      "status": "unavailable",
+      "release_id": null,
+      "manifest_hash": null,
+      "observed_at": null,
+      "freshness": "unknown",
+      "limitations": ["No approved market release is active."]
+    },
+    {
+      "catalog": "macro",
+      "status": "available",
+      "release_id": "bls-macro-2026-07-ce121b93f4f1",
+      "manifest_hash": "ce121b93f4f17aad53ff957c313f28f5a9c2cec5bcd5cd4c9fa3223c999ce4cd",
+      "observed_at": "2026-07-31T00:00:00Z",
+      "freshness": "current",
+      "limitations": ["This release contains dated BLS observations and deterministic CPI calculations, not live macro data or a forecast."]
+    },
+    {
+      "catalog": "rates",
+      "status": "available",
+      "release_id": "treasury-rates-2026-08-13-64e93a5da3d1",
+      "manifest_hash": "64e93a5da3d102381e3de05a8c72a0ddb33a838ab4a14104e618d237798d98ad",
+      "observed_at": "2026-08-13T00:00:00Z",
+      "freshness": "current",
+      "limitations": ["This release contains an official dated Treasury par yield curve, not real-time transaction yields or a forecast."]
+    },
+    {
+      "catalog": "etf_flows",
+      "status": "unavailable",
+      "release_id": null,
+      "manifest_hash": null,
+      "observed_at": null,
+      "freshness": "unknown",
+      "limitations": ["No approved ETF-flow release is active."]
+    },
+    {
+      "catalog": "crypto",
+      "status": "unavailable",
+      "release_id": null,
+      "manifest_hash": null,
+      "observed_at": null,
+      "freshness": "unknown",
+      "limitations": ["No approved continuous-market cryptocurrency release is active."]
+    },
+    {
+      "catalog": "crypto_exposure",
+      "status": "available",
+      "release_id": "crypto-exposure-2026-03-31-fba1dc0aa96c",
+      "manifest_hash": "fba1dc0aa96c7b7e465f9ea15afac36baade93960a2bd2dda1adf968a9406b0e",
+      "observed_at": "2026-05-15T00:00:00Z",
+      "freshness": "not_applicable",
+      "limitations": ["This release contains delayed disclosed ETP positions, not crypto market prices, direct token ownership, or ETF flows."]
+    },
+    {
+      "catalog": "earnings",
+      "status": "available",
+      "release_id": "earnings-2026-05-01-42e9a148c670",
+      "manifest_hash": "42e9a148c670ea8364763b240563090f2a54467e77f9ad280da5d6f99936a421",
+      "observed_at": "2026-05-01T00:00:00Z",
+      "freshness": "not_applicable",
+      "limitations": ["Reported SEC facts for AAPL and MSFT only; no estimates, guidance interpretation, future earnings dates, or price reactions."]
+    },
+    {
+      "catalog": "policy",
+      "status": "available",
+      "release_id": "policy-events-2026-07-29-4e6e6b70dc21",
+      "manifest_hash": "4e6e6b70dc21207baea0150ab3d10886a743fce9ab6ad97cad87ac920b7a6e20",
+      "observed_at": "2026-07-29T00:00:00Z",
+      "freshness": "not_applicable",
+      "limitations": ["Three reviewed official policy actions only; no certain asset-price direction, market-implied probability, recommendation, or forecast."]
+    },
+    {
+      "catalog": "events",
+      "status": "unavailable",
+      "release_id": null,
+      "manifest_hash": null,
+      "observed_at": null,
+      "freshness": "unknown",
+      "limitations": ["No approved high-impact event release is active."]
+    }
+  ]
+}

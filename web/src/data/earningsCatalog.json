@@ -1,0 +1,79 @@
+{
+  "schema_version": "earnings-catalog.v1",
+  "release_id": "earnings-2026-05-01-42e9a148c670",
+  "source_manifest_hash": "9385ee290981698a94591f07266f726121e2e0b294aa9fafb81b7abb26f53f24",
+  "observed_at": "2026-05-01T00:00:00Z",
+  "source_retrieved_at": "2026-07-28T21:54:18Z",
+  "scope": "Latest exact comparable 10-Q revenue and diluted EPS facts for AAPL and MSFT in the declared frozen SEC Company Facts manifest.",
+  "methodology": "For each company, select the latest 10-Q where revenue and diluted EPS share an accession and period. Compare only the same accession's exact prior-year calendar-quarter facts; round percentage changes to one decimal.",
+  "limitations": [
+    "Reported SEC facts only; no consensus estimates, surprise labels, guidance interpretation, future earnings dates, or price reactions.",
+    "Coverage is limited to AAPL and MSFT and does not represent the full Quantify company directory.",
+    "Facts and comparisons are frozen at the declared SEC fixture retrieval time; later amendments or filings are outside this release."
+  ],
+  "companies": [
+    {
+      "ticker": "AAPL",
+      "slug": "aapl",
+      "cik": "0000320193",
+      "name": "APPLE INC.",
+      "fiscal_year": 2026,
+      "fiscal_period": "Q2",
+      "period_start": "2025-12-28",
+      "period_end": "2026-03-28",
+      "prior_year_period_start": "2024-12-29",
+      "prior_year_period_end": "2025-03-29",
+      "filed_at": "2026-05-01",
+      "accession": "0000320193-26-000013",
+      "form": "10-Q",
+      "filing_url": "https://www.sec.gov/Archives/edgar/data/320193/000032019326000013/0000320193-26-000013-index.html",
+      "companyfacts_url": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json",
+      "revenue": {
+        "concept": "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
+        "unit": "USD",
+        "value": 111184000000.0,
+        "prior_year_value": 95359000000.0,
+        "yoy_change_pct": 16.6
+      },
+      "diluted_eps": {
+        "concept": "us-gaap:EarningsPerShareDiluted",
+        "unit": "USD/shares",
+        "value": 2.01,
+        "prior_year_value": 1.65,
+        "yoy_change_pct": 21.8
+      }
+    },
+    {
+      "ticker": "MSFT",
+      "slug": "msft",
+      "cik": "0000789019",
+      "name": "MICROSOFT CORPORATION",
+      "fiscal_year": 2026,
+      "fiscal_period": "Q3",
+      "period_start": "2026-01-01",
+      "period_end": "2026-03-31",
+      "prior_year_period_start": "2025-01-01",
+      "prior_year_period_end": "2025-03-31",
+      "filed_at": "2026-04-29",
+      "accession": "0001193125-26-191507",
+      "form": "10-Q",
+      "filing_url": "https://www.sec.gov/Archives/edgar/data/789019/000119312526191507/0001193125-26-191507-index.html",
+      "companyfacts_url": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000789019.json",
+      "revenue": {
+        "concept": "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
+        "unit": "USD",
+        "value": 82886000000.0,
+        "prior_year_value": 70066000000.0,
+        "yoy_change_pct": 18.3
+      },
+      "diluted_eps": {
+        "concept": "us-gaap:EarningsPerShareDiluted",
+        "unit": "USD/shares",
+        "value": 4.27,
+        "prior_year_value": 3.46,
+        "yoy_change_pct": 23.4
+      }
+    }
+  ],
+  "manifest_hash": "42e9a148c670ea8364763b240563090f2a54467e77f9ad280da5d6f99936a421"
+}

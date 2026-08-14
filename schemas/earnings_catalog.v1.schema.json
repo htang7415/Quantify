@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantify.local/schemas/earnings_catalog.v1.schema.json",
+  "title": "Quantify reported earnings catalog v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "release_id", "manifest_hash", "source_manifest_hash", "observed_at", "source_retrieved_at", "scope", "methodology", "limitations", "companies"],
+  "properties": {
+    "schema_version": { "const": "earnings-catalog.v1" },
+    "release_id": { "type": "string", "minLength": 1 },
+    "manifest_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "source_manifest_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "observed_at": { "type": "string", "format": "date-time" },
+    "source_retrieved_at": { "type": "string", "format": "date-time" },
+    "scope": { "type": "string", "minLength": 1 },
+    "methodology": { "type": "string", "minLength": 1 },
+    "limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "companies": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ticker", "slug", "cik", "name", "fiscal_year", "fiscal_period", "period_start", "period_end", "prior_year_period_start", "prior_year_period_end", "filed_at", "accession", "form", "filing_url", "companyfacts_url", "revenue", "diluted_eps"],
+        "properties": {
+          "ticker": { "type": "string", "minLength": 1 },
+          "slug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "cik": { "type": "string", "pattern": "^[0-9]{10}$" },
+          "name": { "type": "string", "minLength": 1 },
+          "fiscal_year": { "type": "integer", "minimum": 2000 },
+          "fiscal_period": { "enum": ["Q1", "Q2", "Q3", "Q4"] },
+          "period_start": { "type": "string", "format": "date" },
+          "period_end": { "type": "string", "format": "date" },
+          "prior_year_period_start": { "type": "string", "format": "date" },
+          "prior_year_period_end": { "type": "string", "format": "date" },
+          "filed_at": { "type": "string", "format": "date" },
+          "accession": { "type": "string", "pattern": "^[0-9]{10}-[0-9]{2}-[0-9]{6}$" },
+          "form": { "const": "10-Q" },
+          "filing_url": { "type": "string", "format": "uri", "pattern": "^https://www\\.sec\\.gov/Archives/" },
+          "companyfacts_url": { "type": "string", "format": "uri", "pattern": "^https://data\\.sec\\.gov/" },
+          "revenue": { "$ref": "#/$defs/metric" },
+          "diluted_eps": { "$ref": "#/$defs/metric" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["concept", "unit", "value", "prior_year_value", "yoy_change_pct"],
+      "properties": {
+        "concept": { "type": "string", "pattern": "^us-gaap:" },
+        "unit": { "enum": ["USD", "USD/shares"] },
+        "value": { "type": "number" },
+        "prior_year_value": { "type": "number" },
+        "yoy_change_pct": { "type": "number", "minimum": -1000, "maximum": 1000 }
+      }
+    }
+  }
+}

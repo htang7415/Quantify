@@ -1,0 +1,78 @@
+{
+  "schema_version": "public-intelligence-sources.v1",
+  "reviewed_at": "2026-08-13",
+  "sources": [
+    {
+      "source_id": "federal-reserve-policy-releases",
+      "name": "Federal Reserve monetary policy releases and FOMC calendar",
+      "status": "approved",
+      "permitted_use": "Offline acquisition, immutable release, and attributed public display of exact policy decisions and scheduled meeting dates.",
+      "terms_url": "https://www.federalreserve.gov/aboutthefed/website-policies.htm",
+      "notes": "The first policy release is limited to the exact target range, recorded vote, decision date, and officially scheduled next meeting. It contains no market-implied probability."
+    },
+    {
+      "source_id": "sec-rulemaking-releases",
+      "name": "U.S. Securities and Exchange Commission rulemaking releases",
+      "status": "approved",
+      "permitted_use": "Offline acquisition, immutable release, and attributed public display of exact official rule metadata and scope.",
+      "terms_url": "https://www.sec.gov/about/privacy-information/website-policies",
+      "notes": "Rule status, identifiers, issue/publication/effective dates, and expressly stated reporting consequences may be published."
+    },
+    {
+      "source_id": "federal-register-rulemaking",
+      "name": "Federal Register rulemaking records",
+      "status": "approved",
+      "permitted_use": "Offline acquisition, immutable release, and attributed public display of exact published federal rule metadata and typed requirements.",
+      "terms_url": "https://www.federalregister.gov/reader-aids/government-policy-and-ofr-procedures",
+      "notes": "Quantify records the document number and official PDF link and treats FederalRegister.gov metadata as a structured acquisition aid."
+    },
+    {
+      "source_id": "bls-public-data-api",
+      "name": "U.S. Bureau of Labor Statistics Public Data API",
+      "status": "approved",
+      "permitted_use": "Offline retrieval, deterministic calculation, immutable release, and attributed secondary public display with the required BLS retrieval disclaimer.",
+      "terms_url": "https://www.bls.gov/developers/termsOfService.htm",
+      "notes": "The initial release is limited to headline CPI, core CPI, and unemployment series. Retrieval time, exact input rows, calculation method, and the BLS secondary-use disclaimer are preserved."
+    },
+    {
+      "source_id": "us-treasury-daily-rates",
+      "name": "U.S. Treasury Daily Par Yield Curve Rates",
+      "status": "approved",
+      "permitted_use": "Offline acquisition, normalization, immutable release, and attributed public display of official daily par yield curve observations.",
+      "terms_url": "https://home.treasury.gov/treasury-daily-interest-rate-xml-feed",
+      "notes": "Official U.S. government XML feed. The first release is limited to exact published par yields and the deterministic 2s10s spread."
+    },
+    {
+      "source_id": "sec-edgar-public-filings",
+      "name": "SEC EDGAR public filings",
+      "status": "approved",
+      "permitted_use": "Offline compilation and public display of exact released filing facts with source attribution.",
+      "terms_url": "https://www.sec.gov/about/developer-resources",
+      "notes": "Existing approved Quantify source. Crypto-linked ETP exposure is limited to exact Form 13F rows and SEC-filed security identity."
+    },
+    {
+      "source_id": "coinbase-exchange-market-data",
+      "name": "Coinbase Exchange Market Data API",
+      "status": "blocked_public_display",
+      "permitted_use": "None for the public Quantify catalog without prior written consent.",
+      "terms_url": "https://www.coinbase.com/legal/market_data",
+      "notes": "The public API is technically accessible, but the terms prohibit redistribution, display, dissemination, and derived works to third parties absent written consent."
+    },
+    {
+      "source_id": "coingecko-api",
+      "name": "CoinGecko API",
+      "status": "license_required",
+      "permitted_use": "No public Quantify display until a suitable commercial redistribution license is approved.",
+      "terms_url": "https://www.coingecko.com/en/api/enterprise/data-license",
+      "notes": "Public-facing display is a licensed data-redistribution use case. No purchase or commercial commitment is authorized."
+    },
+    {
+      "source_id": "coin-metrics-community",
+      "name": "Coin Metrics Community Data",
+      "status": "blocked_commercial_use",
+      "permitted_use": "No use in the commercial Quantify product under the community license.",
+      "terms_url": "https://github.com/coinmetrics/data/blob/master/LICENSE",
+      "notes": "Community archives are CC BY-NC 4.0 and therefore do not fit Quantify's commercial product direction."
+    }
+  ]
+}

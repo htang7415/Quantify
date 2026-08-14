@@ -9,7 +9,68 @@ It does not simply generate a persuasive answer. It tests factual statements
 against a declared, frozen evidence release, surfaces relevant qualifications and
 counterevidence, and returns an auditable conclusion.
 
-[Use Quantify](https://d3ljopjg1qmt4.cloudfront.net/)
+[Visit Quantify](https://d3ljopjg1qmt4.cloudfront.net/)
+
+## Investor intelligence
+
+The public Quantify investor section tracks reported positions for a focused
+set of public-market investment managers. It shows disclosed Form 13F value, portfolio
+weights, quarter-over-quarter share changes, concentration, allocation, and
+five-quarter position history from a frozen, versioned SEC filing catalog.
+
+The tracker is public without sign-in. Its figures cover only each reporting
+manager's disclosed 13F information table; they are not AUM, personal holdings,
+or evidence of investment intent. Source-review failures remain visible with
+derived values withheld instead of estimated.
+
+## Connected public intelligence
+
+The public overview connects the frozen investor release to deterministic
+company ownership views. A company page sums only the disclosed rows belonging
+to Quantify's tracked reporting managers and links every row back to its SEC
+filing. It does not claim total institutional or beneficial ownership.
+
+Markets, macro, ETF flows, cryptocurrency, earnings, policy, and high-impact
+events have public routes and explicit release states. They do not display
+illustrative or model-generated observations. Values remain unavailable until
+an approved source, methodology, freshness policy, correction path, immutable
+release, and focused tests exist. The initial cryptocurrency contract is
+deliberately limited to BTC and ETH and distinguishes ETF/ETP flows from direct
+token ownership.
+
+The first released crypto connection is intentionally narrower than a market
+feed. It projects reviewed crypto-linked ETP security identities over the
+existing frozen 13F catalog, showing exact disclosed manager positions and
+their SEC filing sources. Spot prices, market capitalization, flows, wallets,
+and network statistics remain unavailable. A versioned source register blocks
+technically public APIs whose terms do not permit Quantify's public commercial
+display.
+
+The first active market layer is an official U.S. Treasury par yield-curve
+release. It displays the dated 1-month through 30-year curve and a deterministic
+2s10s spread, with source, publication time, freshness deadline, methodology,
+and manifest. It is not a real-time bond feed or a rate forecast.
+
+The first active macro layer is a bounded U.S. Bureau of Labor Statistics
+release. It shows headline CPI, core CPI, and unemployment for one declared
+period. CPI rates are deterministic year-over-year calculations from exact BLS
+index inputs; unemployment is the exact published seasonally adjusted rate.
+The release records retrieval time, freshness, source rows, methodology, the
+BLS secondary-use disclaimer, and immutable hashes. It is not a live feed or a
+macro forecast.
+
+The first active earnings layer uses the existing frozen SEC Company Facts
+release for AAPL and MSFT. It publishes exact quarterly revenue and diluted EPS,
+deterministic year-over-year comparisons, fiscal and calendar periods, filing
+dates, accessions, and SEC source links. It does not publish consensus
+estimates, surprise labels, guidance interpretation, or future earnings dates.
+
+The first active policy layer covers three official actions: the latest FOMC
+target-range decision and next scheduled meeting, the final joint financial
+data standards rule, and the final BIS advanced-computing export-license review
+rule. Every event records authority, dates, status, document identity, source
+hash, and typed exact details. Policy pages do not claim a certain market
+reaction or publish rate probabilities, forecasts, or recommendations.
 
 ## What Quantify can do
 
@@ -103,8 +164,9 @@ research:
 - AI products that need an evidence-verification layer; and
 - institutions that require clear provenance and reviewability.
 
-The current experience is open to use without sign-up and is deliberately
-bounded to maintain reliability and responsible access.
+The Quantify website is publicly accessible without sign-up. Submitting a
+verification request through the current agent experience requires sign-in and
+remains deliberately bounded to maintain reliability and responsible access.
 
 ## Clear boundaries
 
@@ -124,4 +186,4 @@ Instead of asking, “Can an AI write this?”
 
 Ask, “Can this claim be proven?”
 
-[Start with Quantify](https://d3ljopjg1qmt4.cloudfront.net/)
+[Visit Quantify](https://d3ljopjg1qmt4.cloudfront.net/)

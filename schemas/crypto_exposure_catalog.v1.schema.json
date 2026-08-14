@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantify.local/schemas/crypto_exposure_catalog.v1.schema.json",
+  "title": "Quantify crypto-linked ETP exposure catalog v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "release_id", "manifest_hash", "investor_release_id", "investor_manifest_hash", "report_period", "source", "limitations", "assets"],
+  "properties": {
+    "schema_version": { "const": "crypto-exposure-catalog.v1" },
+    "release_id": { "type": "string", "minLength": 1 },
+    "manifest_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "investor_release_id": { "type": "string", "minLength": 1 },
+    "investor_manifest_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "report_period": { "type": "string", "format": "date" },
+    "source": { "type": "string", "minLength": 1 },
+    "limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "assets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["asset_id", "slug", "name", "symbol", "network", "market_data_status", "reported_etp_value_usd", "reporting_manager_count", "positions"],
+        "properties": {
+          "asset_id": { "type": "string", "minLength": 1 },
+          "slug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "name": { "type": "string", "minLength": 1 },
+          "symbol": { "type": "string", "pattern": "^[A-Z0-9.-]+$" },
+          "network": { "type": "string", "minLength": 1 },
+          "market_data_status": { "const": "unavailable" },
+          "reported_etp_value_usd": { "type": "number", "minimum": 0 },
+          "reporting_manager_count": { "type": "integer", "minimum": 0 },
+          "positions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["manager_slug", "manager_firm", "reporting_manager_name", "reporting_manager_cik", "fund_ticker", "fund_name", "cusip", "value_usd", "shares", "portfolio_weight_pct", "change", "share_delta_pct", "filing_accession", "filing_source_url", "identity_source_url"],
+              "properties": {
+                "manager_slug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+                "manager_firm": { "type": "string", "minLength": 1 },
+                "reporting_manager_name": { "type": "string", "minLength": 1 },
+                "reporting_manager_cik": { "type": "string", "pattern": "^[0-9]{10}$" },
+                "fund_ticker": { "type": "string", "minLength": 1 },
+                "fund_name": { "type": "string", "minLength": 1 },
+                "cusip": { "type": "string", "pattern": "^[A-Z0-9]{9}$" },
+                "value_usd": { "type": "number", "minimum": 0 },
+                "shares": { "type": "number", "minimum": 0 },
+                "portfolio_weight_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+                "change": { "enum": ["new", "added", "reduced", "unchanged"] },
+                "share_delta_pct": { "type": ["number", "null"] },
+                "filing_accession": { "type": "string", "pattern": "^[0-9]{10}-[0-9]{2}-[0-9]{6}$" },
+                "filing_source_url": { "type": "string", "format": "uri", "pattern": "^https://www\\.sec\\.gov/" },
+                "identity_source_url": { "type": "string", "format": "uri", "pattern": "^https://www\\.sec\\.gov/" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

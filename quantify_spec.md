@@ -7,6 +7,19 @@ helps people and external AI agents test factual claims, surface
 counterevidence, and follow an auditable research trail against a declared,
 frozen evidence release.
 
+Quantify may also publish a read-only investor-tracking catalog compiled
+offline from approved public disclosures. Catalog metrics describe the exact
+declared filing scope and are not verification verdicts, total assets under
+management, personal holdings, or claims about an investor's intent.
+
+Quantify may publish additional read-only company-ownership, market, macro,
+ETF, cryptocurrency, earnings, policy, and event catalogs only after their
+source rights, methodology, freshness rules, correction path, and release gate
+are defined. These catalogs are time-stamped research data, not live trading
+feeds, predictions, recommendations, or verification verdicts. Until an
+approved release exists, the public web shows an explicit unavailable state and
+does not substitute example, cached-out-of-policy, or model-generated values.
+
 > A claim may be published only when its cited evidence warrants it and
 > compatible evidence in the same declared frozen pool does not defeat it.
 
@@ -317,6 +330,10 @@ change a verdict, establish a numeric fact, or expand the release.
 | --- | --- | --- |
 | Immutable evidence, manifests, evaluations, and audit objects | Versioned encrypted S3 | Address by content hash; retain replay inputs. |
 | Public catalog and watchlist refresh | CloudFront-cached S3 JSON | Browsers poll a short-cached index, never Lambda. |
+| Investor holdings catalog | Immutable, versioned 13F release JSON in S3 | Compile offline from approved filings; label period, filing, scope, and limitations. |
+| Company ownership views | Deterministic projection of released investor catalogs | Sum only the tracked disclosed rows; never label the result total institutional ownership. |
+| Market, macro, ETF, and cryptocurrency catalogs | Immutable, versioned release JSON in S3 | Acquire offline from approved sources; publish observation time, methodology, freshness, and limitations. |
+| Earnings, policy, and event catalogs | Immutable, versioned release JSON in S3 | Separate reported facts from labelled scenarios or inferences; preserve effective dates and corrections. |
 | Facts | Compiled exact fact index | Exact typed lookup, never vector similarity. |
 | Narrative context | Release-scoped vector index | Context-only, with source span and chunk hash. |
 | Tasks, admission, idempotency, release metadata | DynamoDB | Model access patterns first; reassess relational storage only when justified. |
@@ -467,6 +484,95 @@ Sources must be licensed or public and frozen into a release before public use.
 Live retrieval belongs only to the offline factory, never the verifier or
 planner request path.
 
+Public investor-tracking releases use the same factory boundary. The release
+compiler resolves the reporting-manager identity, filing accession, reporting
+period, amendments, security rows, and comparison policy before publishing.
+Displayed value and weight are limited to the disclosed 13F information table.
+`NEW` and `EXITED` mean presence changed between compatible releases;
+`ADDED` and `REDUCED` use normalized share-count changes, while portfolio-weight
+movement is displayed separately in percentage points. Missing mappings,
+incompatible quarters, and ambiguous amendments fail closed rather than being
+estimated. Ticker and theme metadata are separately versioned and may be absent.
+
+Public market-intelligence releases use distinct versioned contracts rather
+than extending the 13F schema. Each metric records a stable entity or asset ID,
+value, unit, effective time, observation time, source record, methodology,
+release identity, freshness state, and limitations. Market and cryptocurrency
+acquisition runs offline; browsers and online agents never call an exchange,
+chain indexer, news site, or data vendor directly. Missing, stale, conflicting,
+or revoked inputs fail closed to `unavailable` or `source_review`.
+
+Cryptocurrency identity is keyed by a stable asset ID plus network and contract
+address where applicable, never by symbol alone. A crypto release defines its
+price-composite method, circulating-supply method, continuous-market freshness
+limit, wrapped/bridged-asset policy, chain-finality rule, and revision handling.
+ETF or ETP holdings and flows remain distinct from direct token ownership.
+Quantify does not infer wallet owners, call price or volume movement
+institutional accumulation, or present staking yield as a recommendation.
+
+Market-source eligibility is recorded in the versioned public-intelligence
+source register before an adapter or release is enabled. Technical public API
+access does not establish redistribution or commercial-display rights. A source
+marked `blocked_public_display`, `blocked_commercial_use`, or
+`license_required` cannot feed a public release. Changing that status requires
+review of the applicable permission or agreement and a versioned register
+update; it is not implied by a successful network request.
+
+The first crypto-connected release is `crypto-exposure-catalog.v1`, a
+deterministic projection of crypto-linked exchange-traded product rows already
+present in an approved investor 13F release. Reviewed SEC-filed security
+identity maps an ETP CUSIP to a crypto asset. The release binds the investor
+manifest, preserves every manager filing source, permits an empty asset
+position set, and never represents ETP shares as direct token ownership or
+reported-position changes as ETF flows. It carries no market or network data.
+
+The first active market layer is `treasury-rates-catalog.v1`. It is compiled
+offline from the official U.S. Treasury Daily Par Yield Curve XML feed and
+contains exact published maturities plus the deterministic `10Y − 2Y` spread.
+The release records the observation date, feed publication time, source record
+and hash, freshness deadline, methodology, and limitations. Treasury par yields
+are labelled as interpolated curve observations based on indicative bid-side
+quotations, not transaction prices. Stale releases remain visibly stale and may
+not be represented as current; no rate direction or forecast is inferred.
+
+The first active macro layer is `bls-macro-catalog.v1`. It is compiled offline
+from exact U.S. Bureau of Labor Statistics Public Data API rows for the
+not-seasonally-adjusted all-items CPI index, the not-seasonally-adjusted
+all-items-less-food-and-energy CPI index, and the seasonally adjusted
+unemployment rate. Headline and core CPI are deterministic year-over-year
+percent changes requiring the exact current and prior-year index rows and are
+rounded to one decimal; missing inputs fail closed. Unemployment is the exact
+published rate. The release records the period, retrieval time, source rows and
+hash, calculation method, freshness deadline, required secondary-use
+disclaimer, and limitations. It does not infer a macro regime, market impact,
+or forecast, and revisions after retrieval remain outside the immutable
+release.
+
+The first active earnings layer is `earnings-catalog.v1`. It is compiled
+offline from exact facts in the declared frozen SEC Company Facts manifest and
+is initially limited to AAPL and MSFT. Each company record binds one filed
+quarter to its CIK, accession, form, fiscal period, period dates, filing date,
+Company Facts source, and SEC filing page. Revenue and diluted EPS use declared
+US-GAAP concepts and units. A year-over-year change is published only when the
+current filing contains an exact comparative prior-year quarter for the same
+concept, unit, and accession; missing or incompatible inputs fail closed. The
+release contains reported results only. It does not contain consensus
+estimates, surprise labels, guidance interpretation, future earnings dates, or
+market-price reactions.
+
+The first active policy layer is `policy-event-catalog.v1`. It is compiled
+offline from a small declared set of official Federal Reserve, SEC, and federal
+rulemaking records. Each event binds a stable event ID, authority, category,
+action type, status, publication and effective dates, official document ID,
+source URL and source hash, plus a typed detail contract specific to the event.
+The first release contains the latest FOMC target-range decision and scheduled
+next meeting, the final joint Financial Data Transparency Act standards rule,
+and the final BIS advanced-computing export-license review rule. Quantify may
+show exact named products, agencies, destinations, requirements, and company
+identifiers explicitly named by a source. It does not convert a policy event
+into a certain asset-price direction, implied probability, recommendation, or
+forecast. Narrative context cannot create an affected-asset relationship.
+
 ## 8. Implementation plan
 
 This is an ordered plan, not a timing promise. Build and test each step before
@@ -494,26 +600,83 @@ private-evidence contract explicitly permits it. Initial implementation may
 provide only internal policy and authorization primitives; it must not imply
 authorization to accept private material.
 
+### 8.2 Public intelligence web sequence
+
+The public intelligence web expands through independently releasable slices:
+
+1. Establish one coherent application shell and routes for Overview, Markets,
+   Investors, Companies, Intelligence, and claim verification.
+2. Build company ownership pages as deterministic projections of the existing
+   frozen investor catalog. Label all totals as sums across tracked reporting
+   managers and retain each filing source.
+3. Add a public release index and explicit unavailable states. A route may
+   exist before its data release, but it must not display illustrative values as
+   observations.
+4. Add market and macro catalogs only after approved sources, field methods,
+   freshness thresholds, correction handling, schemas, compiler tests, and a
+   release gate exist.
+5. Add a narrow cryptocurrency release, initially limited to approved BTC and
+   ETH market, fund-flow, network, policy, and event fields. Expand asset
+   coverage only after symbol/contract resolution and continuous-market
+   freshness controls pass.
+6. Add earnings, policy, ETF-flow, and high-impact event catalogs one at a time.
+   Each receives its own source and methodology review.
+7. Add a typed cross-catalog entity graph and search only from released exact
+   identifiers. Narrative similarity may suggest review work but cannot publish
+   an entity relationship as fact.
+8. Add a daily brief only after deterministic validation can bind every factual
+   statement to eligible released fields and label every inference or open
+   question. It must not predict prices or recommend a trade.
+
 ## 9. Web experience
 
-The visual direction describes the target public experience. The deployed web
-already uses the soft-white and Quantify-purple direction; task-progress UI,
-release selection, and the richer citation presentation arrive with the async
-task work above.
+The public web uses one coherent Quantify visual system across Overview,
+Markets, Investors, Companies, Intelligence, and claim verification: a
+soft-white canvas, lavender surfaces, the Quantify purple-to-magenta gradient,
+consistent navigation, typography, spacing, and controls. Data-heavy pages
+remain denser through compact cards, tabular figures, thin borders, and
+prominent observation or filing dates, but every route must feel like the same
+product. Task-progress UI, release selection, and richer citation presentation
+arrive with the async task work above.
 
 The web asks one question: “Is this company-analysis claim supported by the
 declared evidence?” It shows task progress or a bounded result, evidence scope,
 qualifications, counterevidence, citations, and an audit ID.
 
-Use a soft-white canvas with the Quantify purple gradient as the primary brand
-color, large clear type, and a calm technology-product layout. Show scope and
-review-required states as prominently as favorable outcomes. Avoid
-market-terminal imagery and price-prediction cues; never use color alone to
-convey a verdict.
+The investor homepage centers reported holdings and quarter-over-quarter
+changes. Each public-market manager page contains overview, holdings, changes,
+allocation, and history modules. Holdings default to descending disclosed
+portfolio weight. The UI says `Disclosed Portfolio Value`, not AUM, attributes
+positions to the reporting manager rather than a named person's private
+portfolio, and presents concentration only as a reported-position signal. The
+VC experience has a separate schema and never invents ownership, position
+value, or valuation precision.
 
-No-sign-up access is intentional for this phase but remains bounded by policy,
-WAF, sharded admission, and cost caps. Controls fail closed. Future accounts
+The website and read-only investor catalog are public without sign-in. The
+currently deployed claim-verification submission requires Cognito sign-in; a
+separately authorized no-sign-up route may be enabled only under its bounded
+policy, WAF, admission, and cost controls. Controls fail closed. Authentication
 must not change the evidence or safety contract.
+
+Use accessible text labels with all green/red or directional indicators; never
+use color alone to convey a change or verdict. Investor pages must show the
+reporting period, filing date, SEC accession/source, catalog release, and the
+limitations of 13F coverage.
+
+The product navigation is `Overview`, `Markets`, `Investors`, `Companies`, and
+`Intelligence`, with claim verification presented as the primary action.
+`Markets` contains Macro, Rates, ETFs, Sectors, Crypto, and Commodities. Company
+pages may connect only released manager positions initially; market cap,
+valuation, insider, ETF, and event modules remain unavailable until their
+corresponding approved releases exist. Earnings modules appear only for exact
+company identities present in the active earnings release. Crypto assets have canonical
+asset pages separate from company pages.
+
+Market and crypto values always display an observation time and freshness
+state. Because crypto trades continuously, its release policy uses a separate,
+stricter staleness threshold. Directional color is descriptive of an observed
+change only. Policy and event pages use `Affected assets` and clearly labelled
+scenarios rather than presenting an up/down market reaction as certain.
 
 ## 10. Governance
 

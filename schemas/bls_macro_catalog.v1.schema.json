@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantify.local/schemas/bls_macro_catalog.v1.schema.json",
+  "title": "Quantify BLS macro catalog v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "release_id", "manifest_hash", "source_record_hash", "observed_at", "observed_period", "retrieved_at", "fresh_until", "terms_url", "methodology", "disclaimer", "limitations", "observations"],
+  "properties": {
+    "schema_version": { "const": "bls-macro-catalog.v1" },
+    "release_id": { "type": "string", "minLength": 1 },
+    "manifest_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "source_record_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "observed_at": { "type": "string", "format": "date-time" },
+    "observed_period": { "type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$" },
+    "retrieved_at": { "type": "string", "format": "date-time" },
+    "fresh_until": { "type": "string", "format": "date-time" },
+    "terms_url": { "type": "string", "format": "uri", "pattern": "^https://www\\.bls\\.gov/" },
+    "methodology": { "type": "string", "minLength": 1 },
+    "disclaimer": { "type": "string", "minLength": 1 },
+    "limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "observations": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["metric_id", "label", "series_id", "value_pct", "previous_value_pct", "change_pp", "period", "previous_period", "seasonal_adjustment", "derivation", "source_url", "inputs"],
+        "properties": {
+          "metric_id": { "enum": ["headline_cpi_yoy", "core_cpi_yoy", "unemployment_rate"] },
+          "label": { "type": "string", "minLength": 1 },
+          "series_id": { "type": "string", "minLength": 1 },
+          "value_pct": { "type": "number", "minimum": -50, "maximum": 100 },
+          "previous_value_pct": { "type": "number", "minimum": -50, "maximum": 100 },
+          "change_pp": { "type": "number", "minimum": -50, "maximum": 50 },
+          "period": { "type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$" },
+          "previous_period": { "type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$" },
+          "seasonal_adjustment": { "enum": ["not_seasonally_adjusted", "seasonally_adjusted"] },
+          "derivation": { "enum": ["year_over_year_percent_change", "published_value"] },
+          "source_url": { "type": "string", "format": "uri", "pattern": "^https://api\\.bls\\.gov/" },
+          "inputs": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["period", "value"],
+              "properties": {
+                "period": { "type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$" },
+                "value": { "type": "number", "minimum": 0, "maximum": 1000 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

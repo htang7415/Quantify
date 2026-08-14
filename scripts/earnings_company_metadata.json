@@ -1,0 +1,27 @@
+{
+  "schema_version": "earnings-company-metadata.v1",
+  "companies": [
+    {
+      "ticker": "AAPL",
+      "slug": "aapl",
+      "cik": "0000320193",
+      "name": "APPLE INC.",
+      "fixture": "aapl_companyfacts.json",
+      "revenue_concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+      "revenue_unit": "USD",
+      "eps_concept": "EarningsPerShareDiluted",
+      "eps_unit": "USD/shares"
+    },
+    {
+      "ticker": "MSFT",
+      "slug": "msft",
+      "cik": "0000789019",
+      "name": "MICROSOFT CORPORATION",
+      "fixture": "msft_companyfacts.json",
+      "revenue_concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+      "revenue_unit": "USD",
+      "eps_concept": "EarningsPerShareDiluted",
+      "eps_unit": "USD/shares"
+    }
+  ]
+}

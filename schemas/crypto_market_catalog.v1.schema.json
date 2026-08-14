@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantify.local/schemas/crypto_market_catalog.v1.schema.json",
+  "title": "Quantify cryptocurrency market catalog v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "release_id", "manifest_hash", "observed_at", "fresh_until", "methodology", "limitations", "assets"],
+  "properties": {
+    "schema_version": { "const": "crypto-market-catalog.v1" },
+    "release_id": { "type": "string", "minLength": 1 },
+    "manifest_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "observed_at": { "type": "string", "format": "date-time" },
+    "fresh_until": { "type": "string", "format": "date-time" },
+    "methodology": { "type": "string", "minLength": 1 },
+    "limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["asset_id", "slug", "name", "symbol", "network", "contract_address", "status", "metrics"],
+        "properties": {
+          "asset_id": { "type": "string", "minLength": 1 },
+          "slug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "name": { "type": "string", "minLength": 1 },
+          "symbol": { "type": "string", "pattern": "^[A-Z0-9.-]+$" },
+          "network": { "type": "string", "minLength": 1 },
+          "contract_address": { "type": ["string", "null"] },
+          "status": { "enum": ["available", "unavailable", "source_review"] },
+          "metrics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["metric", "value", "unit", "effective_at", "source", "source_record_id", "methodology"],
+              "properties": {
+                "metric": { "type": "string", "minLength": 1 },
+                "value": { "type": "number" },
+                "unit": { "type": "string", "minLength": 1 },
+                "effective_at": { "type": "string", "format": "date-time" },
+                "source": { "type": "string", "minLength": 1 },
+                "source_record_id": { "type": "string", "minLength": 1 },
+                "methodology": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
