@@ -28,6 +28,25 @@ describe("Quantify web app", () => {
     expect(screen.getByText("Traceable")).toBeInTheDocument();
     expect(screen.getByText("Ready when you are.")).toBeInTheDocument();
     expect(screen.getByText(/Do not use this tool for price predictions/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Current verification contract")).toHaveTextContent("2 companies");
+    expect(screen.getByRole("link", { name: "Skip to content" })).toHaveAttribute("href", "#main-content");
+    expect(document.getElementById("main-content")).toHaveAttribute("tabindex", "-1");
+    expect(screen.getByLabelText("Company analysis")).toHaveAttribute(
+      "aria-describedby",
+      "analysis-word-limit analysis-data-note analysis-safety-note"
+    );
+  });
+
+  it("loads the released verification example without submitting it", async () => {
+    const user = userEvent.setup();
+    const verifier = vi.fn(async () => result);
+    render(<App initialPath="/agent" verifier={verifier} />);
+
+    await user.click(screen.getByRole("button", { name: "Use released Microsoft example" }));
+
+    expect(screen.getByLabelText("Company analysis")).toHaveValue("Microsoft revenue increased from fiscal 2023 to fiscal 2024.");
+    expect(screen.getByLabelText("Analysis as-of date")).toHaveValue("2024-07-30");
+    expect(verifier).not.toHaveBeenCalled();
   });
 
   it("does not pretend sign-in works before public Cognito is configured", async () => {
@@ -90,23 +109,33 @@ describe("Quantify web app", () => {
     expect(screen.getByText("Review required", { selector: ".result-badge" })).toBeInTheDocument();
   });
 
-  it("shows the connected public overview without inventing unavailable market data", () => {
-    const { container } = render(<App initialPath="/" />);
+  it("shows the commercial research overview with a versioned verification sample", () => {
+    render(<App initialPath="/" />);
 
     expect(screen.getByRole("link", { name: "Quantify home" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Verify a claim" })).toHaveAttribute("href", "/agent");
-    expect(screen.getByRole("heading", { name: /See the market.*Keep the evidence in view/i })).toBeInTheDocument();
-    expect(container.querySelectorAll(".overview-headline-line")).toHaveLength(3);
-    expect(screen.getByLabelText("Current release snapshot")).toHaveTextContent("Tracked disclosed value");
-    expect(screen.getByRole("navigation", { name: "Research sections" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Latest released changes" })).toBeInTheDocument();
-    expect(screen.getAllByText(/Release required/).length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: "Active releases" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Explore investors" })).toHaveAttribute("href", "/investors");
-    expect(screen.getByRole("link", { name: /Venture capital 4 firms.*24 tracked relationships/i })).toHaveAttribute("href", "/investors/venture");
-    expect(screen.getByRole("link", { name: /04 Intelligence Earnings and policy/i })).toHaveAttribute("href", "/intelligence");
-    expect(screen.getByRole("link", { name: /Open .* research/i })).toHaveAttribute("href", expect.stringMatching(/^\/companies\//));
-    expect(screen.getByRole("link", { name: "Verify a claim →" })).toHaveAttribute("href", "/agent");
+    expect(screen.getAllByRole("link", { name: /Open Agent/ })[0]).toHaveAttribute("href", "/agent");
+    expect(screen.getByRole("heading", { name: /Research the company.*Verify the claim/i })).toBeInTheDocument();
+    expect(screen.getByLabelText("Versioned verification sample")).toHaveTextContent("Evaluation fixture · Microsoft · 10-K");
+    expect(screen.getByLabelText("Versioned verification sample")).toHaveTextContent("$245.12B");
+    expect(screen.getByLabelText("Versioned verification sample")).toHaveTextContent("Audit 75b9cf2d09…90722e");
+    expect(screen.getByLabelText("Product boundaries")).toHaveTextContent("active releases");
+    expect(screen.getByRole("heading", { name: "From information to a result you can defend." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Open the evidence." })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Investors.*reporting managers/i })).toHaveAttribute("href", "/investors");
+    expect(screen.getByRole("link", { name: /Venture.*4 firms and 24 official-source relationships/i })).toHaveAttribute("href", "/investors/venture");
+    expect(screen.getByRole("heading", { name: "Useful because it shows its limits." })).toBeInTheDocument();
+    expect(screen.queryByText(/real-time market/i)).not.toBeInTheDocument();
+  });
+
+  it("states the current commercial access boundary without an unsupported conversion form", () => {
+    render(<App initialPath="/product" />);
+
+    expect(screen.getByRole("heading", { name: "The commercial boundary stays visible." })).toBeInTheDocument();
+    expect(screen.getByText("Browse without sign-in")).toBeInTheDocument();
+    expect(screen.getByText("Controlled access")).toBeInTheDocument();
+    expect(screen.getByText("Private and not open")).toBeInTheDocument();
+    expect(screen.getByText(/Quantify does not collect pilot requests on this site\./)).toBeInTheDocument();
+    expect(screen.queryByRole("form")).not.toBeInTheDocument();
   });
 
   it("shows the public investor terminal with the declared filing scope", () => {
@@ -176,14 +205,48 @@ describe("Quantify web app", () => {
 
   it("keeps one product navigation between investors and the agent", () => {
     const { rerender } = render(<App initialPath="/investors" />);
-    expect(screen.getByRole("link", { name: "Investors" })).toHaveClass("active");
-    expect(screen.getByRole("link", { name: "Investors" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Research" })).toHaveClass("active");
+    expect(screen.getByRole("link", { name: "Research" })).toHaveAttribute("aria-current", "page");
 
     rerender(<App initialPath="/agent" />);
 
     expect(screen.getByRole("link", { name: "Quantify home" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Overview" })).toBeInTheDocument();
+    const primaryNavigation = screen.getByRole("navigation", { name: "Primary navigation" });
+    expect(within(primaryNavigation).getByRole("link", { name: "Product" })).toBeInTheDocument();
+    expect(within(primaryNavigation).getByRole("link", { name: "Coverage" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+  });
+
+  it("explains the product authority without implying autonomous verdicts", () => {
+    render(<App initialPath="/product" />);
+
+    expect(screen.getByRole("heading", { name: /One system.*Three research modes/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /The agent researches.*The verifier decides/i })).toBeInTheDocument();
+    expect(screen.getByText("Untrusted until validated.")).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "Current and gated product capabilities" })).toBeInTheDocument();
+    expect(screen.getByText("One structured extraction step; zero production resolution actions")).toBeInTheDocument();
+  });
+
+  it("projects commercial coverage directly from the public release index", () => {
+    render(<App initialPath="/coverage" />);
+
+    expect(screen.getByRole("heading", { name: /Know what Quantify.*can actually see/i })).toBeInTheDocument();
+    expect(screen.getByLabelText("Coverage summary")).toHaveTextContent("12");
+    expect(screen.getByRole("heading", { name: "Every declared layer." })).toBeInTheDocument();
+    expect(screen.getByText("No approved market release is active.")).toBeInTheDocument();
+    expect(screen.getAllByText("Not released").length).toBeGreaterThan(0);
+    expect(screen.getByText(/does not substitute model-generated/)).toBeInTheDocument();
+  });
+
+  it("shows the deterministic methodology and research boundaries", () => {
+    render(<App initialPath="/methodology" />);
+
+    expect(screen.getByRole("heading", { name: "Evidence before explanation." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Four controlled steps." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Facts decide.*Narrative explains/i })).toBeInTheDocument();
+    expect(screen.getByText("Review required")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "What Quantify does not do." })).toBeInTheDocument();
+    expect(screen.getByText("Execute trades or manage a portfolio")).toBeInTheDocument();
   });
 
   it("searches exact released entities from the shared navigation", async () => {
@@ -421,7 +484,7 @@ describe("Quantify web app", () => {
       "/", "/markets", "/markets/macro", "/markets/rates", "/markets/etfs", "/markets/etfs/vgt", "/markets/crypto",
       "/investors", "/investors/compare", "/investors/altimeter-capital", "/investors/venture", "/investors/venture/companies",
       "/investors/venture/overlap", "/investors/venture/khosla-ventures", "/companies", "/companies/nvda", "/intelligence",
-      "/intelligence/earnings", "/intelligence/policy", "/intelligence/releases", "/agent", "/outside-release"
+      "/intelligence/earnings", "/intelligence/policy", "/intelligence/releases", "/product", "/coverage", "/methodology", "/agent", "/outside-release"
     ];
 
     for (const route of routes) {

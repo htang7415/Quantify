@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { verifyAnalysis } from "./api";
 import { beginSignIn, finishSignIn } from "./auth";
+import { CommercialFooter } from "./CommercialFooter";
 import { SiteNav } from "./SiteNav";
 import type { VerificationRequest, VerificationResponse, Verdict } from "./types";
 
@@ -33,6 +34,14 @@ export function VerificationPage({ verifier = verifyAnalysis }: { verifier?: Ver
   const [signInMessage, setSignInMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const selectedCompany = companies.find((company) => company.cik === cik)?.name ?? "Selected company";
+
+  function loadExample() {
+    setCik("0000789019");
+    setAsOfDate("2024-07-30");
+    setAnalysis("Microsoft revenue increased from fiscal 2023 to fiscal 2024.");
+    setResult(null);
+    setError(null);
+  }
 
   useEffect(() => {
     void finishSignIn().catch((authError) => {
@@ -104,38 +113,38 @@ export function VerificationPage({ verifier = verifyAnalysis }: { verifier?: Ver
             </a>
           </div>
         </div>
-        <aside className="agent-panel" aria-label="Quantify agent workflow">
+        <aside className="agent-panel agent-signal signal-surface" aria-label="Quantify agent workflow">
           <div className="agent-window-bar">
             <div className="agent-identity">
               <span className="agent-orb" aria-hidden="true" />
               <div>
                 <strong>Quantify Agent</strong>
-                <span>Research verification</span>
+              <span>Evidence-bound verification</span>
               </div>
             </div>
-            <span className="agent-status"><i className="status-dot" /> Bounded</span>
+            <span className="agent-status"><i className="status-dot" /> Contract ready</span>
           </div>
           <div className="agent-run-label">
             <span>Verification path</span>
-            <span>Scope declared</span>
+            <span>No live retrieval</span>
           </div>
           <div className="agent-prompt">
             <p className="card-label">Incoming research</p>
-            <p>Assess whether a company-analysis claim is warranted by its declared frozen evidence.</p>
+            <p>Microsoft revenue increased from fiscal 2023 to fiscal 2024.</p>
           </div>
           <div className="agent-trace" aria-label="Agent verification stages">
-            <p><span>01</span> Declare scope <i>Required</i></p>
-            <p><span>02</span> Retrieve frozen facts <i>Bounded</i></p>
+            <p><span>01</span> Declare company + date <i>Required</i></p>
+            <p><span>02</span> Check released facts <i>Bounded</i></p>
             <p><span>03</span> Compose verdict <i>Deterministic</i></p>
           </div>
           <div className="agent-answer">
             <div>
               <p className="card-label">Publication rule</p>
-              <p className="decision">Scope first</p>
+              <p className="decision">Verified</p>
             </div>
             <span className="verified-icon" aria-hidden="true">✓</span>
           </div>
-          <p className="agent-footnote">Verification only · Review required when evidence is ambiguous</p>
+          <p className="agent-footnote">Evaluation preview · Actual results depend on the submitted claim and declared release.</p>
         </aside>
       </section>
 
@@ -166,10 +175,14 @@ export function VerificationPage({ verifier = verifyAnalysis }: { verifier?: Ver
         <div className="section-heading">
           <p className="eyebrow">Quantify verification</p>
           <h2>Check a claim before it travels.</h2>
-          <p>Submit a short company analysis. Receive only a verdict, its declared evidence scope, and an audit reference.</p>
+          <p>Submit a short company analysis. Receive the current safe contract: verdict, declared evidence scope, limitation, and audit reference.</p>
         </div>
         <div className="work-grid">
           <form className="verify-form" onSubmit={submit} noValidate>
+            <div className="agent-contract-bar" aria-label="Current verification contract">
+              <span><i /> Current contract</span>
+              <strong>2 companies · frozen SEC evidence · 250 words</strong>
+            </div>
             <label htmlFor="company">Company</label>
             <select id="company" value={cik} onChange={(event) => setCik(event.target.value)}>
               {companies.map((company) => (
@@ -190,9 +203,10 @@ export function VerificationPage({ verifier = verifyAnalysis }: { verifier?: Ver
 
             <div className="label-row">
               <label htmlFor="analysis">Company analysis</label>
-              <span aria-live="polite">{wordCount(analysis)} / 250 words</span>
+              <span id="analysis-word-limit" aria-live="polite">{wordCount(analysis)} / 250 words</span>
             </div>
             <textarea
+              aria-describedby="analysis-word-limit analysis-data-note analysis-safety-note"
               id="analysis"
               value={analysis}
               onChange={(event) => setAnalysis(event.target.value)}
@@ -201,12 +215,13 @@ export function VerificationPage({ verifier = verifyAnalysis }: { verifier?: Ver
               maxLength={3500}
               required
             />
-            <p className="field-note">
+            <button className="example-loader" type="button" onClick={loadExample}>Use released Microsoft example</button>
+            <p className="field-note" id="analysis-data-note">
               {anonymousTrial
                 ? "Open access: no sign-up required. Your analysis is sent only when you verify and is not stored in this browser."
                 : "Your analysis is sent only when you verify. This prototype does not store it in the browser."}
             </p>
-            <p className="safety-note">Do not use this tool for price predictions, trading decisions, or personalized investment advice.</p>
+            <p className="safety-note" id="analysis-safety-note">Do not use this tool for price predictions, trading decisions, or personalized investment advice.</p>
             {anonymousTrial && <p className="trial-notice">The agent uses a frozen evidence release and may slow temporarily to protect reliability.</p>}
             {error && <p className="form-error" role="alert">{error}</p>}
             <button className="button button-dark button-submit" type="submit" disabled={isSubmitting}>
@@ -226,6 +241,7 @@ export function VerificationPage({ verifier = verifyAnalysis }: { verifier?: Ver
           <article><span>03</span><h3>Decide</h3><p>Carry the verdict, scope, and audit reference—or route it to review.</p></article>
         </div>
       </section>
+      <CommercialFooter />
     </main>
   );
 }
@@ -278,6 +294,7 @@ function Results({ result, isSubmitting, companyName }: { result: VerificationRe
         <div><dt>Audit reference</dt><dd className="hash-value">{result.audit_manifest_hash}</dd></div>
       </dl>
       <p className="limitation">{result.limitation}</p>
+      <p className="result-contract-note">Current safe response shown in full. It does not include user text, model output, or unvalidated narrative context.</p>
     </aside>
   );
 }

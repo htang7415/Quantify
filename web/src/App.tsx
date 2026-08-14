@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { CompanyDetail, CompanyIndex } from "./companies/CompanyPages";
+import { CoveragePage, MethodologyPage, ProductPage } from "./CommercialPages";
 import { EarningsPage, IntelligencePage, PolicyPage } from "./intelligence/IntelligencePage";
 import { CryptoPage, EtfDetailPage, EtfPage, MacroPage, MarketsPage, RatesPage } from "./markets/MarketPages";
 import { NotFoundPage } from "./NotFoundPage";
@@ -7,14 +9,22 @@ import { VerificationPage } from "./VerificationPage";
 import { InvestorComparisonPage, InvestorDashboard, InvestorDetail } from "./investors/InvestorPages";
 import { ReleaseOperationsPage } from "./releases/ReleaseOperationsPage";
 import { VentureCompaniesPage, VentureDashboard, VentureDetail, VentureOverlapPage } from "./venture/VenturePages";
+import { applyRouteMetadata } from "./metadata";
 import type { VerificationRequest, VerificationResponse } from "./types";
 
 type Verifier = (request: VerificationRequest) => Promise<VerificationResponse>;
 
 export function App({ verifier, initialPath }: { verifier?: Verifier; initialPath?: string }) {
   const path = (initialPath ?? window.location.pathname).replace(/\/$/, "") || "/";
+  useEffect(() => {
+    applyRouteMetadata(path);
+  }, [path]);
+
   if (path === "/agent" || path === "/verify") return <VerificationPage verifier={verifier} />;
   if (path === "/") return <OverviewPage />;
+  if (path === "/product") return <ProductPage />;
+  if (path === "/coverage") return <CoveragePage />;
+  if (path === "/methodology") return <MethodologyPage />;
   if (path === "/markets") return <MarketsPage />;
   if (path === "/markets/macro") return <MacroPage />;
   if (path === "/markets/rates") return <RatesPage />;

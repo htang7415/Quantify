@@ -795,6 +795,210 @@ The public intelligence web expands through independently releasable slices:
 
 ## 9. Web experience
 
+### 9.1 Commercial web product contract
+
+The commercial web presents Quantify as one coherent, high-technology research
+product with three immediately understandable modes:
+
+1. **Information.** Browse exact released company, investor, market, earnings,
+   and policy records with visible observation or filing dates, scope, source,
+   freshness, and limitations.
+2. **Intelligence.** Connect only typed identities and relationships already
+   present in compatible active releases; show reported change,
+   counterevidence, qualifications, and open questions without turning context
+   or inference into a fact or market-direction claim.
+3. **Verification.** Give a bounded company-analysis claim to the research
+   agent and receive claim-level verdicts composed only by the deterministic
+   verifier, with evidence scope, citations, qualifications, counterevidence,
+   review state, and audit identity.
+
+The agent is the primary product action and the unifying interface across these
+modes. It is differentiated by inspectability, reproducibility, controlled
+evidence, and honest refusal or review states rather than by claims of general
+intelligence, autonomous decision-making, or superior investment performance.
+It may propose and explain structured research work; it may never establish a
+fact, broaden the release, compose a verdict, recommend a security, or execute
+a trade. Public copy may call it an `AI research agent` or `research referee`,
+but may not claim that it is the best, most accurate, or better than a named
+product without a current approved comparative evaluation and review.
+
+The homepage must answer, in its first screen, what Quantify does, who it is
+for, what the user can do next, and the current evidence boundary. The preferred
+message pattern is a short outcome-led statement such as `Research the company.
+Verify the claim.`, followed by one sentence that names released information,
+intelligence, evidence, and auditability. The primary action is `Open Agent` or
+`Verify a claim`; the secondary action opens an actual released research view
+or a contract-valid sample result. Marketing copy must not lead with internal
+architecture terminology.
+
+The initial commercial audience remains professional research, corporate
+strategy, investor-relations, consulting, and compliance-sensitive knowledge
+teams. Persona content describes bounded workflows and reviewable outputs. It
+must not promise returns, trading outcomes, comprehensive coverage, time saved,
+accuracy, security certification, service levels, or customer adoption unless
+the exact claim is supported by current approved evidence.
+
+The commercial capability matrix is explicit and release-visible:
+
+| Product area | Available contract | Gated next state |
+| --- | --- | --- |
+| Information | Public read-only views derived from active released catalogs; the public release index is the coverage authority. | New sources, fields, entities, and live or licensed data require their own rights, methodology, freshness, correction, and release gates. |
+| Intelligence | Exact released earnings, policy, entity, ownership, and other typed connections only where their sub-releases are active. | Narrative events, briefs, broader cross-catalog synthesis, and additional intelligence workflows remain unavailable until independently contracted and released. |
+| Verification | The bounded safe verification contract, current identity or separately authorized trial controls, deterministic verdicts, and audit identity. | Broader issuer coverage, async task UX, comparison, review, and export follow their existing release and task gates. |
+| AI research agent | One structured extraction step under V1 policy; zero production resolution actions; no live retrieval, tool autonomy, or verdict authority. | Multi-step planning and bounded typed tools require a specification contract, focused evaluation, replay controls, and explicit action authorization. |
+| Commercial access | Public catalog plus the currently authorized authentication and trial boundaries. | Pricing, subscriptions, team workspaces, public customer API, enterprise controls, and service commitments require separate product, cost, security, legal, and deployment approval. |
+
+The website derives `available` labels from the active release and runtime
+contracts wherever possible. A planned capability is visually separated from
+an available capability and never uses an enabled action, fabricated product
+screen, or ambiguous `coming soon` treatment that could imply access.
+
+### 9.2 Visual and interaction direction
+
+The commercial experience is concise, confident, product-led, and visibly
+technical. It may draw general inspiration from high-quality modern financial
+product sites: oversized outcome-led typography, generous whitespace, crisp
+high-contrast calls to action, immersive product panels, short progressive
+sections, and clear trust and disclosure layers. It must not copy another
+company's trade dress, layouts, illustrations, interaction details, product
+names, or trading language.
+
+Quantify retains its own soft-white, lavender, purple-to-magenta visual identity
+and may add a controlled near-black `signal` surface for the agent, verification
+trace, and selected data demonstrations. The gradient is an accent and focus
+device, not a full-page substitute for hierarchy. Interface imagery should be
+rendered from real product components or versioned contract-valid fixtures;
+generic stock imagery, fabricated dashboards, fake conversations, invented
+customer results, unsupported counters, and decorative pseudo-live charts are
+not allowed.
+
+Pages use one dominant idea per viewport and progressive disclosure for detail.
+Headlines are short, body copy is plain language, and the primary action remains
+visually stable. Data surfaces may be compact and dense, but marketing sections
+must be scannable. Motion may communicate agent progress, evidence binding,
+state transition, or navigation context; it must be brief, interruptible,
+non-essential to comprehension, respect `prefers-reduced-motion`, and never
+simulate unavailable live data or certainty. Responsive layouts, keyboard
+operation, visible focus, semantic headings, labelled state changes, and text
+alternatives are release requirements. Color alone never communicates a
+verdict, freshness state, direction, or availability.
+
+Every durable public route supplies a concise route-specific title,
+description, canonical path, and social-sharing metadata derived from the same
+approved product contract as the visible page. Unknown routes and private
+previews fail closed with `noindex`; search indexing and sitemap publication
+remain disabled until an approved public origin and explicit production-launch
+authorization exist. Metadata must not introduce broader coverage, performance,
+customer, security, or commercial claims than the rendered page supports.
+
+### 9.3 Commercial information architecture
+
+The public experience uses a compact commercial shell around the existing
+research routes. Its durable concepts are `Research`, `Intelligence`,
+`Coverage`, and `Methodology`, with `Open Agent` as the persistent primary
+action and sign-in shown only when required by the active access contract.
+`Research` groups the existing Markets, Investors, and Companies surfaces; it
+does not change their released-data semantics. The exact final header labels
+and any new public routes require an approved implementation change before
+deployment.
+
+The homepage follows this order:
+
+1. outcome-led hero, evidence-boundary sentence, primary agent action, and one
+   secondary research or sample-result action;
+2. a real product-stage demonstration that binds question, released evidence,
+   counterevidence, deterministic verdict, and audit identity;
+3. three concise product modules for Information, Intelligence, and
+   Verification;
+4. a release-derived coverage strip showing only current supported entities,
+   source/filing periods, observation times, and freshness states;
+5. professional workflow examples for research, strategy,
+   investor-relations, consulting, and compliance-sensitive teams;
+6. a plain-language trust section covering scope, provenance, review-required
+   behavior, correction, revocation, and reproducibility;
+7. a bounded trial or pilot-access action whose limits and data handling are
+   visible before submission; and
+8. a structured footer linking methodology, release operations, corrections,
+   security and privacy information, terms, acceptable use, research
+   disclaimer, product support, company identity, and contact information when
+   those materials are approved for publication.
+
+Supporting commercial content may include Product, Solutions, Coverage,
+Methodology, Security and privacy, Pilot access or Pricing, About, Contact,
+Corrections, and legal pages. Until a route and its content are approved, the
+site must not expose an empty placeholder. Pricing must not be invented: before
+commercial terms are approved, the conversion action is `Request pilot access`,
+not a fabricated plan or discount. API documentation appears publicly only
+after the corresponding customer API and support contract are authorized.
+
+The sample result is a core product demonstration, not a decorative mockup. It
+must come from a versioned eligible fixture or public-safe released result and
+show the submitted claim, company and as-of date, claim-level verdict, verdict
+meaning, supporting evidence, qualifications, compatible counterevidence,
+citations, release identity, audit reference, and limitation. It must be clearly
+labelled as a sample and must not imply a customer, endorsement, coverage level,
+or production event that did not occur.
+
+### 9.4 Agent experience
+
+The agent experience should feel faster and more capable by reducing ambiguity
+and making useful state visible, not by hiding boundaries. Before submission it
+shows supported companies or scopes, the selected as-of date or release, input
+limits, access mode, and relevant data-handling notice. During work it shows a
+small number of truthful stages derived from durable task state. After work it
+leads with the result and then exposes evidence, counterevidence,
+qualifications, citations, release identity, and audit identity through
+progressive disclosure.
+
+Information retrieval, intelligence synthesis, and verification remain visibly
+distinct in the agent output. Released structured facts are labelled facts;
+narrative context is labelled context-only; derived explanations retain their
+source bindings; and deterministic verdicts use the meanings in section 6.
+Unavailability, empty verified scope, refusal, and review-required are complete
+product states with a clear safe next action. The UI must not replace them with
+a model-generated answer, a hidden fallback, or an invitation to make a trade.
+
+Future multi-step research work may add a review workspace, task history,
+release comparison, exports, and bounded typed tools only as their respective
+contracts and authorization gates are completed. A polished interface does not
+accelerate or bypass those gates.
+
+### 9.5 Document-first delivery sequence
+
+Commercial web work proceeds in the following order and returns to an earlier
+stage whenever review finds an unsupported claim or product-state mismatch:
+
+1. **Document.** Update this specification with the product promise, page
+   hierarchy, current-versus-planned capability matrix, content rules, route
+   proposal, access model, data handling, and acceptance criteria. Material
+   policy, security, source-rights, cost, or legal decisions receive their
+   required review before implementation.
+2. **System.** Extend the existing visual tokens and shared components for the
+   commercial shell, high-contrast signal surface, responsive typography,
+   product-stage panels, state labels, motion reduction, and structured footer.
+3. **Homepage.** Implement the concise commercial narrative and contract-valid
+   product demonstration. Coverage and freshness are projections of the active
+   public release index, never separately maintained marketing values.
+4. **Agent.** Improve the verification entry, truthful task progress, result
+   hierarchy, citation and counterevidence presentation, review-required state,
+   accessibility, and failure states without changing verdict authority or
+   enabling a new action.
+5. **Trust and conversion.** Add only approved methodology, coverage, privacy,
+   security, correction, legal, and pilot-access content. Forms minimize data,
+   disclose handling before submission, validate input, fail closed, and do not
+   accept private research material unless the private-data prerequisite is
+   complete.
+6. **Verify.** Test copy against the capability matrix; verify release bindings,
+   unavailable states, responsive layout, keyboard and screen-reader behavior,
+   color independence, reduced motion, performance budgets, safe logging, form
+   abuse controls, and route behavior. Conduct product, security, data-rights,
+   and legal review in proportion to the claims being published.
+7. **Ship.** Prepare a release-ready artifact and handoff. A production route,
+   trial-policy change, commercial offer, analytics provider, or deployment is
+   activated only with explicit authorization and its applicable release gates.
+
+### 9.6 Released research surface contracts
+
 The public web uses one coherent Quantify visual system across Overview,
 Markets, Investors, Companies, Intelligence, and claim verification: a
 soft-white canvas, lavender surfaces, the Quantify purple-to-magenta gradient,
@@ -847,8 +1051,10 @@ use color alone to convey a change or verdict. Investor pages must show the
 reporting period, filing date, SEC accession/source, catalog release, and the
 limitations of 13F coverage.
 
-The product navigation is `Overview`, `Markets`, `Investors`, `Companies`, and
-`Intelligence`, with claim verification presented as the primary action.
+The released research navigation is `Overview`, `Markets`, `Investors`,
+`Companies`, and `Intelligence`, with claim verification presented as the
+primary action. It remains the current navigation until the commercial shell
+in section 9.3 is separately approved and implemented.
 `Markets` contains Macro, Rates, ETFs, Sectors, Crypto, and Commodities. Company
 pages may connect only released manager positions initially; market cap,
 valuation, insider, ETF, and event modules remain unavailable until their
