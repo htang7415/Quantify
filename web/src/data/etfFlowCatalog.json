@@ -1,0 +1,265 @@
+{
+  "schema_version": "etf-flow-catalog.v2",
+  "release_id": "etf-flows-2026-03-31-5666b40693b4",
+  "source_record_hash": "1e44e72d47db46af85a925a5b78898f4ce9b67ed53b055764032a3fa2595433f",
+  "dataset_period": "2026Q2",
+  "dataset_url": "https://www.sec.gov/files/dera/data/form-n-port-data-sets/2026q2_nport.zip",
+  "dataset_sha256": "077cc836a978a593b29012219395fbe9c303d5e930f5be3b5f4353c3b02296fc",
+  "dataset_published_at": "2026-07-09T15:11:37Z",
+  "retrieved_at": "2026-08-14T00:47:41Z",
+  "observed_at": "2026-03-31T00:00:00Z",
+  "fresh_until": "2026-10-17T15:11:37Z",
+  "observed_through": "2026-03-31",
+  "scope": "Five U.S. exchange-traded funds with exact Form N-PORT Item B.6 fields from the SEC 2026Q2 dataset; each fund retains its own report date and three-month window.",
+  "methodology": "For each filed month, net flow equals the reported net asset value of shares sold plus shares sold through reinvestment minus shares redeemed or repurchased. Three-month net flow is the sum of those three exact monthly results.",
+  "limitations": [
+    "This is a delayed Form N-PORT filing view, not a daily ETF creation and redemption feed.",
+    "Filed sales and redemptions may include exchanges, mergers, acquisitions, liquidations, and non-ETF activity described by Form N-PORT Item B.6.",
+    "Net flow is not calculated from a change in net assets and does not establish investor intent or purchases of underlying securities.",
+    "Fund report dates are not synchronized: VGT reports through 2026-02-28 while SPY, QQQ, SMH, and IWM report through 2026-03-31.",
+    "The initial universe is limited to SPY, QQQ, SMH, IWM, and VGT and is not a ranking of the broader ETF market."
+  ],
+  "funds": [
+    {
+      "fund_id": "sec-cik:0000884394",
+      "ticker": "SPY",
+      "name": "SPDR S&P 500 ETF Trust",
+      "category": "Broad equity",
+      "registrant_cik": "0000884394",
+      "registrant_name": "State Street(R) SPDR(R) S&P 500(R) ETF Trust",
+      "series_id": null,
+      "class_id": null,
+      "series_name": "N/A",
+      "fund_lei": "549300NZAMSJ8FXPQQ63",
+      "accession": "0001410368-26-055357",
+      "filed_date": "2026-05-28",
+      "report_date": "2026-03-31",
+      "months": [
+        "2026-01",
+        "2026-02",
+        "2026-03"
+      ],
+      "net_assets_usd": 651588269947.59,
+      "three_month_net_flow_usd": -29392457927.55,
+      "monthly_flows": [
+        {
+          "month": "2026-01",
+          "sales_nav_usd": 70186858179.8,
+          "reinvestment_nav_usd": 0.0,
+          "redemption_nav_usd": 83459621316.0,
+          "net_flow_usd": -13272763136.2
+        },
+        {
+          "month": "2026-02",
+          "sales_nav_usd": 84857982759.0,
+          "reinvestment_nav_usd": 0.0,
+          "redemption_nav_usd": 90130610232.0,
+          "net_flow_usd": -5272627473.0
+        },
+        {
+          "month": "2026-03",
+          "sales_nav_usd": 131174928521.7,
+          "reinvestment_nav_usd": 0.0,
+          "redemption_nav_usd": 142021995840.05,
+          "net_flow_usd": -10847067318.35
+        }
+      ],
+      "source_url": "https://www.sec.gov/Archives/edgar/data/884394/000141036826055357/0001410368-26-055357-index.html",
+      "identity_source_url": "https://data.sec.gov/submissions/CIK0000884394.json",
+      "identity_source_sha256": "0ecb421233e387cf01238e968c110a2fabab69cff15e9e263ae0c1bd65f0c686"
+    },
+    {
+      "fund_id": "sec-series:S000101292",
+      "ticker": "QQQ",
+      "name": "Invesco QQQ Trust, Series 1",
+      "category": "Technology / growth",
+      "registrant_cik": "0001067839",
+      "registrant_name": "Invesco QQQ Trust, Series 1",
+      "series_id": "S000101292",
+      "class_id": "C000271435",
+      "series_name": "Invesco QQQ Trust, Series 1",
+      "fund_lei": "549300VY6FEJBCIMET58",
+      "accession": "0001067839-26-000024",
+      "filed_date": "2026-05-28",
+      "report_date": "2026-03-31",
+      "months": [
+        "2026-01",
+        "2026-02",
+        "2026-03"
+      ],
+      "net_assets_usd": 372507306132.08,
+      "three_month_net_flow_usd": -12727471539.92,
+      "monthly_flows": [
+        {
+          "month": "2026-01",
+          "sales_nav_usd": 36785450898.04,
+          "reinvestment_nav_usd": 0.0,
+          "redemption_nav_usd": 37516125166.41,
+          "net_flow_usd": -730674268.37
+        },
+        {
+          "month": "2026-02",
+          "sales_nav_usd": 39401714340.81,
+          "reinvestment_nav_usd": 0.0,
+          "redemption_nav_usd": 46920852347.9,
+          "net_flow_usd": -7519138007.09
+        },
+        {
+          "month": "2026-03",
+          "sales_nav_usd": 47256401520.18,
+          "reinvestment_nav_usd": 0.0,
+          "redemption_nav_usd": 51734060784.64,
+          "net_flow_usd": -4477659264.46
+        }
+      ],
+      "source_url": "https://www.sec.gov/Archives/edgar/data/1067839/000106783926000024/0001067839-26-000024-index.html",
+      "identity_source_url": "https://www.sec.gov/files/company_tickers_mf.json",
+      "identity_source_sha256": "f3d50ba8b01af142c88d18baa8dbd13e55a64f03bceb04bd4eeaa5443d91c48c"
+    },
+    {
+      "fund_id": "sec-series:S000004452",
+      "ticker": "VGT",
+      "name": "Vanguard Information Technology ETF",
+      "category": "Technology",
+      "registrant_cik": "0000052848",
+      "registrant_name": "VANGUARD WORLD FUND",
+      "series_id": "S000004452",
+      "class_id": "C000012227",
+      "series_name": "VANGUARD INFORMATION TECHNOLOGY INDEX FUND",
+      "fund_lei": "J2NTZGJBERBYMUMBIE74",
+      "accession": "0000052848-26-000413",
+      "filed_date": "2026-04-28",
+      "report_date": "2026-02-28",
+      "months": [
+        "2025-12",
+        "2026-01",
+        "2026-02"
+      ],
+      "net_assets_usd": 128785678498.54,
+      "three_month_net_flow_usd": 3436187734.89998,
+      "monthly_flows": [
+        {
+          "month": "2025-12",
+          "sales_nav_usd": 1011986220.42999,
+          "reinvestment_nav_usd": 16385973.61,
+          "redemption_nav_usd": 477410467.05,
+          "net_flow_usd": 550961726.98999
+        },
+        {
+          "month": "2026-01",
+          "sales_nav_usd": 1113244281.01999,
+          "reinvestment_nav_usd": 188.13,
+          "redemption_nav_usd": 542370835.41,
+          "net_flow_usd": 570873633.73999
+        },
+        {
+          "month": "2026-02",
+          "sales_nav_usd": 2892708842.69,
+          "reinvestment_nav_usd": 25.9,
+          "redemption_nav_usd": 578356494.42,
+          "net_flow_usd": 2314352374.17
+        }
+      ],
+      "source_url": "https://www.sec.gov/Archives/edgar/data/52848/000005284826000413/0000052848-26-000413-index.html",
+      "identity_source_url": "https://www.sec.gov/files/company_tickers_mf.json",
+      "identity_source_sha256": "f3d50ba8b01af142c88d18baa8dbd13e55a64f03bceb04bd4eeaa5443d91c48c"
+    },
+    {
+      "fund_id": "sec-series:S000004344",
+      "ticker": "IWM",
+      "name": "iShares Russell 2000 ETF",
+      "category": "Small-cap equity",
+      "registrant_cik": "0001100663",
+      "registrant_name": "iShares Trust",
+      "series_id": "S000004344",
+      "class_id": "C000012074",
+      "series_name": "iShares Russell 2000 ETF",
+      "fund_lei": "549300O80OAR5VTWR172",
+      "accession": "0002071691-26-012507",
+      "filed_date": "2026-05-28",
+      "report_date": "2026-03-31",
+      "months": [
+        "2026-01",
+        "2026-02",
+        "2026-03"
+      ],
+      "net_assets_usd": 71915574411.58,
+      "three_month_net_flow_usd": -2504298108.5000043,
+      "monthly_flows": [
+        {
+          "month": "2026-01",
+          "sales_nav_usd": 6578901736.65,
+          "reinvestment_nav_usd": 0.0,
+          "redemption_nav_usd": 10331164156.35,
+          "net_flow_usd": -3752262419.7000003
+        },
+        {
+          "month": "2026-02",
+          "sales_nav_usd": 11768600970.7,
+          "reinvestment_nav_usd": 0.0,
+          "redemption_nav_usd": 12280710182.7,
+          "net_flow_usd": -512109212.0
+        },
+        {
+          "month": "2026-03",
+          "sales_nav_usd": 20765320009.85,
+          "reinvestment_nav_usd": 0.0,
+          "redemption_nav_usd": 19005246486.65,
+          "net_flow_usd": 1760073523.199996
+        }
+      ],
+      "source_url": "https://www.sec.gov/Archives/edgar/data/1100663/000207169126012507/0002071691-26-012507-index.html",
+      "identity_source_url": "https://www.sec.gov/files/company_tickers_mf.json",
+      "identity_source_sha256": "f3d50ba8b01af142c88d18baa8dbd13e55a64f03bceb04bd4eeaa5443d91c48c"
+    },
+    {
+      "fund_id": "sec-series:S000034411",
+      "ticker": "SMH",
+      "name": "VanEck Semiconductor ETF",
+      "category": "Semiconductors",
+      "registrant_cik": "0001137360",
+      "registrant_name": "VanEck ETF Trust",
+      "series_id": "S000034411",
+      "class_id": "C000105869",
+      "series_name": "VanEck Semiconductor ETF",
+      "fund_lei": "549300MJTG2N9QRH7I02",
+      "accession": "0001410368-26-054882",
+      "filed_date": "2026-05-28",
+      "report_date": "2026-03-31",
+      "months": [
+        "2026-01",
+        "2026-02",
+        "2026-03"
+      ],
+      "net_assets_usd": 40983896027.1,
+      "three_month_net_flow_usd": 1618731645.5,
+      "monthly_flows": [
+        {
+          "month": "2026-01",
+          "sales_nav_usd": 5227779883.0,
+          "reinvestment_nav_usd": 0.0,
+          "redemption_nav_usd": 2965108000.0,
+          "net_flow_usd": 2262671883.0
+        },
+        {
+          "month": "2026-02",
+          "sales_nav_usd": 5598519624.5,
+          "reinvestment_nav_usd": 0.0,
+          "redemption_nav_usd": 3676394450.5,
+          "net_flow_usd": 1922125174.0
+        },
+        {
+          "month": "2026-03",
+          "sales_nav_usd": 9828161083.5,
+          "reinvestment_nav_usd": 0.0,
+          "redemption_nav_usd": 12394226495.0,
+          "net_flow_usd": -2566065411.5
+        }
+      ],
+      "source_url": "https://www.sec.gov/Archives/edgar/data/1137360/000141036826054882/0001410368-26-054882-index.html",
+      "identity_source_url": "https://www.sec.gov/files/company_tickers_mf.json",
+      "identity_source_sha256": "f3d50ba8b01af142c88d18baa8dbd13e55a64f03bceb04bd4eeaa5443d91c48c"
+    }
+  ],
+  "manifest_hash": "5666b40693b41328e3053753284f992fb09f97ba2359e63e7d7a807dc72fca30"
+}

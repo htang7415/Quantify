@@ -1,6 +1,6 @@
 import { SiteNav } from "../SiteNav";
 import { earningsCatalog } from "../earnings/catalog";
-import { money, readableDate } from "../format";
+import { money, readableDate, sentenceCase } from "../format";
 import { policyEventCatalog } from "../policy/catalog";
 import type { PolicyEvent } from "../policy/types";
 import { releaseFor } from "../releases/catalog";
@@ -14,7 +14,7 @@ export function IntelligencePage() {
     <main className="data-app intelligence-page">
       <SiteNav active="intelligence" action={{ label: "Verify a claim", href: "/agent" }} />
       <section className="data-hero page-shell">
-        <div><p className="terminal-eyebrow">Intelligence / events with provenance</p><h1>What happened. What changed. What is connected.</h1><p>Reported earnings and three official policy actions are active. High-impact narrative events remain blank until independently released.</p><div className="scope-pills"><span><i /> EARNINGS + POLICY AVAILABLE</span><span>NEWS FEED DISABLED</span></div></div>
+        <div><p className="terminal-eyebrow">Intelligence / events with provenance</p><h1>What happened. What changed. What is connected.</h1><p>Reported earnings and three official policy actions are active. High-impact narrative events remain blank until independently released.</p><div className="scope-pills"><span><i /> Earnings + policy available</span><span>News feed disabled</span></div></div>
       </section>
       <section className="intelligence-empty-grid page-shell">
         {[
@@ -38,11 +38,11 @@ function categoryLabel(category: PolicyEvent["category"]): string {
 function PolicyDetails({ event }: { event: PolicyEvent }) {
   const details = event.details;
   if (details.kind === "fomc_decision") return <>
-    <div className="policy-primary-value"><span>Federal funds target</span><strong>{details.target_range_low_pct.toFixed(2)}–{details.target_range_high_pct.toFixed(2)}%</strong><b>MAINTAINED · {details.vote_for}–{details.vote_against} VOTE</b></div>
+    <div className="policy-primary-value"><span>Federal funds target</span><strong>{details.target_range_low_pct.toFixed(2)}–{details.target_range_high_pct.toFixed(2)}%</strong><b>Maintained · {details.vote_for}–{details.vote_against} vote</b></div>
     <div className="policy-facts"><span><b>Next scheduled meeting</b>{details.next_meeting_start} → {details.next_meeting_end}</span><a href={details.calendar_source_url} target="_blank" rel="noreferrer">FOMC calendar ↗</a><a href={details.implementation_source_url} target="_blank" rel="noreferrer">Implementation note ↗</a></div>
   </>;
   if (details.kind === "joint_data_standards") return <>
-    <div className="policy-primary-value"><span>Rule status</span><strong>FINAL</strong><b>EFFECTIVE {event.effective_at}</b></div>
+    <div className="policy-primary-value"><span>Rule status</span><strong>Final</strong><b>Effective {event.effective_at}</b></div>
     <div className="policy-facts"><span><b>Issuing agencies</b>{details.agencies.length} federal financial regulators</span><span><b>Release numbers</b>{details.release_numbers.join(" · ")}</span><span><b>At effective date</b>No reporting-requirement change without further agency action</span></div>
   </>;
   const conditionLabels: Record<string, string> = {
@@ -52,7 +52,7 @@ function PolicyDetails({ event }: { event: PolicyEvent }) {
     independent_us_testing: "Independent U.S. testing"
   };
   return <>
-    <div className="policy-primary-value"><span>License review</span><strong>CASE BY CASE</strong><b>IF CONDITIONS ARE MET</b></div>
+    <div className="policy-primary-value"><span>License review</span><strong>Case by case</strong><b>If conditions are met</b></div>
     <div className="policy-facts"><span><b>Named products</b>{details.named_products.join(" · ")}</span><span><b>Destinations</b>{details.destinations.join(" · ")}</span><span><b>Required condition set</b>{details.conditions.map((condition) => conditionLabels[condition]).join(" · ")}</span><span><b>Federal Register</b>{details.federal_register_citation}</span></div>
   </>;
 }
@@ -62,14 +62,14 @@ export function PolicyPage() {
     <main className="data-app policy-page">
       <SiteNav active="intelligence" action={{ label: "Verify a claim", href: "/agent" }} />
       <section className="data-hero policy-hero page-shell">
-        <div><p className="terminal-eyebrow">Intelligence / policy / official actions</p><h1>Action, scope, effective date.</h1><p>Three typed official policy records—without speeches, news noise, market-implied probabilities, or certain price-direction claims.</p><div className="scope-pills"><span><i /> 3 REVIEWED ACTIONS</span><span>OBSERVED THROUGH {readableDate(policyEventCatalog.observed_at.slice(0, 10)).toUpperCase()}</span></div></div>
+        <div><p className="terminal-eyebrow">Intelligence / policy / official actions</p><h1>Action, scope, effective date.</h1><p>Three typed official policy records—without speeches, news noise, market-implied probabilities, or certain price-direction claims.</p><div className="scope-pills"><span><i /> 3 reviewed actions</span><span>Observed through {readableDate(policyEventCatalog.observed_at.slice(0, 10))}</span></div></div>
       </section>
       <nav className="market-subnav page-shell" aria-label="Intelligence sections"><a href="/intelligence">All intelligence</a><a href="/intelligence/earnings">Earnings</a><a className="active" href="/intelligence/policy">Policy</a></nav>
       <section className="policy-event-section page-shell" aria-labelledby="policy-events-title">
-        <div className="data-section-head"><div><p className="terminal-eyebrow">Official records</p><h2 id="policy-events-title">Released policy actions</h2></div><span className="release-badge">NO MARKET DIRECTION</span></div>
+        <div className="data-section-head"><div><p className="terminal-eyebrow">Official records</p><h2 id="policy-events-title">Released policy actions</h2></div><span className="release-badge">No market direction</span></div>
         <div className="policy-event-list">
           {policyEventCatalog.events.map((event, index) => <article className="policy-event-card" key={event.event_id}>
-            <header><span>{String(index + 1).padStart(2, "0")} / {categoryLabel(event.category)}</span><b className={event.status === "active" ? "policy-status-active" : ""}>{event.status.replace("_", " ")}</b></header>
+            <header><span>{String(index + 1).padStart(2, "0")} / {categoryLabel(event.category)}</span><b className={event.status === "active" ? "policy-status-active" : ""}>{sentenceCase(event.status)}</b></header>
             <div className="policy-event-title"><div><p>{event.authority_name}</p><h3>{event.title}</h3></div><dl><div><dt>Published</dt><dd>{event.published_at}</dd></div><div><dt>Effective</dt><dd>{event.effective_at}</dd></div><div><dt>Document</dt><dd>{event.source_document_id}</dd></div></dl></div>
             <div className="policy-detail-grid"><PolicyDetails event={event} /></div>
             <footer><a href={event.source_url} target="_blank" rel="noreferrer">Official source ↗</a><code>{event.source_sha256}</code></footer>
@@ -88,11 +88,11 @@ export function EarningsPage() {
     <main className="data-app earnings-page">
       <SiteNav active="intelligence" action={{ label: "Verify a claim", href: "/agent" }} />
       <section className="data-hero earnings-hero page-shell">
-        <div><p className="terminal-eyebrow">Intelligence / reported earnings / SEC</p><h1>Reported results. Nothing invented.</h1><p>Exact quarterly revenue and diluted EPS from one frozen SEC Company Facts release, with comparable year-over-year inputs from the same filing accession.</p><div className="scope-pills"><span><i /> AAPL + MSFT</span><span>FILED THROUGH {readableDate(earningsCatalog.observed_at.slice(0, 10)).toUpperCase()}</span></div></div>
+        <div><p className="terminal-eyebrow">Intelligence / reported earnings / SEC</p><h1>Reported results. Nothing invented.</h1><p>Exact quarterly revenue and diluted EPS from one frozen SEC Company Facts release, with comparable year-over-year inputs from the same filing accession.</p><div className="scope-pills"><span><i /> AAPL + MSFT</span><span>Filed through {readableDate(earningsCatalog.observed_at.slice(0, 10))}</span></div></div>
       </section>
       <nav className="market-subnav page-shell" aria-label="Intelligence sections"><a href="/intelligence">All intelligence</a><a className="active" href="/intelligence/earnings">Earnings</a></nav>
       <section className="earnings-company-grid page-shell" aria-labelledby="earnings-release-title">
-        <div className="data-section-head"><div><p className="terminal-eyebrow">Frozen SEC release</p><h2 id="earnings-release-title">Latest comparable quarters</h2></div><span className="release-badge">REPORTED · 10-Q</span></div>
+        <div className="data-section-head"><div><p className="terminal-eyebrow">Frozen SEC release</p><h2 id="earnings-release-title">Latest comparable quarters</h2></div><span className="release-badge">Reported · 10-Q</span></div>
         <div className="earnings-card-grid">
           {earningsCatalog.companies.map((company) => <article className="earnings-card" key={company.ticker}>
             <header><div><strong>{company.ticker}</strong><span>{company.name}</span></div><b>FY{company.fiscal_year} {company.fiscal_period}</b></header>

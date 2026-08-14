@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantify.local/schemas/etf_flow_catalog.v2.schema.json",
+  "title": "Quantify ETF flow catalog v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "release_id", "manifest_hash", "source_record_hash", "dataset_period", "dataset_url", "dataset_sha256", "dataset_published_at", "retrieved_at", "observed_at", "fresh_until", "observed_through", "scope", "methodology", "limitations", "funds"],
+  "properties": {
+    "schema_version": {"const": "etf-flow-catalog.v2"},
+    "release_id": {"type": "string", "minLength": 1},
+    "manifest_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "source_record_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "dataset_period": {"type": "string", "pattern": "^[0-9]{4}Q[1-4]$"},
+    "dataset_url": {"type": "string", "format": "uri", "pattern": "^https://www\\.sec\\.gov/"},
+    "dataset_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "dataset_published_at": {"type": "string", "format": "date-time"},
+    "retrieved_at": {"type": "string", "format": "date-time"},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "fresh_until": {"type": "string", "format": "date-time"},
+    "observed_through": {"type": "string", "format": "date"},
+    "scope": {"type": "string", "minLength": 1},
+    "methodology": {"type": "string", "minLength": 1},
+    "limitations": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "funds": {"type": "array", "minItems": 5, "maxItems": 5, "items": {"$ref": "#/$defs/fund"}}
+  },
+  "$defs": {
+    "flow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["month", "sales_nav_usd", "reinvestment_nav_usd", "redemption_nav_usd", "net_flow_usd"],
+      "properties": {
+        "month": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$"},
+        "sales_nav_usd": {"type": "number", "minimum": 0},
+        "reinvestment_nav_usd": {"type": "number", "minimum": 0},
+        "redemption_nav_usd": {"type": "number", "minimum": 0},
+        "net_flow_usd": {"type": "number"}
+      }
+    },
+    "fund": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fund_id", "ticker", "name", "category", "registrant_cik", "registrant_name", "series_id", "class_id", "series_name", "fund_lei", "accession", "filed_date", "report_date", "months", "net_assets_usd", "three_month_net_flow_usd", "monthly_flows", "source_url", "identity_source_url", "identity_source_sha256"],
+      "properties": {
+        "fund_id": {"type": "string"},
+        "ticker": {"enum": ["SPY", "QQQ", "SMH", "IWM", "VGT"]},
+        "name": {"type": "string"},
+        "category": {"type": "string"},
+        "registrant_cik": {"type": "string"},
+        "registrant_name": {"type": "string"},
+        "series_id": {"type": ["string", "null"]},
+        "class_id": {"type": ["string", "null"]},
+        "series_name": {"type": "string"},
+        "fund_lei": {"type": "string"},
+        "accession": {"type": "string"},
+        "filed_date": {"type": "string", "format": "date"},
+        "report_date": {"type": "string", "format": "date"},
+        "months": {"type": "array", "minItems": 3, "maxItems": 3, "uniqueItems": true, "items": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$"}},
+        "net_assets_usd": {"type": "number", "minimum": 0},
+        "three_month_net_flow_usd": {"type": "number"},
+        "monthly_flows": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/$defs/flow"}},
+        "source_url": {"type": "string", "format": "uri"},
+        "identity_source_url": {"type": "string", "format": "uri"},
+        "identity_source_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    }
+  }
+}

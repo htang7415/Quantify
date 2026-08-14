@@ -10,7 +10,7 @@ def load_json(relative_path: str) -> dict:
 
 
 def test_public_release_fixture_matches_declared_catalog_contract() -> None:
-    schema = load_json("schemas/public_release_index.v1.schema.json")
+    schema = load_json("schemas/public_release_index.v2.schema.json")
     release_index = load_json("web/src/data/publicReleaseIndex.json")
     investor_catalog = load_json("web/src/data/investorCatalog.json")
 
@@ -22,7 +22,7 @@ def test_public_release_fixture_matches_declared_catalog_contract() -> None:
     assert releases["investors"]["manifest_hash"] == investor_catalog["manifest_hash"]
     assert all(
         releases[catalog]["status"] == "unavailable"
-        for catalog in {"markets", "etf_flows", "crypto", "events"}
+        for catalog in {"markets", "crypto", "events"}
     )
     assert releases["macro"]["status"] == "available"
     assert releases["macro"]["manifest_hash"] == load_json("web/src/data/blsMacroCatalog.json")["manifest_hash"]
@@ -34,6 +34,10 @@ def test_public_release_fixture_matches_declared_catalog_contract() -> None:
     assert releases["earnings"]["manifest_hash"] == load_json("web/src/data/earningsCatalog.json")["manifest_hash"]
     assert releases["policy"]["status"] == "available"
     assert releases["policy"]["manifest_hash"] == load_json("web/src/data/policyEventCatalog.json")["manifest_hash"]
+    assert releases["etf_flows"]["status"] == "available"
+    assert releases["etf_flows"]["manifest_hash"] == load_json("web/src/data/etfFlowCatalog.json")["manifest_hash"]
+    assert releases["etf_holdings"]["status"] == "available"
+    assert releases["etf_holdings"]["manifest_hash"] == load_json("web/src/data/etfHoldingsCatalog.json")["manifest_hash"]
 
 
 def test_crypto_schema_requires_identity_freshness_and_methodology() -> None:
@@ -56,6 +60,7 @@ def test_public_source_register_keeps_unlicensed_market_feeds_blocked() -> None:
     assert sources["us-treasury-daily-rates"]["status"] == "approved"
     assert sources["bls-public-data-api"]["status"] == "approved"
     assert sources["sec-edgar-public-filings"]["status"] == "approved"
+    assert sources["sec-form-n-port-datasets"]["status"] == "approved"
     assert sources["coinbase-exchange-market-data"]["status"] == "blocked_public_display"
     assert sources["coingecko-api"]["status"] == "license_required"
     assert sources["coin-metrics-community"]["status"] == "blocked_commercial_use"
@@ -90,3 +95,23 @@ def test_policy_schema_requires_authority_dates_sources_and_typed_details() -> N
     assert {"source_record_hash", "observed_at", "retrieved_at", "scope", "methodology"}.issubset(schema["required"])
     assert {"authority_id", "action_type", "status", "published_at", "effective_at", "source_document_id", "source_url", "source_sha256", "details"}.issubset(event["required"])
     assert len(event["properties"]["details"]["oneOf"]) == 3
+
+
+def test_etf_flow_schema_requires_exact_filed_inputs_and_release_scope() -> None:
+    schema = load_json("schemas/etf_flow_catalog.v2.schema.json")
+    fund = schema["$defs"]["fund"]
+    flow = schema["$defs"]["flow"]
+    assert schema["properties"]["schema_version"]["const"] == "etf-flow-catalog.v2"
+    assert {"dataset_sha256", "fresh_until", "observed_through", "methodology", "funds"}.issubset(schema["required"])
+    assert {"accession", "report_date", "months", "net_assets_usd", "three_month_net_flow_usd", "monthly_flows"}.issubset(fund["required"])
+    assert {"sales_nav_usd", "reinvestment_nav_usd", "redemption_nav_usd", "net_flow_usd"}.issubset(flow["required"])
+
+
+def test_etf_holdings_schema_requires_exact_rows_and_flow_binding() -> None:
+    schema = load_json("schemas/etf_holdings_catalog.v1.schema.json")
+    fund = schema["$defs"]["fund"]
+    holding = schema["$defs"]["holding"]
+    assert schema["properties"]["schema_version"]["const"] == "etf-holdings-catalog.v1"
+    assert {"flow_release_id", "flow_manifest_hash", "security_metadata_hash", "selection_rule", "funds"}.issubset(schema["required"])
+    assert {"report_date", "total_holding_rows", "top_ten_concentration_pct", "holdings"}.issubset(fund["required"])
+    assert {"holding_id", "cusip", "ticker", "currency_value", "filed_percentage"}.issubset(holding["required"])

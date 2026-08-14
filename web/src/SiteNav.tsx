@@ -21,16 +21,25 @@ export function SiteNav({ active, action }: { active: NavSection; action: NavAct
       </a>
       <div className="site-nav-links">
         {links.map((link) => (
-          <a className={active === link.section ? "active" : ""} href={link.href} key={link.section}>
+          <a
+            aria-current={active === link.section ? "page" : undefined}
+            className={active === link.section ? "active" : ""}
+            href={link.href}
+            key={link.section}
+          >
             {link.label}
           </a>
         ))}
       </div>
-      {action.href ? (
-        <a className="site-nav-action" href={action.href}>{action.label}</a>
-      ) : (
-        <button className="site-nav-action" type="button" onClick={action.onClick}>{action.label}</button>
-      )}
+      <div className="site-nav-tools">
+        <GlobalSearch />
+        {action.href ? (
+          <a className="site-nav-action" href={action.href}>{action.label}</a>
+        ) : (
+          <button className="site-nav-action" type="button" onClick={action.onClick}>{action.label}</button>
+        )}
+      </div>
     </nav>
   );
 }
+import { GlobalSearch } from "./search/GlobalSearch";

@@ -41,6 +41,10 @@ VITE_COGNITO_REDIRECT_URI="$preview_url" \
 VITE_COGNITO_VERIFY_SCOPE="${OAUTH_RESOURCE_SERVER_IDENTIFIER}/verify" \
 npm --prefix web run build
 
+# macOS network volumes can create AppleDouble sidecars during the build. They
+# are never web assets and must not be published to the preview bucket.
+find web/dist -type f -name '._*' -delete
+
 "$aws_bin" s3 sync web/dist "s3://${preview_bucket}" --delete --only-show-errors
 "$aws_bin" cloudfront create-invalidation --distribution-id "$distribution_id" --paths '/*' --output text >/dev/null
 printf '%s\n' "Quantify web preview assets deployed: ${preview_url}"

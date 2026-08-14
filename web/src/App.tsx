@@ -1,10 +1,10 @@
 import { CompanyDetail, CompanyIndex } from "./companies/CompanyPages";
 import { EarningsPage, IntelligencePage, PolicyPage } from "./intelligence/IntelligencePage";
-import { CryptoPage, MacroPage, MarketsPage, RatesPage } from "./markets/MarketPages";
+import { CryptoPage, EtfDetailPage, EtfPage, MacroPage, MarketsPage, RatesPage } from "./markets/MarketPages";
 import { NotFoundPage } from "./NotFoundPage";
 import { OverviewPage } from "./OverviewPage";
 import { VerificationPage } from "./VerificationPage";
-import { InvestorDashboard, InvestorDetail } from "./investors/InvestorPages";
+import { InvestorComparisonPage, InvestorDashboard, InvestorDetail } from "./investors/InvestorPages";
 import type { VerificationRequest, VerificationResponse } from "./types";
 
 type Verifier = (request: VerificationRequest) => Promise<VerificationResponse>;
@@ -16,8 +16,12 @@ export function App({ verifier, initialPath }: { verifier?: Verifier; initialPat
   if (path === "/markets") return <MarketsPage />;
   if (path === "/markets/macro") return <MacroPage />;
   if (path === "/markets/rates") return <RatesPage />;
+  if (path === "/markets/etfs") return <EtfPage />;
+  const etfMatch = path.match(/^\/markets\/etfs\/([a-z0-9-]+)$/);
+  if (etfMatch) return <EtfDetailPage slug={etfMatch[1]} />;
   if (path === "/markets/crypto") return <CryptoPage />;
   if (path === "/investors") return <InvestorDashboard />;
+  if (path === "/investors/compare") return <InvestorComparisonPage />;
   const investorMatch = path.match(/^\/investors\/([a-z0-9-]+)$/);
   if (investorMatch) return <InvestorDetail slug={investorMatch[1]} />;
   if (path === "/companies") return <CompanyIndex />;

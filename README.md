@@ -23,6 +23,12 @@ manager's disclosed 13F information table; they are not AUM, personal holdings,
 or evidence of investment intent. Source-review failures remain visible with
 derived values withheld instead of estimated.
 
+Global search uses only exact identifiers and display metadata from active
+public releases. Investor comparison joins two available reporting managers
+only when the same released security ID appears in both holdings tables; it
+keeps disclosed values, weights, and reported share changes separate and does
+not infer portfolio similarity, trades, or intent.
+
 ## Connected public intelligence
 
 The public overview connects the frozen investor release to deterministic
@@ -50,6 +56,19 @@ The first active market layer is an official U.S. Treasury par yield-curve
 release. It displays the dated 1-month through 30-year curve and a deterministic
 2s10s spread, with source, publication time, freshness deadline, methodology,
 and manifest. It is not a real-time bond feed or a rate forecast.
+
+The active ETF-flow layer uses exact SEC Form N-PORT Item B.6 fields for SPY,
+QQQ, SMH, IWM, and the technology ETF VGT. Each fund retains its own report
+date and exact three-month window. Monthly net flow is filed sales plus
+reinvestment minus redemptions; it is never inferred from a change in net
+assets. The release is a delayed three-month filing view, not a daily
+creation/redemption feed.
+
+The ETF-holdings layer publishes the reviewed top ten Form N-PORT positions for
+VGT, QQQ, and SMH, preserving each fund's own report date and filing source.
+Ticker connections use only the versioned reviewed security map; unmapped rows
+remain visibly unmapped. This is a delayed top-ten snapshot, not a complete or
+live portfolio.
 
 The first active macro layer is a bounded U.S. Bureau of Labor Statistics
 release. It shows headline CPI, core CPI, and unemployment for one declared

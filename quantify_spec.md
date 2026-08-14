@@ -548,6 +548,37 @@ disclaimer, and limitations. It does not infer a macro regime, market impact,
 or forecast, and revisions after retrieval remain outside the immutable
 release.
 
+The active ETF-flow layer is `etf-flow-catalog.v2`. It is compiled
+offline from exact Form N-PORT Item B.6 fields in one declared SEC quarterly
+data set and is initially limited to SPY, QQQ, SMH, IWM, and VGT. Fund report
+dates and their exact three-month windows are preserved independently; the
+interface must not imply that different fund dates are synchronized. For each
+filed month, net flow equals the reported net asset
+value of shares sold plus shares sold through reinvestment minus shares
+redeemed or repurchased. The release preserves all three inputs, the derived
+monthly result, the three-month total, fund and series identity, accession,
+filing date, report date, official filing page, source archive hash, and ticker
+identity source. A change in fund net assets is never labelled flow. The layer
+is a delayed filing view, not a daily creation/redemption feed, and it does not
+infer investor intent, underlying-security purchases, market direction, or a
+recommendation.
+
+The first active ETF-holdings layer is `etf-holdings-catalog.v1`. It is an
+offline deterministic projection of reviewed `FUND_REPORTED_HOLDING` rows from
+the same declared SEC Form N-PORT archive as the active ETF-flow release. The
+initial release is limited to the ten largest filed positions by reported
+percentage for VGT, QQQ, and SMH. It preserves fund identity, accession,
+filing and report dates, the archive hash, holding ID, issuer, title, CUSIP,
+balance and unit, reported currency value, filed percentage, and investment
+country. Display tickers and themes may be joined only from the versioned
+reviewed security-metadata map; missing mappings remain null. The compiler
+binds each fund to the matching ETF-flow fund record and fails closed for a
+dataset, accession, report-date, net-asset, ordering, or release mismatch. The
+layer is a top-ten snapshot, not a complete portfolio, current exposure,
+beneficial-ownership statement, sector classification, flow attribution, or
+recommendation. A company-page connection means only that an exact mapped
+security appears in this bounded filed snapshot.
+
 The first active earnings layer is `earnings-catalog.v1`. It is compiled
 offline from exact facts in the declared frozen SEC Company Facts manifest and
 is initially limited to AAPL and MSFT. Each company record binds one filed
@@ -671,6 +702,21 @@ valuation, insider, ETF, and event modules remain unavailable until their
 corresponding approved releases exist. Earnings modules appear only for exact
 company identities present in the active earnings release. Crypto assets have canonical
 asset pages separate from company pages.
+
+Global search is a deterministic browser-side projection of exact identifiers
+and display metadata already present in active public releases. Matching is
+limited to normalized exact, prefix, word-prefix, and token-substring matching;
+it is not narrative or semantic retrieval and may not create a new entity
+relationship. Each result retains its entity type, stable released identifier,
+destination, contributing release identities, and release state.
+
+Investor comparison is limited to two available reporting managers in the same
+active investor release. A shared position means the exact released
+`security_id` occurs in both current holdings tables. The interface may show
+the two disclosed weights, disclosed values, reported share-change labels, and
+their arithmetic percentage-point difference. It may not call the comparison
+portfolio similarity, infer a trade, infer intent, combine positions into an
+account, or rank one manager as better than another.
 
 Market and crypto values always display an observation time and freshness
 state. Because crypto trades continuously, its release policy uses a separate,

@@ -51,6 +51,14 @@
       "notes": "Existing approved Quantify source. Crypto-linked ETP exposure is limited to exact Form 13F rows and SEC-filed security identity."
     },
     {
+      "source_id": "sec-form-n-port-datasets",
+      "name": "SEC Form N-PORT Data Sets",
+      "status": "approved",
+      "permitted_use": "Offline compilation and attributed public display of exact filed Form N-PORT fund-flow fields and deterministic arithmetic derived from them.",
+      "terms_url": "https://www.sec.gov/about/privacy-information/website-policies",
+      "notes": "The initial release uses exact Item B.6 net asset values of shares sold, reinvested, and redeemed. Net flow is sales plus reinvestment minus redemptions; changes in net assets are never substituted for flows."
+    },
+    {
       "source_id": "coinbase-exchange-market-data",
       "name": "Coinbase Exchange Market Data API",
       "status": "blocked_public_display",

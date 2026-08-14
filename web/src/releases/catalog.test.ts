@@ -11,10 +11,22 @@ describe("public release index contract", () => {
   });
 
   it("keeps not-yet-approved market catalogs explicitly unavailable", () => {
-    for (const catalog of ["markets", "etf_flows", "crypto", "events"] as const) {
+    for (const catalog of ["markets", "crypto", "events"] as const) {
       expect(releaseFor(catalog).status).toBe("unavailable");
       expect(releaseFor(catalog).release_id).toBeNull();
     }
+  });
+
+  it("publishes filed ETF flows independently from broader markets", () => {
+    expect(releaseFor("markets").status).toBe("unavailable");
+    expect(releaseFor("etf_flows").status).toBe("available");
+    expect(releaseFor("etf_flows").release_id).toMatch(/^etf-flows-/);
+  });
+
+  it("publishes bounded ETF holdings independently from ETF flows", () => {
+    expect(releaseFor("etf_flows").status).toBe("available");
+    expect(releaseFor("etf_holdings").status).toBe("available");
+    expect(releaseFor("etf_holdings").release_id).toMatch(/^etf-holdings-/);
   });
 
   it("publishes typed policy actions independently from narrative events", () => {

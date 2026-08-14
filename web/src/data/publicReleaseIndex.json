@@ -1,6 +1,6 @@
 {
-  "schema_version": "public-release-index.v1",
-  "generated_at": "2026-08-13T00:00:00Z",
+  "schema_version": "public-release-index.v2",
+  "generated_at": "2026-08-14T01:22:25Z",
   "releases": [
     {
       "catalog": "investors",
@@ -40,12 +40,21 @@
     },
     {
       "catalog": "etf_flows",
-      "status": "unavailable",
-      "release_id": null,
-      "manifest_hash": null,
-      "observed_at": null,
-      "freshness": "unknown",
-      "limitations": ["No approved ETF-flow release is active."]
+      "status": "available",
+      "release_id": "etf-flows-2026-03-31-5666b40693b4",
+      "manifest_hash": "5666b40693b41328e3053753284f992fb09f97ba2359e63e7d7a807dc72fca30",
+      "observed_at": "2026-03-31T00:00:00Z",
+      "freshness": "current",
+      "limitations": ["Delayed SEC Form N-PORT Item B.6 flows for SPY, QQQ, SMH, IWM, and VGT; fund-specific report dates are preserved and this is not a daily creation/redemption feed."]
+    },
+    {
+      "catalog": "etf_holdings",
+      "status": "available",
+      "release_id": "etf-holdings-2026q2-d095295436a2",
+      "manifest_hash": "d095295436a292af3cbc793eacb5ef807d73ed4c37ad9f25abf807b97e15ec7d",
+      "observed_at": "2026-03-31T00:00:00Z",
+      "freshness": "current",
+      "limitations": ["Delayed top-ten SEC Form N-PORT holdings for VGT, QQQ, and SMH only; fund-specific report dates are preserved and the release is not a complete or live portfolio."]
     },
     {
       "catalog": "crypto",

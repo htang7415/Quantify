@@ -96,9 +96,10 @@ describe("Quantify web app", () => {
     expect(screen.getByRole("link", { name: "Quantify home" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Verify a claim" })).toHaveAttribute("href", "/agent");
     expect(screen.getByRole("heading", { name: /See where capital is/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "What changed in the release" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Latest changes" })).toBeInTheDocument();
     expect(screen.getAllByText("Release required").length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: "Official layers active" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Active releases" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Explore investors" })).toHaveAttribute("href", "/investors");
   });
 
   it("shows the public investor terminal with the declared filing scope", () => {
@@ -108,19 +109,34 @@ describe("Quantify web app", () => {
     expect(screen.getByRole("heading", { name: "Tracked managers" })).toBeInTheDocument();
     expect(screen.getByText("Altimeter Capital")).toBeInTheDocument();
     expect(screen.getByText("Pershing Square")).toBeInTheDocument();
-    expect(screen.getByText("SEC 13F · FROZEN")).toBeInTheDocument();
+    expect(screen.getByText("SEC 13F · Frozen")).toBeInTheDocument();
     expect(screen.getByText(/Values and weights cover only securities disclosed/)).toBeInTheDocument();
   });
 
   it("keeps one product navigation between investors and the agent", () => {
     const { rerender } = render(<App initialPath="/investors" />);
     expect(screen.getByRole("link", { name: "Investors" })).toHaveClass("active");
+    expect(screen.getByRole("link", { name: "Investors" })).toHaveAttribute("aria-current", "page");
 
     rerender(<App initialPath="/agent" />);
 
     expect(screen.getByRole("link", { name: "Quantify home" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Overview" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+  });
+
+  it("searches exact released entities from the shared navigation", async () => {
+    const user = userEvent.setup();
+    render(<App initialPath="/markets" />);
+
+    await user.click(screen.getByRole("button", { name: "Search" }));
+    expect(screen.getByRole("dialog", { name: "Search Quantify" })).toBeInTheDocument();
+    await user.type(screen.getByPlaceholderText(/Company, ticker, manager/), "NVDA");
+
+    expect(screen.getByRole("link", { name: /NVDA Nvidia corporation/ })).toHaveAttribute("href", "/companies/nvda");
+    expect(screen.getByText(/Exact identifiers · deterministic text match/)).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "Search Quantify" })).not.toBeInTheDocument();
   });
 
   it("filters managers without changing the frozen catalog", async () => {
@@ -131,6 +147,16 @@ describe("Quantify web app", () => {
 
     expect(screen.getByText("Pershing Square")).toBeInTheDocument();
     expect(screen.queryByText("Altimeter Capital")).not.toBeInTheDocument();
+  });
+
+  it("compares two managers using exact released security IDs", () => {
+    render(<App initialPath="/investors/compare" />);
+
+    expect(screen.getByRole("heading", { name: "Compare reported portfolios." })).toBeInTheDocument();
+    expect(screen.getByText("Shared positions")).toBeInTheDocument();
+    expect(screen.getAllByText("Exact shared ID").length).toBeGreaterThan(0);
+    expect(screen.getByText(/not a similarity score, trade observation/)).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /SEC filing/i })).toHaveLength(2);
   });
 
   it("renders the five public-market investor modules", () => {
@@ -157,6 +183,9 @@ describe("Quantify web app", () => {
 
     expect(screen.getByRole("heading", { name: /NVIDIA CORPORATION/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Reporting managers" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "ETF exposure" })).toBeInTheDocument();
+    expect(screen.getByText(/top-ten filed rows only/i)).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /N-PORT/i })).toHaveLength(3);
     expect(screen.getByText("Sum across tracked managers")).toBeInTheDocument();
     expect(screen.getByText(/not market capitalization, total institutional ownership/i)).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /SEC/i }).length).toBeGreaterThan(0);
@@ -186,15 +215,15 @@ describe("Quantify web app", () => {
 
     await user.type(screen.getByPlaceholderText("Ticker, issuer, or theme"), "NVDA");
 
-    expect(screen.getByText("NVIDIA CORPORATION")).toBeInTheDocument();
-    expect(screen.queryByText("APPLE INC")).not.toBeInTheDocument();
+    expect(screen.getByText("Nvidia corporation")).toBeInTheDocument();
+    expect(screen.queryByText("Apple inc")).not.toBeInTheDocument();
   });
 
   it("renders released ETP exposure while keeping crypto market data fail-closed", () => {
     render(<App initialPath="/markets/crypto" />);
 
     expect(screen.getByRole("heading", { name: /Crypto data, when it can be traced/i })).toBeInTheDocument();
-    expect(screen.getByText("NO ACTIVE CRYPTO MARKET RELEASE")).toBeInTheDocument();
+    expect(screen.getByText("No active crypto market release")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Reported ETP exposure" })).toBeInTheDocument();
     expect(screen.getByText("BTC / IBIT")).toBeInTheDocument();
     expect(screen.getByText("Coatue Management")).toBeInTheDocument();
@@ -211,6 +240,30 @@ describe("Quantify web app", () => {
     expect(screen.getByText("+0.48 pp")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /U.S. Treasury source/i })).toHaveAttribute("href", expect.stringMatching(/^https:\/\/home\.treasury\.gov\//));
     expect(screen.getByText(/not a forecast or trading signal/i)).toBeInTheDocument();
+  });
+
+  it("renders exact filed ETF flows without treating net assets as flows", () => {
+    render(<App initialPath="/markets/etfs" />);
+    expect(screen.getByRole("heading", { name: "Filed fund flows. Exact inputs." })).toBeInTheDocument();
+    expect(screen.getByText("SPY")).toBeInTheDocument();
+    expect(screen.getByText("SMH")).toBeInTheDocument();
+    expect(screen.getByText("VGT")).toBeInTheDocument();
+    expect(screen.getByText("+$3.44B")).toBeInTheDocument();
+    expect(screen.getByText("+$1.62B")).toBeInTheDocument();
+    expect(screen.getByText(/without substituting changes in net assets/i)).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /N-PORT/i })).toHaveLength(5);
+  });
+
+  it("renders a release-bound VGT holdings detail and fund comparison", () => {
+    render(<App initialPath="/markets/etfs/vgt" />);
+
+    expect(screen.getByRole("heading", { name: /Vanguard Information Technology ETF/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Top filed positions" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "ETF comparison" })).toBeInTheDocument();
+    expect(screen.getAllByText("57.4%")).toHaveLength(2);
+    expect(screen.getAllByText("17.27%").length).toBeGreaterThan(0);
+    expect(screen.getByText(/publishes only the ten largest reviewed rows/i)).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /N-PORT/i })).toHaveLength(10);
   });
 
   it("renders the bounded BLS macro release with explicit calculations and terms", () => {
@@ -230,7 +283,7 @@ describe("Quantify web app", () => {
     render(<App initialPath="/intelligence" />);
 
     expect(screen.getByRole("heading", { name: /What happened. What changed/i })).toBeInTheDocument();
-    expect(screen.getByText("EARNINGS + POLICY AVAILABLE")).toBeInTheDocument();
+    expect(screen.getByText("Earnings + policy available")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /Available/i })).toHaveLength(2);
     expect(screen.getAllByText("Release required")).toHaveLength(2);
   });
@@ -251,7 +304,7 @@ describe("Quantify web app", () => {
 
     expect(screen.getByRole("heading", { name: "Action, scope, effective date." })).toBeInTheDocument();
     expect(screen.getByText("3.50–3.75%")).toBeInTheDocument();
-    expect(screen.getByText("EFFECTIVE 2026-10-01")).toBeInTheDocument();
+    expect(screen.getByText("Effective 2026-10-01")).toBeInTheDocument();
     expect(screen.getByText("NVIDIA H200 · AMD MI325X")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /Official source/i })).toHaveLength(3);
     expect(screen.queryByText(/stocks.*up|stocks.*down|cut probability/i)).not.toBeInTheDocument();
