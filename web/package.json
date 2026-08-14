@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "check:bundle": "node scripts/check-build-budget.mjs",
+    "check:design": "node scripts/check-design-system.mjs",
     "test": "vitest run"
   },
   "dependencies": {

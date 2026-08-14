@@ -2,7 +2,9 @@ import { gzipSync } from "node:zlib";
 import { readdir, readFile } from "node:fs/promises";
 
 const assetDirectory = new URL("../dist/assets/", import.meta.url);
-const names = (await readdir(assetDirectory)).filter((name) => name.endsWith(".js") || name.endsWith(".css")).sort();
+const names = (await readdir(assetDirectory))
+  .filter((name) => !name.startsWith("._") && (name.endsWith(".js") || name.endsWith(".css")))
+  .sort();
 if (names.length === 0) throw new Error("No production JavaScript or CSS assets were found. Run the production build first.");
 
 const assets = await Promise.all(names.map(async (name) => {
