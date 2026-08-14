@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantify.local/schemas/public_candidate_review.v1.schema.json",
+  "title": "Quantify public candidate review record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "review_id",
+    "reviewed_at",
+    "candidate_run_id",
+    "candidate_manifest_sha256",
+    "base_release_index_sha256",
+    "policy_id",
+    "policy_sha256",
+    "status",
+    "lane",
+    "promotion_authorized",
+    "reasons",
+    "catalog_changes",
+    "metrics",
+    "rollback_bindings",
+    "artifact_hashes",
+    "manifest_hash"
+  ],
+  "properties": {
+    "schema_version": { "const": "public-candidate-review.v1" },
+    "review_id": { "type": "string", "pattern": "^public-candidate-review-[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-f0-9]{12}$" },
+    "reviewed_at": { "type": "string", "format": "date-time" },
+    "candidate_run_id": { "type": "string", "minLength": 1 },
+    "candidate_manifest_sha256": { "$ref": "#/$defs/hash" },
+    "base_release_index_sha256": { "$ref": "#/$defs/hash" },
+    "policy_id": { "type": "string", "minLength": 1 },
+    "policy_sha256": { "$ref": "#/$defs/hash" },
+    "status": { "enum": ["requires_spot_review", "requires_full_review"] },
+    "lane": { "enum": ["lane_a", "lane_b"] },
+    "promotion_authorized": { "const": false },
+    "reasons": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "catalog_changes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/catalog_change" } },
+    "metrics": { "$ref": "#/$defs/metrics" },
+    "rollback_bindings": { "type": "array", "items": { "$ref": "#/$defs/binding" } },
+    "artifact_hashes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/artifact" } },
+    "manifest_hash": { "$ref": "#/$defs/hash" }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["catalog", "status", "release_id", "manifest_hash", "observed_at", "freshness"],
+      "properties": {
+        "catalog": { "enum": ["investors", "markets", "macro", "rates", "etf_flows", "etf_holdings", "crypto", "crypto_exposure", "earnings", "policy", "events"] },
+        "status": { "enum": ["available", "unavailable", "source_review", "revoked"] },
+        "release_id": { "type": ["string", "null"] },
+        "manifest_hash": { "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }] },
+        "observed_at": { "type": ["string", "null"] },
+        "freshness": { "enum": ["current", "stale", "not_applicable", "unknown"] }
+      }
+    },
+    "catalog_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["catalog", "changed", "previous", "candidate"],
+      "properties": {
+        "catalog": { "type": "string", "minLength": 1 },
+        "changed": { "type": "boolean" },
+        "previous": { "$ref": "#/$defs/binding" },
+        "candidate": { "$ref": "#/$defs/binding" }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "sha256"],
+      "properties": {
+        "artifact": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/hash" }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity_change_count", "investors", "etf_flows", "etf_holdings", "crypto_dependency"],
+      "properties": {
+        "identity_change_count": { "type": "integer", "minimum": 0 },
+        "investors": { "$ref": "#/$defs/investor_metrics" },
+        "etf_flows": { "$ref": "#/$defs/etf_flow_metrics" },
+        "etf_holdings": { "$ref": "#/$defs/etf_holdings_metrics" },
+        "crypto_dependency": { "$ref": "#/$defs/crypto_dependency" }
+      }
+    },
+    "investor_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "previous_report_period", "candidate_report_period", "previous_manager_count", "candidate_manager_count",
+        "added_manager_ciks", "removed_manager_ciks", "previous_source_review_count", "candidate_source_review_count",
+        "source_review_increase", "previous_total_holdings", "candidate_total_holdings", "managers"
+      ],
+      "properties": {
+        "previous_report_period": { "type": "string", "format": "date" },
+        "candidate_report_period": { "type": "string", "format": "date" },
+        "previous_manager_count": { "type": "integer", "minimum": 0 },
+        "candidate_manager_count": { "type": "integer", "minimum": 0 },
+        "added_manager_ciks": { "$ref": "#/$defs/cik_list" },
+        "removed_manager_ciks": { "$ref": "#/$defs/cik_list" },
+        "previous_source_review_count": { "type": "integer", "minimum": 0 },
+        "candidate_source_review_count": { "type": "integer", "minimum": 0 },
+        "source_review_increase": { "type": "integer" },
+        "previous_total_holdings": { "type": "integer", "minimum": 0 },
+        "candidate_total_holdings": { "type": "integer", "minimum": 0 },
+        "managers": { "type": "array", "items": { "$ref": "#/$defs/manager_metric" } }
+      }
+    },
+    "cik_list": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[0-9]{10}$" }
+    },
+    "manager_metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reporting_manager_cik", "firm", "previous_status", "candidate_status", "value_change_basis_points", "holdings_change_basis_points"],
+      "properties": {
+        "reporting_manager_cik": { "type": "string", "pattern": "^[0-9]{10}$" },
+        "firm": { "type": "string", "minLength": 1 },
+        "previous_status": { "enum": ["available", "source_review"] },
+        "candidate_status": { "enum": ["available", "source_review"] },
+        "value_change_basis_points": { "type": ["integer", "null"] },
+        "holdings_change_basis_points": { "type": ["integer", "null"] }
+      }
+    },
+    "etf_flow_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["added_funds", "removed_funds", "funds"],
+      "properties": {
+        "added_funds": { "$ref": "#/$defs/ticker_list" },
+        "removed_funds": { "$ref": "#/$defs/ticker_list" },
+        "funds": { "type": "array", "items": { "$ref": "#/$defs/etf_flow_metric" } }
+      }
+    },
+    "etf_flow_metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ticker", "net_assets_change_basis_points"],
+      "properties": {
+        "ticker": { "type": "string", "pattern": "^[A-Z0-9.-]+$" },
+        "net_assets_change_basis_points": { "type": ["integer", "null"] }
+      }
+    },
+    "etf_holdings_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["added_funds", "removed_funds", "funds"],
+      "properties": {
+        "added_funds": { "$ref": "#/$defs/ticker_list" },
+        "removed_funds": { "$ref": "#/$defs/ticker_list" },
+        "funds": { "type": "array", "items": { "$ref": "#/$defs/etf_holdings_metric" } }
+      }
+    },
+    "etf_holdings_metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ticker", "previous_published_rows", "candidate_published_rows"],
+      "properties": {
+        "ticker": { "type": "string", "pattern": "^[A-Z0-9.-]+$" },
+        "previous_published_rows": { "type": "integer", "minimum": 0 },
+        "candidate_published_rows": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "ticker_list": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[A-Z0-9.-]+$" }
+    },
+    "crypto_dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["investor_changed", "crypto_exposure_changed", "rebuild_required", "binding_valid"],
+      "properties": {
+        "investor_changed": { "type": "boolean" },
+        "crypto_exposure_changed": { "type": "boolean" },
+        "rebuild_required": { "type": "boolean" },
+        "binding_valid": { "const": true }
+      }
+    }
+  }
+}

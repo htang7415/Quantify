@@ -288,6 +288,19 @@ describe("Quantify web app", () => {
     expect(screen.getAllByText("Release required")).toHaveLength(2);
   });
 
+  it("shows exact public release operations without implying internal health", () => {
+    render(<App initialPath="/intelligence/releases" />);
+
+    expect(screen.getByRole("heading", { name: "Every public release. One exact state." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Catalog state" })).toBeInTheDocument();
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.getByText("11 declared catalogs")).toBeInTheDocument();
+    expect(screen.getByText("Crypto market")).toBeInTheDocument();
+    expect(screen.getAllByText("Unavailable").length).toBeGreaterThan(0);
+    expect(screen.getByText(/not uptime, review throughput, or production telemetry/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Source to review, without implicit publish." })).toBeInTheDocument();
+  });
+
   it("renders reported earnings without estimates or prediction labels", () => {
     render(<App initialPath="/intelligence/earnings" />);
 

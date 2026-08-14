@@ -1,3 +1,5 @@
+import { GlobalSearch } from "./search/GlobalSearch";
+
 type NavAction =
   | { label: string; href: string; onClick?: never }
   | { label: string; onClick: () => void; href?: never };
@@ -42,4 +44,3 @@ export function SiteNav({ active, action }: { active: NavSection; action: NavAct
     </nav>
   );
 }
-import { GlobalSearch } from "./search/GlobalSearch";

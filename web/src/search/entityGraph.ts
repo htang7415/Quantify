@@ -65,7 +65,7 @@ export function buildSearchEntityGraph(): SearchEntity[] {
         ? `${manager.holdings_count} reported positions · ${manager.primary_theme}`
         : "Filing available · derived metrics withheld",
       href: `/investors/${manager.slug}`,
-      identifiers: [manager.reporting_manager_cik, manager.reporting_manager_name, manager.slug, manager.latest_filing.accession],
+      identifiers: [manager.reporting_manager_cik, manager.reporting_manager_name, manager.slug, manager.latest_filing.accession, manager.category, manager.primary_theme],
       sources: [investorSource],
       availability: manager.status === "available" ? "released" : "source_review"
     });
@@ -84,7 +84,7 @@ export function buildSearchEntityGraph(): SearchEntity[] {
       symbol: company.ticker,
       description: `${connections.reportingManagers} reporting ${connections.reportingManagers === 1 ? "manager" : "managers"} · ${sources.length} connected ${sources.length === 1 ? "release" : "releases"}`,
       href: `/companies/${company.slug}`,
-      identifiers: [company.ticker, company.slug, ...company.positions.flatMap(({ holding }) => [holding.security_id, holding.cusip])],
+      identifiers: [company.ticker, company.slug, ...company.themes, ...company.positions.flatMap(({ holding }) => [holding.security_id, holding.cusip])],
       sources: uniqueSources(sources),
       availability: "released"
     });
@@ -177,7 +177,7 @@ function normalized(value: string): string {
 }
 
 function score(entity: SearchEntity, query: string): number | null {
-  const fields = [entity.symbol ?? "", entity.label, entity.id, ...entity.identifiers]
+  const fields = [entity.kind, entity.symbol ?? "", entity.label, entity.id, ...entity.identifiers]
     .map(normalized)
     .filter(Boolean);
   if (fields.some((field) => field === query)) return 0;

@@ -63,6 +63,29 @@ def iso_date(value: Any, field: str) -> str:
     return value
 
 
+def joined_tickers(tickers: list[str]) -> str:
+    if len(tickers) == 1:
+        return tickers[0]
+    if len(tickers) == 2:
+        return f"{tickers[0]} and {tickers[1]}"
+    return f"{', '.join(tickers[:-1])}, and {tickers[-1]}"
+
+
+def report_date_limitation(funds: list[dict[str, Any]]) -> str:
+    grouped: dict[str, list[str]] = {}
+    for fund in funds:
+        grouped.setdefault(fund["report_date"], []).append(fund["ticker"])
+    if len(grouped) == 1:
+        report_date, tickers = next(iter(grouped.items()))
+        return f"All initial-universe funds report through {report_date}: {joined_tickers(tickers)}."
+    clauses = []
+    for report_date in sorted(grouped):
+        tickers = grouped[report_date]
+        verb = "reports" if len(tickers) == 1 else "report"
+        clauses.append(f"{joined_tickers(tickers)} {verb} through {report_date}")
+    return f"Fund report dates are not synchronized: {' while '.join(clauses)}."
+
+
 def compile_catalog(source: dict[str, Any]) -> dict[str, Any]:
     if source.get("schema_version") != SOURCE_SCHEMA_VERSION:
         raise ValueError("ETF flow source schema is unsupported")
@@ -176,13 +199,13 @@ def compile_catalog(source: dict[str, Any]) -> dict[str, Any]:
         "observed_at": f"{observed_through}T00:00:00Z",
         "fresh_until": fresh_until.isoformat().replace("+00:00", "Z"),
         "observed_through": observed_through,
-        "scope": "Five U.S. exchange-traded funds with exact Form N-PORT Item B.6 fields from the SEC 2026Q2 dataset; each fund retains its own report date and three-month window.",
+        "scope": f"Five U.S. exchange-traded funds with exact Form N-PORT Item B.6 fields from the SEC {source['dataset_period']} dataset; each fund retains its own report date and three-month window.",
         "methodology": "For each filed month, net flow equals the reported net asset value of shares sold plus shares sold through reinvestment minus shares redeemed or repurchased. Three-month net flow is the sum of those three exact monthly results.",
         "limitations": [
             "This is a delayed Form N-PORT filing view, not a daily ETF creation and redemption feed.",
             "Filed sales and redemptions may include exchanges, mergers, acquisitions, liquidations, and non-ETF activity described by Form N-PORT Item B.6.",
             "Net flow is not calculated from a change in net assets and does not establish investor intent or purchases of underlying securities.",
-            "Fund report dates are not synchronized: VGT reports through 2026-02-28 while SPY, QQQ, SMH, and IWM report through 2026-03-31.",
+            report_date_limitation(funds),
             "The initial universe is limited to SPY, QQQ, SMH, IWM, and VGT and is not a ranking of the broader ETF market.",
         ],
         "funds": compiled_funds,

@@ -91,6 +91,91 @@ rule. Every event records authority, dates, status, document identity, source
 hash, and typed exact details. Policy pages do not claim a certain market
 reaction or publish rate probabilities, forecasts, or recommendations.
 
+The Intelligence section also includes a read-only release-operations page.
+It projects exact status, freshness, observation time, release ID, manifest
+hash, and limitation fields from the public release index. It is not an uptime
+or internal-review dashboard.
+
+## Build an offline public-release candidate
+
+The candidate coordinator compiles reviewed local ETF-flow and ETF-holdings
+inputs in dependency order, validates the pinned investor catalog and active
+index, records replay and rollback bindings, and atomically writes a staging
+directory:
+
+~~~shell
+python scripts/build_public_release_candidate.py \
+  --investor-catalog web/src/data/investorCatalog.json \
+  --etf-flow-input tests/fixtures/public_data/etf_flows_2026-03-31.json \
+  --etf-holdings-input tests/fixtures/public_data/etf_holdings_2026q2.json \
+  --security-metadata scripts/investor_security_metadata.json \
+  --active-release-index web/src/data/publicReleaseIndex.json \
+  --target-directory /tmp/quantify-release-candidate-2026-08-14 \
+  --run-at 2026-08-14T02:00:00Z
+~~~
+
+The command performs no network acquisition, active-index mutation,
+publication, or deployment. The generated manifest remains
+`ready_for_review`.
+
+For a reviewed Form 13F bundle, replace `--investor-catalog` with
+`--investor-source-manifest /path/to/bundle/manifest.json`. The coordinator
+then compiles the investor catalog cache-only, records the source-manifest and
+security-metadata hashes, and rebuilds the crypto-exposure projection bound to
+that investor release. Every SEC resource must be declared by URL, relative
+path, media type, and SHA-256 in `investor-sec-source-bundle.v1`; missing,
+changed, undeclared, or unused resources fail closed. Creating or updating the
+bundle from SEC remains a separate explicitly run acquisition step.
+
+That acquisition step is the only command in this workflow that may contact
+SEC. It requires an identifying user agent and never overwrites an existing
+target:
+
+~~~shell
+python scripts/acquire_investor_sec_bundle.py \
+  --user-agent "Quantify Research contact@example.com" \
+  --cache-dir /path/to/sec-cache \
+  --target-directory /path/to/new-13f-bundle \
+  --created-at 2026-08-14T02:00:00Z \
+  --quarters 5
+~~~
+
+Review the resulting `manifest.json` and declared files before passing the
+bundle to compilation. Acquisition does not publish a catalog or approve a
+release.
+
+The cache-only investor compiler can also be reviewed independently:
+
+~~~shell
+python scripts/build_investor_catalog.py \
+  --source-manifest /path/to/bundle/manifest.json \
+  --metadata scripts/investor_security_metadata.json \
+  --output /tmp/investorCatalog.json \
+  --compilation-record /tmp/investorCompilationRecord.json
+~~~
+
+## Review a public-release candidate
+
+The deterministic review gate replays the candidate, validates every artifact
+and rollback binding, compares it with the exact active index and catalogs, and
+classifies it under the versioned public gate policy:
+
+~~~shell
+python scripts/review_public_release_candidate.py \
+  --candidate-directory /tmp/quantify-release-candidate-2026-08-14 \
+  --active-release-index web/src/data/publicReleaseIndex.json \
+  --active-catalog-directory web/src/data \
+  --policy policies/public_candidate_gate_policy.v1.json \
+  --reviewed-at 2026-08-14T03:00:00Z \
+  --output /tmp/publicCandidateReview.json
+~~~
+
+Lane A means the deterministic routine thresholds passed and a spot review is
+still required. Lane B means structural changes or thresholds require full
+review. Every record is content-addressed, carries exact rollback bindings,
+and states `promotion_authorized: false`. The command cannot approve, publish,
+deploy, or mutate the active index.
+
 ## What Quantify can do
 
 ### Verify factual company claims

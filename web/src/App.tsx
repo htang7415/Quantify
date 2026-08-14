@@ -5,6 +5,7 @@ import { NotFoundPage } from "./NotFoundPage";
 import { OverviewPage } from "./OverviewPage";
 import { VerificationPage } from "./VerificationPage";
 import { InvestorComparisonPage, InvestorDashboard, InvestorDetail } from "./investors/InvestorPages";
+import { ReleaseOperationsPage } from "./releases/ReleaseOperationsPage";
 import type { VerificationRequest, VerificationResponse } from "./types";
 
 type Verifier = (request: VerificationRequest) => Promise<VerificationResponse>;
@@ -30,5 +31,6 @@ export function App({ verifier, initialPath }: { verifier?: Verifier; initialPat
   if (path === "/intelligence") return <IntelligencePage />;
   if (path === "/intelligence/earnings") return <EarningsPage />;
   if (path === "/intelligence/policy") return <PolicyPage />;
+  if (path === "/intelligence/releases") return <ReleaseOperationsPage />;
   return <NotFoundPage />;
 }

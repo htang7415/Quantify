@@ -115,3 +115,44 @@ def test_etf_holdings_schema_requires_exact_rows_and_flow_binding() -> None:
     assert {"flow_release_id", "flow_manifest_hash", "security_metadata_hash", "selection_rule", "funds"}.issubset(schema["required"])
     assert {"report_date", "total_holding_rows", "top_ten_concentration_pct", "holdings"}.issubset(fund["required"])
     assert {"holding_id", "cusip", "ticker", "currency_value", "filed_percentage"}.issubset(holding["required"])
+
+
+def test_investor_source_bundle_schema_binds_local_sec_resources() -> None:
+    schema = load_json("schemas/investor_sec_source_bundle.v1.schema.json")
+    resource = schema["$defs"]["resource"]
+    assert schema["properties"]["schema_version"]["const"] == "investor-sec-source-bundle.v1"
+    assert {"source_id", "created_at", "quarters", "manager_ciks", "resources"}.issubset(schema["required"])
+    assert {"url", "path", "sha256", "media_type"}.issubset(resource["required"])
+    assert resource["properties"]["url"]["pattern"].startswith("^https://")
+
+
+def test_investor_compilation_record_binds_source_metadata_and_output() -> None:
+    schema = load_json("schemas/investor_compilation_record.v1.schema.json")
+    assert schema["properties"]["schema_version"]["const"] == "investor-compilation-record.v1"
+    assert {
+        "source_manifest_sha256",
+        "security_metadata_sha256",
+        "compiler_contract",
+        "catalog_release_id",
+        "catalog_manifest_hash",
+    }.issubset(schema["required"])
+
+
+def test_public_candidate_gate_policy_keeps_review_and_dependency_controls_non_bypassable() -> None:
+    schema = load_json("schemas/public_candidate_gate_policy.v1.schema.json")
+    policy = load_json("policies/public_candidate_gate_policy.v1.json")
+    assert policy["schema_version"] == schema["properties"]["schema_version"]["const"]
+    assert policy["require_no_status_regression"] is True
+    assert policy["require_no_observation_regression"] is True
+    assert policy["require_investor_crypto_dependency_rebuild"] is True
+    assert policy["lane_a_spot_review_required"] is True
+    assert policy["lane_b_full_review_required"] is True
+
+
+def test_public_candidate_review_schema_is_typed_and_cannot_authorize_promotion() -> None:
+    schema = load_json("schemas/public_candidate_review.v1.schema.json")
+    metrics = schema["$defs"]["metrics"]
+    assert schema["properties"]["schema_version"]["const"] == "public-candidate-review.v1"
+    assert schema["properties"]["promotion_authorized"]["const"] is False
+    assert metrics["additionalProperties"] is False
+    assert {"investors", "etf_flows", "etf_holdings", "crypto_dependency"}.issubset(metrics["required"])

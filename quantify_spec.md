@@ -484,6 +484,73 @@ Sources must be licensed or public and frozen into a release before public use.
 Live retrieval belongs only to the offline factory, never the verifier or
 planner request path.
 
+The public release-operations view is a read-only deterministic projection of
+`public-release-index.v2`. It may display only each declared catalog, status,
+freshness, observation time, release ID, manifest hash, limitation, and the
+index generation time. Counts and attention states are exact arithmetic over
+those fields. It is not production telemetry, reviewer throughput, a release
+gate, or evidence that an unavailable catalog is healthy.
+
+The first public-catalog refresh coordinator is offline and candidate-only. It
+accepts explicitly supplied local reviewed source files, an already compiled
+and hash-validated investor catalog, reviewed security metadata, and the active
+public release index. It compiles ETF flows before release-bound ETF holdings,
+records exact input and output hashes, emits a content-addressed candidate
+manifest and rollback bindings, and writes a complete staging directory
+atomically. It has no network adapter, publish flag, active-index mutation,
+deployment step, or implicit reviewer approval. A malformed input, invalid
+catalog hash, dependency mismatch, existing target directory, or partial
+compile fails closed without a candidate. The same inputs and declared run time
+must produce byte-identical candidate artifacts. Refreshing the 13F source
+itself remains a separately reviewed acquisition/compiler step; passing an
+existing investor catalog to this coordinator does not claim that acquisition
+occurred.
+
+The first offline Form 13F compiler input is
+`investor-sec-source-bundle.v1`. A reviewed bundle manifest declares the exact
+reporting-manager CIK set, history depth, creation time, and every local SEC
+resource by canonical SEC URL, relative path, media type, and SHA-256 hash. The
+cache-only client rejects non-SEC hosts, absolute or escaping paths, duplicate
+URLs or paths, undeclared requests, missing or changed bytes, manager-scope
+mismatch, unused declared resources, and an invalid history depth. It has no
+network fallback. The source-manifest hash, security-metadata hash, compiler
+contract, and resulting catalog identity are recorded in the release candidate.
+The bundle is an input to deterministic compilation, not evidence that source
+review, a release gate, promotion, or deployment occurred. Creating or updating
+the bundle from SEC remains a separate explicitly run offline acquisition step.
+That acquisition requires an SEC-compliant user agent, a declared creation
+time and bounded history depth, records only the exact resources requested for
+the configured managers, and atomically writes a new target directory. It may
+use the local acquisition cache but has no overwrite, catalog-publication,
+promotion, deployment, or active-index mutation path.
+
+When a candidate compiles a new investor catalog, it must also rebuild every
+deterministic public projection bound to the investor release. The initial
+dependency is `crypto-exposure-catalog.v1`; its candidate binding changes with
+the investor release or the candidate fails closed. A candidate may not retain
+a crypto-exposure binding to a different investor manifest.
+
+`public-candidate-gate-policy.v1` governs deterministic review of a staged
+public refresh candidate. The reviewer replays the candidate run ID, base-index
+hash, every declared artifact hash and catalog manifest, candidate-index
+bindings, unchanged catalog bindings, previous rollback bindings, investor
+compilation record, and investor-to-crypto dependency before calculating a
+diff. Missing, extra, malformed, changed, unbound, or non-replaying content
+fails closed and produces no review-ready record.
+
+For a valid candidate, the gate reports exact catalog identity/status/freshness
+changes and bounded structural metrics: investor manager scope, source-review
+count, per-manager disclosed-value and holdings-count changes, ETF fund scope,
+ETF net-asset changes, ETF published-row counts, and investor-to-crypto binding.
+The versioned policy alone defines Lane B thresholds. Manager-scope changes,
+status or observation regressions, increased source-review cases, stale
+candidate bindings, or threshold breaches require Lane B; otherwise the
+candidate is Lane A. Zero identity changes are disclosed explicitly. The
+review record is content-addressed, includes the exact rollback bindings, and
+always states `promotion_authorized: false`. Lane A requires a later spot
+review and Lane B requires a later full review. This gate cannot approve,
+promote, publish, deploy, mutate an index, or act as a reviewer signature.
+
 Public investor-tracking releases use the same factory boundary. The release
 compiler resolves the reporting-manager identity, filing accession, reporting
 period, amendments, security rows, and comparison policy before publishing.
@@ -709,6 +776,14 @@ limited to normalized exact, prefix, word-prefix, and token-substring matching;
 it is not narrative or semantic retrieval and may not create a new entity
 relationship. Each result retains its entity type, stable released identifier,
 destination, contributing release identities, and release state.
+
+Release operations is an Intelligence subpage, not a new primary navigation
+section. It exposes the bounded public release-index projection above in a
+compact table with text-labelled status and freshness, short display hashes,
+full machine-readable identifiers, current limitations, and a concise diagram
+of the offline candidate lifecycle. It does not expose credentials, internal
+audit records, private release artifacts, environment health, or invented
+operational metrics.
 
 Investor comparison is limited to two available reporting managers in the same
 active investor release. A shared position means the exact released

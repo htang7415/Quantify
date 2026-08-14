@@ -209,7 +209,7 @@ def compile_catalog(
         "observed_at": flow_catalog["observed_at"],
         "fresh_until": flow_catalog["fresh_until"],
         "selection_rule": source["selection_rule"],
-        "scope": "Top ten filed positions by reported percentage for VGT, QQQ, and SMH from the SEC 2026Q2 Form N-PORT dataset.",
+        "scope": f"Top ten filed positions by reported percentage for VGT, QQQ, and SMH from the SEC {source['dataset_period']} Form N-PORT dataset.",
         "methodology": "For each fund, Quantify publishes the ten reviewed FUND_REPORTED_HOLDING rows with the largest exact filed percentage, in descending order. Display tickers and themes are joined only by exact CUSIP from the versioned reviewed security map.",
         "limitations": [
             "This is a delayed top-ten filing snapshot, not a complete or live portfolio.",
@@ -220,7 +220,7 @@ def compile_catalog(
         "funds": compiled_funds,
     }
     digest = canonical_hash(catalog)
-    catalog["release_id"] = f"etf-holdings-2026q2-{digest[:12]}"
+    catalog["release_id"] = f"etf-holdings-{source['dataset_period'].lower()}-{digest[:12]}"
     catalog["manifest_hash"] = digest
     return catalog
 

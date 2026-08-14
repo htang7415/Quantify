@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Compile a frozen public investor catalog from SEC Form 13F XML filings.
 
-This is an offline release-factory command. It is never called from a browser or
-request path. Network acquisition requires an explicit SEC-compliant user agent.
+The release path consumes a reviewed, hash-bound local source bundle with no
+network fallback. Explicit network acquisition remains a separate CLI mode and
+requires an SEC-compliant user agent.
 """
 
 from __future__ import annotations
@@ -14,14 +15,19 @@ import time
 import urllib.request
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 
 SEC_SUBMISSIONS = "https://data.sec.gov/submissions/CIK{cik}.json"
 SEC_ARCHIVES = "https://www.sec.gov/Archives/edgar/data/{cik}/{accession}/{name}"
 SCHEMA_VERSION = "investor-catalog.v1"
+SOURCE_BUNDLE_SCHEMA_VERSION = "investor-sec-source-bundle.v1"
+COMPILATION_RECORD_SCHEMA_VERSION = "investor-compilation-record.v1"
+APPROVED_SEC_HOSTS = {"data.sec.gov", "www.sec.gov"}
 
 
 @dataclass(frozen=True)
@@ -88,6 +94,121 @@ class SecClient:
         return json.loads(self.get_bytes(url))
 
 
+class ManifestSecClient:
+    """Read only exact SEC resources declared by one reviewed local manifest."""
+
+    def __init__(self, manifest_path: Path) -> None:
+        try:
+            manifest_bytes = manifest_path.read_bytes()
+            manifest = json.loads(manifest_bytes)
+        except (OSError, json.JSONDecodeError) as error:
+            raise ValueError("investor SEC source manifest is not readable JSON") from error
+        if not isinstance(manifest, dict) or manifest.get("schema_version") != SOURCE_BUNDLE_SCHEMA_VERSION:
+            raise ValueError("investor SEC source manifest schema is unsupported")
+        if set(manifest) != {"schema_version", "source_id", "created_at", "quarters", "manager_ciks", "resources"}:
+            raise ValueError("investor SEC source manifest fields are invalid")
+        if manifest.get("source_id") != "sec-edgar-public-filings":
+            raise ValueError("investor SEC source is not approved")
+        created_at = manifest.get("created_at")
+        if not isinstance(created_at, str):
+            raise ValueError("investor SEC source creation time is required")
+        try:
+            parsed_created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+        except ValueError as error:
+            raise ValueError("investor SEC source creation time is invalid") from error
+        if parsed_created_at.tzinfo is None:
+            raise ValueError("investor SEC source creation time must include a timezone")
+        quarters = manifest.get("quarters")
+        if not isinstance(quarters, int) or quarters < 2 or quarters > 8:
+            raise ValueError("investor SEC source history depth must be between 2 and 8")
+        manager_ciks = manifest.get("manager_ciks")
+        expected_ciks = {manager.reporting_cik for manager in MANAGERS}
+        if not isinstance(manager_ciks, list) or len(manager_ciks) != len(set(manager_ciks)) or set(manager_ciks) != expected_ciks:
+            raise ValueError("investor SEC source manager scope does not match the compiler")
+        resources = manifest.get("resources")
+        if not isinstance(resources, list) or not resources:
+            raise ValueError("investor SEC source resources are required")
+
+        bundle_root = manifest_path.parent.resolve()
+        payloads: dict[str, bytes] = {}
+        media_types: dict[str, str] = {}
+        resource_paths: set[Path] = set()
+        for resource in resources:
+            if not isinstance(resource, dict):
+                raise ValueError("investor SEC source resource is invalid")
+            if set(resource) != {"url", "path", "sha256", "media_type"}:
+                raise ValueError("investor SEC source resource fields are invalid")
+            url = resource.get("url")
+            relative_path = resource.get("path")
+            digest = resource.get("sha256")
+            media_type = resource.get("media_type")
+            parsed_url = urlparse(url) if isinstance(url, str) else None
+            if parsed_url is None or parsed_url.scheme != "https" or parsed_url.hostname not in APPROVED_SEC_HOSTS:
+                raise ValueError("investor SEC source resource must use an approved SEC URL")
+            if not isinstance(relative_path, str) or not relative_path or "\\" in relative_path:
+                raise ValueError("investor SEC source resource path is invalid")
+            declared_path = Path(relative_path)
+            if declared_path.is_absolute() or ".." in declared_path.parts:
+                raise ValueError("investor SEC source resource path must stay inside the bundle")
+            resolved_path = (bundle_root / declared_path).resolve()
+            if not resolved_path.is_relative_to(bundle_root):
+                raise ValueError("investor SEC source resource path escapes the bundle")
+            if not isinstance(digest, str) or len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
+                raise ValueError("investor SEC source resource hash is invalid")
+            if media_type not in {"application/json", "application/xml"}:
+                raise ValueError("investor SEC source resource media type is unsupported")
+            if url in payloads or resolved_path in resource_paths:
+                raise ValueError("investor SEC source resources must have unique URLs and paths")
+            try:
+                payload = resolved_path.read_bytes()
+            except OSError as error:
+                raise ValueError("investor SEC source resource is missing") from error
+            if hashlib.sha256(payload).hexdigest() != digest:
+                raise ValueError("investor SEC source resource hash does not match")
+            payloads[url] = payload
+            media_types[url] = media_type
+            resource_paths.add(resolved_path)
+
+        self.manifest = manifest
+        self.manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
+        self.quarters = quarters
+        self.created_at = created_at
+        self._payloads = payloads
+        self._media_types = media_types
+        self._used_urls: set[str] = set()
+
+    def get_bytes(self, url: str) -> bytes:
+        payload = self._payloads.get(url)
+        if payload is None:
+            raise ValueError(f"investor SEC source bundle does not declare requested URL: {url}")
+        self._used_urls.add(url)
+        return payload
+
+    def get_json(self, url: str) -> dict[str, Any]:
+        if self._media_types.get(url) != "application/json":
+            raise ValueError("investor SEC JSON request has the wrong declared media type")
+        try:
+            value = json.loads(self.get_bytes(url))
+        except json.JSONDecodeError as error:
+            raise ValueError("investor SEC JSON resource is invalid") from error
+        if not isinstance(value, dict):
+            raise ValueError("investor SEC JSON resource must be an object")
+        return value
+
+    def assert_media_type(self, url: str, expected: str) -> None:
+        if self._media_types.get(url) != expected:
+            raise ValueError(f"investor SEC resource has the wrong declared media type for {url}")
+
+    def assert_complete(self) -> None:
+        unused = set(self._payloads) - self._used_urls
+        if unused:
+            raise ValueError(f"investor SEC source bundle contains {len(unused)} unused resource(s)")
+
+    @property
+    def resource_count(self) -> int:
+        return len(self._payloads)
+
+
 def filing_rows(submissions: dict[str, Any], count: int) -> list[dict[str, str]]:
     recent = submissions["filings"]["recent"]
     rows: list[dict[str, str]] = []
@@ -109,13 +230,15 @@ def filing_rows(submissions: dict[str, Any], count: int) -> list[dict[str, str]]
     return sorted(by_period.values(), key=lambda row: row["report_period"], reverse=True)[:count]
 
 
-def information_table_xml(client: SecClient, cik: str, accession: str) -> tuple[bytes, str]:
+def information_table_xml(client: SecClient | ManifestSecClient, cik: str, accession: str) -> tuple[bytes, str]:
     accession_path = accession.replace("-", "")
     index_url = SEC_ARCHIVES.format(cik=str(int(cik)), accession=accession_path, name="index.json")
     index = client.get_json(index_url)
     candidates = [item["name"] for item in index["directory"]["item"] if item["name"].lower().endswith(".xml")]
     for name in candidates:
         url = SEC_ARCHIVES.format(cik=str(int(cik)), accession=accession_path, name=name)
+        if isinstance(client, ManifestSecClient):
+            client.assert_media_type(url, "application/xml")
         payload = client.get_bytes(url)
         try:
             root = ET.fromstring(payload)
@@ -359,7 +482,7 @@ def manager_release(manager: Manager, snapshots: list[dict[str, Any]]) -> dict[s
     }
 
 
-def compile_catalog(client: SecClient, metadata: dict[str, dict[str, str]], quarters: int) -> dict[str, Any]:
+def compile_catalog(client: SecClient | ManifestSecClient, metadata: dict[str, dict[str, str]], quarters: int) -> dict[str, Any]:
     managers = []
     periods: set[str] = set()
     filed_dates: list[str] = []
@@ -402,19 +525,55 @@ def compile_catalog(client: SecClient, metadata: dict[str, dict[str, str]], quar
     return catalog
 
 
+def compile_catalog_from_bundle(
+    source_manifest_path: Path,
+    metadata_path: Path,
+    quarters: int | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    client = ManifestSecClient(source_manifest_path)
+    selected_quarters = client.quarters if quarters is None else quarters
+    if selected_quarters != client.quarters:
+        raise ValueError("requested history depth does not match the investor SEC source manifest")
+    try:
+        metadata_bytes = metadata_path.read_bytes()
+    except OSError as error:
+        raise ValueError("investor security metadata is not readable") from error
+    catalog = compile_catalog(client, load_metadata(metadata_path), selected_quarters)
+    client.assert_complete()
+    source_created_at = datetime.fromisoformat(client.created_at.replace("Z", "+00:00"))
+    latest_filing_date = datetime.strptime(catalog["source_fresh_through"], "%Y-%m-%d").date()
+    if source_created_at.date() < latest_filing_date:
+        raise ValueError("investor SEC source creation date cannot precede the latest filing date")
+    record = {
+        "schema_version": COMPILATION_RECORD_SCHEMA_VERSION,
+        "source_manifest_sha256": client.manifest_sha256,
+        "source_created_at": client.created_at,
+        "security_metadata_sha256": hashlib.sha256(metadata_bytes).hexdigest(),
+        "compiler_contract": SCHEMA_VERSION,
+        "quarters": selected_quarters,
+        "resource_count": client.resource_count,
+        "catalog_release_id": catalog["release_id"],
+        "catalog_manifest_hash": catalog["manifest_hash"],
+    }
+    return catalog, record
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--user-agent", required=True, help="Application name and contact email for SEC requests")
+    parser.add_argument("--source-manifest", type=Path, required=True, help="Reviewed investor-sec-source-bundle.v1 manifest; never uses network")
     parser.add_argument("--metadata", type=Path, default=Path("scripts/investor_security_metadata.json"))
-    parser.add_argument("--cache-dir", type=Path, default=Path(".cache/investor-sec"))
     parser.add_argument("--output", type=Path, default=Path("web/src/data/investorCatalog.json"))
-    parser.add_argument("--quarters", type=int, default=5)
+    parser.add_argument("--compilation-record", type=Path)
+    parser.add_argument("--quarters", type=int)
     args = parser.parse_args()
-    if args.quarters < 2 or args.quarters > 8:
+    if args.quarters is not None and (args.quarters < 2 or args.quarters > 8):
         parser.error("--quarters must be between 2 and 8")
-    catalog = compile_catalog(SecClient(args.user_agent, args.cache_dir), load_metadata(args.metadata), args.quarters)
+    catalog, record = compile_catalog_from_bundle(args.source_manifest, args.metadata, args.quarters)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(catalog, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    if args.compilation_record:
+        args.compilation_record.parent.mkdir(parents=True, exist_ok=True)
+        args.compilation_record.write_text(json.dumps(record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"wrote {args.output} ({catalog['release_id']})")
 
 

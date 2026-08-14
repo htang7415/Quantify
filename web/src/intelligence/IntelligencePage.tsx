@@ -16,13 +16,15 @@ export function IntelligencePage() {
       <section className="data-hero page-shell">
         <div><p className="terminal-eyebrow">Intelligence / events with provenance</p><h1>What happened. What changed. What is connected.</h1><p>Reported earnings and three official policy actions are active. High-impact narrative events remain blank until independently released.</p><div className="scope-pills"><span><i /> Earnings + policy available</span><span>News feed disabled</span></div></div>
       </section>
+      <nav className="market-subnav page-shell" aria-label="Intelligence sections"><a className="active" href="/intelligence">All intelligence</a><a href="/intelligence/earnings">Earnings</a><a href="/intelligence/policy">Policy</a><a href="/intelligence/releases">Release operations</a></nav>
       <section className="intelligence-empty-grid page-shell">
         {[
           ["Earnings", "Exact reported revenue and diluted EPS with comparable prior-year facts.", "/intelligence/earnings", "Available"],
           ["Policy", "Authority, action, effective date, named scope, and official source.", "/intelligence/policy", "Available"],
+          ["Release operations", "Every declared public catalog, freshness state, release ID, and manifest hash.", "/intelligence/releases", "Inspect releases"],
           ["High-impact events", "What happened, why it may matter, and exact released connections.", "", "Release required"],
           ["Daily brief", "Only after every factual statement can bind to an eligible release field.", "", "Release required"]
-        ].map(([title, copy, href, status], index) => <article className={status === "Available" ? "intelligence-layer-available" : ""} key={title}><span>0{index + 1}</span><h2>{title}</h2><p>{copy}</p>{href ? <a href={href}>{status} →</a> : <i>{status}</i>}</article>)}
+        ].map(([title, copy, href, status], index) => <article className={href ? "intelligence-layer-available" : ""} key={title}><span>0{index + 1}</span><h2>{title}</h2><p>{copy}</p>{href ? <a href={href}>{status} →</a> : <i>{status}</i>}</article>)}
       </section>
       <footer className="catalog-footer market-catalog-footer"><div><strong>Intelligence boundary</strong><span>Reported earnings and policy actions are active; narrative event releases remain unavailable.</span></div><div><p>{earningsRelease.limitations[0]} {policyRelease.limitations[0]}</p><p>{eventRelease.limitations[0]} Narrative retrieval may provide context later, but it cannot establish a fact, entity connection, or market direction.</p></div><p>Research data only. No price predictions, trade recommendations, or personalized investment advice.</p></footer>
     </main>
@@ -64,7 +66,7 @@ export function PolicyPage() {
       <section className="data-hero policy-hero page-shell">
         <div><p className="terminal-eyebrow">Intelligence / policy / official actions</p><h1>Action, scope, effective date.</h1><p>Three typed official policy records—without speeches, news noise, market-implied probabilities, or certain price-direction claims.</p><div className="scope-pills"><span><i /> 3 reviewed actions</span><span>Observed through {readableDate(policyEventCatalog.observed_at.slice(0, 10))}</span></div></div>
       </section>
-      <nav className="market-subnav page-shell" aria-label="Intelligence sections"><a href="/intelligence">All intelligence</a><a href="/intelligence/earnings">Earnings</a><a className="active" href="/intelligence/policy">Policy</a></nav>
+      <nav className="market-subnav page-shell" aria-label="Intelligence sections"><a href="/intelligence">All intelligence</a><a href="/intelligence/earnings">Earnings</a><a className="active" href="/intelligence/policy">Policy</a><a href="/intelligence/releases">Release operations</a></nav>
       <section className="policy-event-section page-shell" aria-labelledby="policy-events-title">
         <div className="data-section-head"><div><p className="terminal-eyebrow">Official records</p><h2 id="policy-events-title">Released policy actions</h2></div><span className="release-badge">No market direction</span></div>
         <div className="policy-event-list">
@@ -90,7 +92,7 @@ export function EarningsPage() {
       <section className="data-hero earnings-hero page-shell">
         <div><p className="terminal-eyebrow">Intelligence / reported earnings / SEC</p><h1>Reported results. Nothing invented.</h1><p>Exact quarterly revenue and diluted EPS from one frozen SEC Company Facts release, with comparable year-over-year inputs from the same filing accession.</p><div className="scope-pills"><span><i /> AAPL + MSFT</span><span>Filed through {readableDate(earningsCatalog.observed_at.slice(0, 10))}</span></div></div>
       </section>
-      <nav className="market-subnav page-shell" aria-label="Intelligence sections"><a href="/intelligence">All intelligence</a><a className="active" href="/intelligence/earnings">Earnings</a></nav>
+      <nav className="market-subnav page-shell" aria-label="Intelligence sections"><a href="/intelligence">All intelligence</a><a className="active" href="/intelligence/earnings">Earnings</a><a href="/intelligence/policy">Policy</a><a href="/intelligence/releases">Release operations</a></nav>
       <section className="earnings-company-grid page-shell" aria-labelledby="earnings-release-title">
         <div className="data-section-head"><div><p className="terminal-eyebrow">Frozen SEC release</p><h2 id="earnings-release-title">Latest comparable quarters</h2></div><span className="release-badge">Reported · 10-Q</span></div>
         <div className="earnings-card-grid">
