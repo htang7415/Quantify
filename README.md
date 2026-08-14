@@ -1,13 +1,22 @@
 # Quantify
 
-## Evidence-first AI agent for public-company analysis
+## Systematic AI research agent for public-company evidence
 
 Quantify is an AI research agent for investors, analysts, and institutions that
 need to know whether a company-analysis claim can stand behind its evidence.
 
-It does not simply generate a persuasive answer. It tests factual statements
-against a declared, frozen evidence release, surfaces relevant qualifications and
-counterevidence, and returns an auditable conclusion.
+Its visible operating path is objective, scope, released data, typed
+intelligence, and deterministic verification. It does not simply generate a
+persuasive answer: exact released records retain their source, time, scope, and
+limitations while deterministic code controls the final claim verdict and audit
+identity.
+
+Use the public product for one of three bounded research jobs:
+
+- browse source-bound records from an active release;
+- connect only compatible facts with exact typed identities and periods; or
+- verify one company-analysis claim and receive a verdict, evidence scope,
+  limitation, and audit identity.
 
 [Visit Quantify](https://d3ljopjg1qmt4.cloudfront.net/)
 

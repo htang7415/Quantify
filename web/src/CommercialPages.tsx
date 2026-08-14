@@ -1,3 +1,4 @@
+import { AgentSystemMap } from "./AgentSystem";
 import { CommercialFooter } from "./CommercialFooter";
 import { SiteNav } from "./SiteNav";
 import { readableDate, sentenceCase } from "./format";
@@ -21,6 +22,14 @@ export function ProductPage() {
         <h1>One system.<br /><span>Three research modes.</span></h1>
         <p>Move from released information to connected intelligence to a deterministic verification result—without losing the evidence boundary.</p>
         <div className="overview-actions"><a className="button button-dark" href="/agent">Open Agent →</a><a className="button button-light" href="/coverage">See current coverage</a></div>
+      </section>
+
+      <section className="product-operating-system product-modes page-shell" aria-labelledby="product-operating-title">
+        <div className="commercial-section-head split-head">
+          <div><p className="terminal-eyebrow">Agent operating model</p><h2 id="product-operating-title">A visible chain of responsibility.</h2></div>
+          <p>Each stage has one job. The model never inherits the verifier's authority.</p>
+        </div>
+        <AgentSystemMap />
       </section>
 
       <section className="product-system page-shell" aria-labelledby="product-system-title">

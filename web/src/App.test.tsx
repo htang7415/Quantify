@@ -22,18 +22,24 @@ describe("Quantify web app", () => {
   });
   it("shows the product boundary", () => {
     render(<App initialPath="/agent" />);
-    expect(screen.getByRole("heading", { name: "Is this claim supported by the declared evidence?" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Turn a company claim into a reviewable result." })).toBeInTheDocument();
     expect(screen.getAllByText("Exact scope").length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: "Evidence before explanation." })).toBeInTheDocument();
-    expect(screen.getByText("Traceable")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Every stage has one job." })).toBeInTheDocument();
+    expect(within(screen.getByRole("list", { name: "Quantify agent operating model" })).getAllByRole("listitem")).toHaveLength(5);
+    expect(screen.getByRole("heading", { name: "Each layer controls one thing." })).toBeInTheDocument();
     expect(screen.getByText("Ready when you are.")).toBeInTheDocument();
     expect(screen.getByText(/Do not use this tool for price predictions/)).toBeInTheDocument();
     expect(screen.getByLabelText("Current verification contract")).toHaveTextContent("2 companies");
+    expect(screen.getByRole("group", { name: "01 · Define scope" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "02 · Write one claim" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Task readiness")).toHaveTextContent("Add one factual claim");
+    expect(screen.getByLabelText("Current agent task context")).toHaveTextContent("Add one factual claim");
+    expect(screen.getByLabelText("Current agent task context")).toHaveTextContent("Microsoft · CIK 0000789019");
     expect(screen.getByRole("link", { name: "Skip to content" })).toHaveAttribute("href", "#main-content");
     expect(document.getElementById("main-content")).toHaveAttribute("tabindex", "-1");
-    expect(screen.getByLabelText("Company analysis")).toHaveAttribute(
+    expect(screen.getByLabelText("Claim to verify")).toHaveAttribute(
       "aria-describedby",
-      "analysis-word-limit analysis-data-note analysis-safety-note"
+      "analysis-word-limit analysis-claim-note analysis-data-note analysis-safety-note"
     );
   });
 
@@ -44,8 +50,9 @@ describe("Quantify web app", () => {
 
     await user.click(screen.getByRole("button", { name: "Use released Microsoft example" }));
 
-    expect(screen.getByLabelText("Company analysis")).toHaveValue("Microsoft revenue increased from fiscal 2023 to fiscal 2024.");
-    expect(screen.getByLabelText("Analysis as-of date")).toHaveValue("2024-07-30");
+    expect(screen.getByLabelText("Claim to verify")).toHaveValue("Microsoft revenue increased from fiscal 2023 to fiscal 2024.");
+    expect(screen.getByLabelText("Claim as-of date")).toHaveValue("2024-07-30");
+    expect(screen.getByLabelText("Task readiness")).toHaveTextContent("Ready to verify");
     expect(verifier).not.toHaveBeenCalled();
   });
 
@@ -72,10 +79,10 @@ describe("Quantify web app", () => {
     render(<App initialPath="/agent" verifier={verify} />);
 
     await user.type(
-      screen.getByLabelText("Company analysis"),
+      screen.getByLabelText("Claim to verify"),
       "Microsoft revenue increased from fiscal 2023 to fiscal 2024."
     );
-    await user.click(screen.getByRole("button", { name: /verify analysis/i }));
+    await user.click(screen.getByRole("button", { name: /verify claim/i }));
 
     expect(await screen.findByText("revenue-growth")).toBeInTheDocument();
     expect(screen.getByText("SEC EDGAR · 10-K")).toBeInTheDocument();
@@ -83,6 +90,12 @@ describe("Quantify web app", () => {
     expect(screen.getByText("e".repeat(64))).toBeInTheDocument();
     expect(screen.getByText("a".repeat(64))).toBeInTheDocument();
     expect(screen.queryByText("private source report must never render")).not.toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Result next actions" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Check coverage" })).toHaveAttribute("href", "/coverage");
+    expect(screen.getByRole("link", { name: "Review methodology" })).toHaveAttribute("href", "/methodology");
+    await user.click(screen.getByRole("button", { name: "Verify another claim" }));
+    expect(screen.getByLabelText("Claim to verify")).toHaveValue("");
+    expect(screen.getByText("Ready when you are.")).toBeInTheDocument();
     const storedValues = Object.keys(window.sessionStorage).map((key) => window.sessionStorage.getItem(key)).join(" ");
     expect(storedValues).not.toContain("Microsoft revenue increased");
   });
@@ -91,22 +104,54 @@ describe("Quantify web app", () => {
     const user = userEvent.setup();
     render(<App initialPath="/agent" />);
 
-    await user.type(screen.getByLabelText("Company analysis"), "word ".repeat(251));
-    await user.click(screen.getByRole("button", { name: /verify analysis/i }));
+    await user.type(screen.getByLabelText("Claim to verify"), "word ".repeat(251));
+    expect(screen.getByLabelText("Task readiness")).toHaveTextContent("Shorten the claim to 250 words");
+    await user.click(screen.getByRole("button", { name: /verify claim/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("250 words or fewer");
+  });
+
+  it("requires a complete scope before verification", async () => {
+    const user = userEvent.setup();
+    const verifier = vi.fn(async () => result);
+    render(<App initialPath="/agent" verifier={verifier} />);
+
+    await user.clear(screen.getByLabelText("Claim as-of date"));
+    await user.type(screen.getByLabelText("Claim to verify"), "Microsoft revenue increased.");
+    expect(screen.getByLabelText("Task readiness")).toHaveTextContent("Complete the scope");
+    await user.click(screen.getByRole("button", { name: /verify claim/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Choose a company and claim as-of date.");
+    expect(verifier).not.toHaveBeenCalled();
+  });
+
+  it("clears a stale result when the task scope changes", async () => {
+    const user = userEvent.setup();
+    render(<App initialPath="/agent" verifier={async () => result} />);
+
+    await user.type(screen.getByLabelText("Claim to verify"), "Microsoft revenue increased.");
+    await user.click(screen.getByRole("button", { name: /verify claim/i }));
+    expect(await screen.findByText("revenue-growth")).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Company"), "0000320193");
+    expect(screen.queryByText("revenue-growth")).not.toBeInTheDocument();
+    expect(screen.getByText("Ready when you are.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Current agent task context")).toHaveTextContent("Apple · CIK 0000320193");
   });
 
   it("makes review-required results prominent without changing the safe contract", async () => {
     const user = userEvent.setup();
     render(<App initialPath="/agent" verifier={async () => ({ ...result, requires_agent_resolution: true, verdicts: [{ claim_id: "ambiguous-claim", verdict: "requires_agent_resolution" }] })} />);
 
-    await user.type(screen.getByLabelText("Company analysis"), "An ambiguous claim.");
-    await user.click(screen.getByRole("button", { name: /verify analysis/i }));
+    await user.type(screen.getByLabelText("Claim to verify"), "An ambiguous claim.");
+    await user.click(screen.getByRole("button", { name: /verify claim/i }));
 
     expect(await screen.findByText("Review required.")).toBeInTheDocument();
     expect(screen.getByText("Do not publish automatically; the declared evidence could not resolve this result.")).toBeInTheDocument();
     expect(screen.getByText("Review required", { selector: ".result-badge" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Revise claim" }));
+    expect(screen.getByLabelText("Claim to verify")).toHaveValue("An ambiguous claim.");
+    expect(screen.getByText("Ready when you are.")).toBeInTheDocument();
   });
 
   it("shows the commercial research overview with a versioned verification sample", () => {
@@ -114,13 +159,21 @@ describe("Quantify web app", () => {
 
     expect(screen.getByRole("link", { name: "Quantify home" })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /Open Agent/ })[0]).toHaveAttribute("href", "/agent");
-    expect(screen.getByRole("heading", { name: /Research the company.*Verify the claim/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Ask the question.*See the system work/i })).toBeInTheDocument();
     expect(screen.getByLabelText("Versioned verification sample")).toHaveTextContent("Evaluation fixture · Microsoft · 10-K");
     expect(screen.getByLabelText("Versioned verification sample")).toHaveTextContent("$245.12B");
     expect(screen.getByLabelText("Versioned verification sample")).toHaveTextContent("Audit 75b9cf2d09…90722e");
-    expect(screen.getByLabelText("Product boundaries")).toHaveTextContent("active releases");
-    expect(screen.getByRole("heading", { name: "From information to a result you can defend." })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Open the evidence." })).toBeInTheDocument();
+    expect(screen.getByLabelText("Product boundaries")).toHaveTextContent("9 of 12 catalogs released");
+    expect(screen.getByRole("heading", { name: "One objective. Five controlled stages." })).toBeInTheDocument();
+    expect(within(screen.getByRole("list", { name: "Quantify agent operating model" })).getAllByRole("listitem")).toHaveLength(5);
+    expect(screen.getByRole("heading", { name: "The agent knows what it can use." })).toBeInTheDocument();
+    expect(screen.getByText("12 declared catalogs. Status comes directly from the public release index.")).toBeInTheDocument();
+    expect(screen.getByText(/0 \/ 3 released/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Choose the research job." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Browse released records." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Connect compatible facts." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Verify one claim." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Data and information, released by scope." })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Investors.*reporting managers/i })).toHaveAttribute("href", "/investors");
     expect(screen.getByRole("link", { name: /Venture.*4 firms and 24 official-source relationships/i })).toHaveAttribute("href", "/investors/venture");
     expect(screen.getByRole("heading", { name: "Useful because it shows its limits." })).toBeInTheDocument();
@@ -212,7 +265,10 @@ describe("Quantify web app", () => {
 
     expect(screen.getByRole("link", { name: "Quantify home" })).toBeInTheDocument();
     const primaryNavigation = screen.getByRole("navigation", { name: "Primary navigation" });
-    expect(within(primaryNavigation).getByRole("link", { name: "Product" })).toBeInTheDocument();
+    const researchLink = within(primaryNavigation).getByRole("link", { name: "Research" });
+    const productLink = within(primaryNavigation).getByRole("link", { name: "Product" });
+    expect(researchLink).toHaveAttribute("href", "/");
+    expect(researchLink.compareDocumentPosition(productLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(primaryNavigation).getByRole("link", { name: "Coverage" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
   });
@@ -221,6 +277,8 @@ describe("Quantify web app", () => {
     render(<App initialPath="/product" />);
 
     expect(screen.getByRole("heading", { name: /One system.*Three research modes/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "A visible chain of responsibility." })).toBeInTheDocument();
+    expect(within(screen.getByRole("list", { name: "Quantify agent operating model" })).getAllByRole("listitem")).toHaveLength(5);
     expect(screen.getByRole("heading", { name: /The agent researches.*The verifier decides/i })).toBeInTheDocument();
     expect(screen.getByText("Untrusted until validated.")).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "Current and gated product capabilities" })).toBeInTheDocument();

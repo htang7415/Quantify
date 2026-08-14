@@ -853,6 +853,41 @@ contracts wherever possible. A planned capability is visually separated from
 an available capability and never uses an enabled action, fabricated product
 screen, or ambiguous `coming soon` treatment that could imply access.
 
+The commercial product exposes one systematic agent operating model. It is a
+presentation and orchestration model, not additional model or tool authority:
+
+1. **Objective.** The user supplies a bounded research question or claim.
+2. **Scope contract.** Quantify declares company or entity identity, as-of
+   date, permitted task, evidence release, input limit, and access mode before
+   work begins.
+3. **Released data.** The system identifies the exact active structured
+   catalogs that may supply facts. Catalog status, release identity,
+   observation time, freshness, source class, and limitations stay visible;
+   unavailable data remains an explicit system state.
+4. **Information and intelligence.** Human-readable records retain their data
+   bindings. Typed identity, period, ownership, earnings, and policy
+   connections may organize compatible released facts, but cannot create a
+   missing fact or imply market direction.
+5. **Verification result.** Deterministic code validates grounding, warrant,
+   qualifications, and compatible counterevidence, then alone composes the
+   claim verdict, evidence scope, limitation, review state, and audit identity.
+
+The homepage and agent workspace make this sequence legible as a compact
+system map. They distinguish `Data` (versioned machine-readable released
+records), `Information` (readable source-bound records), `Intelligence` (typed
+connections across compatible records), and `Verification` (a deterministic
+claim decision). A visual stage may say `ready`, `available`, or `sample` only
+when that state comes from the current runtime contract, active release index,
+or a labelled versioned fixture. It must not simulate autonomous progress,
+continuous monitoring, live retrieval, or capabilities that are not active.
+
+Release-derived counts answer exactly what they count—for example declared
+catalogs, active catalogs, reporting managers, mapped issuers, or reviewed
+relationships. They never become claims of total market coverage, database
+size, model knowledge, accuracy, adoption, or performance. The system map must
+remain useful when the active verified set is empty or one or more data layers
+are unavailable.
+
 ### 9.2 Visual and interaction direction
 
 The commercial experience is concise, confident, product-led, and visibly
@@ -871,6 +906,23 @@ rendered from real product components or versioned contract-valid fixtures;
 generic stock imagery, fabricated dashboards, fake conversations, invented
 customer results, unsupported counters, and decorative pseudo-live charts are
 not allowed.
+
+The canonical visual system uses one compact typographic ladder across public
+routes: display heading, section heading, card heading, body, control, and
+metadata. Display sizes may respond by viewport, but equivalent components use
+the same role and scale; route-specific font sizes do not create a parallel
+hierarchy. Body and explanatory text remain comfortably readable, while the
+smallest metadata role is reserved for release state, source, time, identifier,
+hash, and audit detail. Monospaced type is limited to those technical labels and
+numeric or machine-readable values. Controls use a consistent height, weight,
+radius, and focus treatment.
+
+The high-technology character comes from precise alignment, restrained
+geometry, strong contrast, thin system lines, tabular data, visible state, and
+the near-black signal surface—not excessive glow, gratuitous gradients,
+oversized card rounding, tiny labels, or decorative pseudo-instrumentation.
+Shared surfaces use the canonical small, medium, and large radii; deviations
+require a functional reason such as a circular status marker.
 
 Pages use one dominant idea per viewport and progressive disclosure for detail.
 Headlines are short, body copy is plain language, and the primary action remains
@@ -901,6 +953,11 @@ action and sign-in shown only when required by the active access contract.
 does not change their released-data semantics. The exact final header labels
 and any new public routes require an approved implementation change before
 deployment.
+
+The primary header begins with `Research`, which links to the homepage, followed
+by `Product`, `Intelligence`, `Coverage`, and `Methodology`. The navigation order
+must reflect the landing-page hierarchy rather than placing a supporting
+product-explanation page before the homepage.
 
 The homepage follows this order:
 
@@ -957,6 +1014,29 @@ source bindings; and deterministic verdicts use the meanings in section 6.
 Unavailability, empty verified scope, refusal, and review-required are complete
 product states with a clear safe next action. The UI must not replace them with
 a model-generated answer, a hidden fallback, or an invitation to make a trade.
+
+Every primary product surface uses the same user-task grammar:
+
+1. **Job.** State the bounded research outcome the user can complete now.
+2. **Required input.** Name the entity, time or release scope, and factual claim
+   or released record needed to start.
+3. **Output.** Name the exact information, typed connection, or verification
+   result the current contract can return.
+4. **Boundary.** Keep unavailable data, source limits, access mode, and prohibited
+   uses visible before the user acts.
+5. **Next safe action.** After every complete, empty, unavailable, failed, or
+   review-required state, offer a relevant non-advisory action such as revising
+   the claim, inspecting coverage, reviewing methodology, or routing the result
+   to an authorized human review process.
+
+The homepage maps user intent to the three available jobs: browse released
+records, connect compatible released facts, or verify one company-analysis
+claim. Each entry names its input and output rather than asking users to infer a
+workflow from the architecture. The verification workspace then groups the
+task into `Define scope` and `Write one claim`, derives readiness from the
+actual form state, and keeps the output contract visible. Architecture and
+policy detail use progressive disclosure and must not be repeated after the
+user has entered the task flow.
 
 Future multi-step research work may add a review workspace, task history,
 release comparison, exports, and bounded typed tools only as their respective

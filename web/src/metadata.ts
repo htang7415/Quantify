@@ -10,13 +10,13 @@ const defaultDescription =
 
 const exactRoutes: Record<string, Omit<RouteMetadata, "indexable">> = {
   "/": {
-    title: "Quantify — Evidence-bound company research",
-    description: defaultDescription,
+    title: "Quantify — AI research agent for company evidence",
+    description: "Turn a bounded public-company question into released data, source-bound information, typed intelligence, and a deterministic verification result.",
     canonicalPath: "/"
   },
   "/product": {
     title: "Product — Quantify",
-    description: "Move from released information to connected intelligence to deterministic claim verification without losing the evidence boundary.",
+    description: "See how the Quantify AI research agent moves from objective and scope to released data, connected intelligence, and deterministic claim verification.",
     canonicalPath: "/product"
   },
   "/coverage": {
@@ -30,13 +30,13 @@ const exactRoutes: Record<string, Omit<RouteMetadata, "indexable">> = {
     canonicalPath: "/methodology"
   },
   "/agent": {
-    title: "Verify a company claim — Quantify",
-    description: "Check a bounded company-analysis claim against declared frozen evidence and inspect its verdict, scope, citations, and audit identity.",
+    title: "Quantify Agent — Verify a company claim",
+    description: "Configure a bounded company-analysis task and inspect its released evidence, deterministic verdict, scope, limitations, and audit identity.",
     canonicalPath: "/agent"
   },
   "/verify": {
-    title: "Verify a company claim — Quantify",
-    description: "Check a bounded company-analysis claim against declared frozen evidence and inspect its verdict, scope, citations, and audit identity.",
+    title: "Quantify Agent — Verify a company claim",
+    description: "Configure a bounded company-analysis task and inspect its released evidence, deterministic verdict, scope, limitations, and audit identity.",
     canonicalPath: "/agent"
   },
   "/markets": {

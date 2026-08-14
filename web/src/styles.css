@@ -136,7 +136,6 @@ h2 { font-size: clamp(39px, 4vw, 58px); line-height: 1.04; margin-bottom: 19px; 
 .verify-form, .results { border-radius: 16px; padding: 28px; }
 .verify-form { background: rgba(255, 250, 255, .92); border: 1px solid rgba(255, 255, 255, .58); box-shadow: 0 12px 38px rgba(80, 25, 84, .14); display: flex; flex-direction: column; }
 label { font-size: 13px; font-weight: 700; letter-spacing: .01em; margin: 20px 0 8px; }
-.verify-form > label:first-child { margin-top: 0; }
 input, select, textarea { background: var(--surface-input); border: 1px solid #d6bfda; border-radius: 8px; color: var(--ink); font-size: 14px; outline: none; padding: 12px; }
 input:focus, select:focus, textarea:focus { border-color: #9746af; box-shadow: 0 0 0 3px rgba(151, 70, 175, .16); }
 textarea { line-height: 1.55; resize: vertical; }
@@ -177,14 +176,6 @@ textarea { line-height: 1.55; resize: vertical; }
 .hash-value { font-size: 11px; line-height: 1.45; }
 .limitation { font-size: 12px; line-height: 1.55; margin: 22px 0 0; }
 
-.how { padding-block: 60px 110px; }
-.how > .eyebrow { margin-bottom: 26px; }
-.how-grid { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); }
-.how article { background: rgba(255, 250, 255, .9); border: 1px solid rgba(116, 69, 161, .16); border-radius: 16px; box-shadow: 0 12px 26px rgba(80, 25, 84, .08); display: flex; flex-direction: column; min-height: 265px; padding: 27px; }
-.how article span { align-items: center; background: var(--brand-gradient); border-radius: 10px; box-shadow: 0 7px 16px rgba(116, 69, 161, .18); color: #fff; display: inline-flex; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 19px; font-weight: 800; justify-content: center; letter-spacing: .03em; min-height: 43px; width: 54px; }
-.how h3 { font-size: 27px; font-weight: 680; letter-spacing: -.05em; margin: auto 0 10px; }
-.how p { color: var(--muted); font-size: 15px; line-height: 1.55; margin: 0; }
-
 @media (max-width: 900px) {
   .site-nav-links { display: none; }
   .hero { grid-template-columns: 1fr; min-height: 0; }
@@ -193,7 +184,6 @@ textarea { line-height: 1.55; resize: vertical; }
   .trust-bar { flex-wrap: wrap; gap: 15px 24px; justify-content: flex-start; }
   .scale { grid-template-columns: 1fr; padding-top: 86px; }
   .work-grid { grid-template-columns: 1fr; }
-  .how-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {
@@ -210,12 +200,11 @@ textarea { line-height: 1.55; resize: vertical; }
   .agent-run-label { font-size: 9px; }
   .trust-bar { display: grid; font-size: 13px; grid-template-columns: 1fr 1fr; padding: 16px; }
   .scale { gap: 32px; padding-top: 72px; }
-  .scale-grid, .how-grid { grid-template-columns: 1fr; }
+  .scale-grid { grid-template-columns: 1fr; }
   .scale-grid article { min-height: 170px; }
   .workspace { padding-block: 72px; }
   .verify-form, .results { border-radius: 14px; padding: 22px; }
   .result-details div { gap: 10px; grid-template-columns: 103px 1fr; }
-  .how { padding-block: 35px 70px; }
 }
 
 /* Public investor intelligence surface */
@@ -1133,8 +1122,7 @@ h2 { font-size: clamp(32px, 3.2vw, 48px); line-height: 1.08; }
 .agent-panel,
 .scale-grid article,
 .verify-form,
-.results,
-.how article { border-radius: 6px; }
+.results { border-radius: 6px; }
 .hero { min-height: 590px; }
 .hero-text { font-size: 18px; }
 .agent-run-label,
@@ -1396,8 +1384,7 @@ h2 { font-size: clamp(29px, 3.2vw, 45px); line-height: 1.04; }
 .verify-form,
 .results,
 .agent-panel,
-.scale-grid article,
-.how article {
+.scale-grid article {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-medium);
@@ -1527,8 +1514,7 @@ textarea:focus { border-color: #6734d1; box-shadow: 0 0 0 3px rgba(103, 52, 209,
 .agent-answer { background: #fff; border-color: var(--line); }
 .results { background: #1c1920; border-color: #1c1920; color: #fff; }
 .verify-form { box-shadow: var(--shadow-card); }
-.scale-grid article,
-.how article { min-height: 220px; }
+.scale-grid article { min-height: 220px; }
 
 @media (max-width: 1040px) {
   .terminal-hero,

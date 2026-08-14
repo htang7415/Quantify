@@ -9,8 +9,8 @@ export type NavSection = "overview" | "markets" | "investors" | "companies" | "i
 type CommercialSection = "product" | "research" | "intelligence" | "coverage" | "methodology";
 
 const links: Array<{ section: CommercialSection; label: string; href: string }> = [
+  { section: "research", label: "Research", href: "/" },
   { section: "product", label: "Product", href: "/product" },
-  { section: "research", label: "Research", href: "/#research" },
   { section: "intelligence", label: "Intelligence", href: "/intelligence" },
   { section: "coverage", label: "Coverage", href: "/coverage" },
   { section: "methodology", label: "Methodology", href: "/methodology" }
