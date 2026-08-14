@@ -1,0 +1,22 @@
+{
+  "schema_version": "public-candidate-gate-policy.v2",
+  "policy_id": "public-candidate-gate-v2",
+  "allowed_changed_catalogs": [
+    "investors",
+    "venture",
+    "etf_flows",
+    "etf_holdings",
+    "crypto_exposure"
+  ],
+  "maximum_manager_scope_change": 0,
+  "maximum_source_review_increase": 0,
+  "maximum_manager_value_change_basis_points": 6000,
+  "maximum_manager_holdings_change_basis_points": 5000,
+  "maximum_etf_net_assets_change_basis_points": 4000,
+  "require_no_status_regression": true,
+  "require_no_observation_regression": true,
+  "require_investor_crypto_dependency_rebuild": true,
+  "require_venture_full_review": true,
+  "lane_a_spot_review_required": true,
+  "lane_b_full_review_required": true
+}

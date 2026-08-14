@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { investorCatalog } from "../investors/catalog";
+import { ventureCatalog } from "../venture/catalog";
 import { parsePublicReleaseIndex, publicReleaseIndex, releaseFor } from "./catalog";
 
 describe("public release index contract", () => {
@@ -8,6 +9,13 @@ describe("public release index contract", () => {
     expect(investors.status).toBe("available");
     expect(investors.release_id).toBe(investorCatalog.release_id);
     expect(investors.manifest_hash).toBe(investorCatalog.manifest_hash);
+  });
+
+  it("binds venture relationships independently from public-market investors", () => {
+    const venture = releaseFor("venture");
+    expect(venture.status).toBe("available");
+    expect(venture.release_id).toBe(ventureCatalog.release_id);
+    expect(venture.manifest_hash).toBe(ventureCatalog.manifest_hash);
   });
 
   it("keeps not-yet-approved market catalogs explicitly unavailable", () => {

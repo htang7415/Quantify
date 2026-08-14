@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantify.local/schemas/investor_filing_readiness.v1.schema.json",
+  "title": "Quantify investor filing readiness report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report_id",
+    "checked_at",
+    "source_manifest_sha256",
+    "source_created_at",
+    "target_report_period",
+    "status",
+    "candidate_build_authorized",
+    "manager_count",
+    "ready_manager_count",
+    "managers",
+    "limitations",
+    "manifest_hash"
+  ],
+  "properties": {
+    "schema_version": { "const": "investor-filing-readiness.v1" },
+    "report_id": {
+      "type": "string",
+      "pattern": "^investor-filing-readiness-[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-f0-9]{12}$"
+    },
+    "checked_at": { "type": "string", "format": "date-time" },
+    "source_manifest_sha256": { "$ref": "#/$defs/hash" },
+    "source_created_at": { "type": "string", "format": "date-time" },
+    "target_report_period": { "type": "string", "format": "date" },
+    "status": { "enum": ["complete", "incomplete"] },
+    "candidate_build_authorized": { "const": false },
+    "manager_count": { "type": "integer", "minimum": 1 },
+    "ready_manager_count": { "type": "integer", "minimum": 0 },
+    "managers": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/manager" }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "manifest_hash": { "$ref": "#/$defs/hash" }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "manager": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reporting_manager_cik",
+        "firm",
+        "latest_report_period",
+        "latest_filed_date",
+        "latest_accession",
+        "status"
+      ],
+      "properties": {
+        "reporting_manager_cik": { "type": "string", "pattern": "^[0-9]{10}$" },
+        "firm": { "type": "string", "minLength": 1 },
+        "latest_report_period": { "type": "string", "format": "date" },
+        "latest_filed_date": { "type": "string", "format": "date" },
+        "latest_accession": { "type": "string", "pattern": "^[0-9]{10}-[0-9]{2}-[0-9]{6}$" },
+        "status": { "enum": ["ready", "waiting", "ahead"] }
+      }
+    }
+  }
+}

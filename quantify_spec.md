@@ -331,6 +331,7 @@ change a verdict, establish a numeric fact, or expand the release.
 | Immutable evidence, manifests, evaluations, and audit objects | Versioned encrypted S3 | Address by content hash; retain replay inputs. |
 | Public catalog and watchlist refresh | CloudFront-cached S3 JSON | Browsers poll a short-cached index, never Lambda. |
 | Investor holdings catalog | Immutable, versioned 13F release JSON in S3 | Compile offline from approved filings; label period, filing, scope, and limitations. |
+| Venture relationship catalog | Immutable, versioned official-source release JSON in S3 | Compile offline from reviewed public firm portfolio pages; publish only declared relationships and explicitly disclosed fields. |
 | Company ownership views | Deterministic projection of released investor catalogs | Sum only the tracked disclosed rows; never label the result total institutional ownership. |
 | Market, macro, ETF, and cryptocurrency catalogs | Immutable, versioned release JSON in S3 | Acquire offline from approved sources; publish observation time, methodology, freshness, and limitations. |
 | Earnings, policy, and event catalogs | Immutable, versioned release JSON in S3 | Separate reported facts from labelled scenarios or inferences; preserve effective dates and corrections. |
@@ -485,7 +486,7 @@ Live retrieval belongs only to the offline factory, never the verifier or
 planner request path.
 
 The public release-operations view is a read-only deterministic projection of
-`public-release-index.v2`. It may display only each declared catalog, status,
+`public-release-index.v3`. It may display only each declared catalog, status,
 freshness, observation time, release ID, manifest hash, limitation, and the
 index generation time. Counts and attention states are exact arithmetic over
 those fields. It is not production telemetry, reviewer throughput, a release
@@ -506,6 +507,21 @@ itself remains a separately reviewed acquisition/compiler step; passing an
 existing investor catalog to this coordinator does not claim that acquisition
 occurred.
 
+`public-refresh-candidate.v2`, `public-candidate-review.v2`, and
+`public-candidate-gate-policy.v2` extend that candidate-only workflow with an
+optional reviewed `vc-source-bundle.v1` input. When present, the coordinator
+compiles `vc-catalog.v1` and `vc-compilation-record.v1`, binds the prior Venture
+release for rollback, and proposes the new Venture identity in the candidate
+index. It still has no acquisition, promotion, active-index mutation,
+publication, deployment, or approval path. The deterministic reviewer replays
+the Venture catalog and compilation record, compares exact firm IDs and exact
+firm/company relationship IDs with the active catalog, and records added and
+removed firms and relationships. Any Venture release-identity change, new firm,
+new official host, or relationship-scope change is Lane B and requires a later
+full review. Every candidate and review record states that publication or
+promotion is not authorized. Omitting Venture input preserves the active
+Venture binding and does not claim that the source was refreshed.
+
 The first offline Form 13F compiler input is
 `investor-sec-source-bundle.v1`. A reviewed bundle manifest declares the exact
 reporting-manager CIK set, history depth, creation time, and every local SEC
@@ -522,7 +538,24 @@ That acquisition requires an SEC-compliant user agent, a declared creation
 time and bounded history depth, records only the exact resources requested for
 the configured managers, and atomically writes a new target directory. It may
 use the local acquisition cache but has no overwrite, catalog-publication,
-promotion, deployment, or active-index mutation path.
+promotion, deployment, or active-index mutation path. Acquisition preserves a
+valid bundle when configured managers have different latest reporting periods;
+the compiler still fails closed until their latest compatible filings share one
+period.
+
+`investor-filing-readiness.v1` is the deterministic, offline preflight for a
+reviewed `investor-sec-source-bundle.v1`. It binds the exact source-manifest
+hash, an explicit check time, and one requested quarter-end, then reports each
+configured manager's latest compatible Form 13F period, filing date, accession,
+and one of `ready`, `waiting`, or `ahead`. `ready` means the latest compatible
+filing is exactly the requested quarter; it does not mean the filing contents
+or resulting catalog have passed source review. The report is complete only
+when every configured manager is `ready`, is content-addressed, and always
+states `candidate_build_authorized: false`. Missing, changed, undeclared,
+non-SEC, out-of-scope, malformed, or temporally inconsistent bundle content
+fails closed without a report. The preflight has no network fallback and no
+compile, approval, promotion, publication, deployment, or active-index mutation
+path.
 
 When a candidate compiles a new investor catalog, it must also rebuild every
 deterministic public projection bound to the investor release. The initial
@@ -560,6 +593,37 @@ Displayed value and weight are limited to the disclosed 13F information table.
 movement is displayed separately in percentage points. Missing mappings,
 incompatible quarters, and ambiguous amendments fail closed rather than being
 estimated. Ticker and theme metadata are separately versioned and may be absent.
+
+Venture relationships use `vc-catalog.v1`, never the Form 13F contract. The
+initial release is a bounded official-source sample for Sequoia Capital,
+Andreessen Horowitz, Founders Fund, and Khosla Ventures. `vc-source-bundle.v1`
+contains only manually reviewed relationship facts from declared public firm
+portfolio pages, with an exact retrieval time, source URL, and source-content
+hash for every row. `vc-compilation-record.v1` binds the source payload,
+compiler contract, catalog identity, firm count, and relationship count and
+always records `publication_authorized: false`.
+
+Each published venture row states only that the named firm publicly presents
+the named company as a portfolio relationship in the declared source snapshot.
+Broad sector labels are versioned Quantify display classifications and are
+counted by tracked company, never by invested dollars. First-partnered year,
+stage, participation role, and follow-on status remain `undisclosed` unless the
+same declared official source states them exactly. V1 contains no ownership
+percentage, check size, position value, portfolio weight, AUM, valuation,
+markup, return, exit inference, or recommendation. A missing or ambiguous
+identity fails closed; an empty verified relationship set is valid. Venture
+company names do not enter public-company ownership pages or the claim-verdict
+fact index. An exact public-company connection requires a later reviewed entity
+mapping and contract update.
+
+The next reviewed Venture candidate may extend the Core technology / AI group
+with Thrive Capital and General Catalyst, using only their declared official
+portfolio or portfolio-careers pages. Those candidate relationships remain
+unreleased until Lane B review and separately authorized promotion. An official
+firm-operated portfolio-careers subdomain is eligible only as an attributed
+firm/company relationship source; job count, hiring activity, third-party
+descriptions, stage tags, and other career-platform metadata are not Venture
+facts.
 
 Public market-intelligence releases use distinct versioned contracts rather
 than extending the 13F schema. Each metric records a stable entity or asset ID,
@@ -719,10 +783,13 @@ The public intelligence web expands through independently releasable slices:
    freshness controls pass.
 6. Add earnings, policy, ETF-flow, and high-impact event catalogs one at a time.
    Each receives its own source and methodology review.
-7. Add a typed cross-catalog entity graph and search only from released exact
+7. Add a separately typed venture relationship catalog and interface from
+   reviewed official firm sources. Do not project private-company relationships
+   into public-company ownership or the claim-verdict fact index.
+8. Add a typed cross-catalog entity graph and search only from released exact
    identifiers. Narrative similarity may suggest review work but cannot publish
    an entity relationship as fact.
-8. Add a daily brief only after deterministic validation can bind every factual
+9. Add a daily brief only after deterministic validation can bind every factual
    statement to eligible released fields and label every inference or open
    question. It must not predict prices or recommend a trade.
 
@@ -750,6 +817,25 @@ portfolio, and presents concentration only as a reported-position signal. The
 VC experience has a separate schema and never invents ownership, position
 value, or valuation precision.
 
+The investor section exposes explicit `Public markets` and `Venture capital`
+lenses. Venture cards show only firm identity, tracked official relationship
+count, reviewed strategy labels, broad sector counts, and source coverage time.
+Venture detail pages contain overview, a source-visible relationship table,
+sector counts, and source limitations. They never reuse public-market value,
+weight, concentration, change, or holdings-history modules. The words
+`portfolio` and `investment` on a venture page always refer to the bounded
+official-source sample, not a complete current fund portfolio.
+
+The Venture company explorer is a deterministic projection of exact company IDs
+already present in the active `vc-catalog.v1` release. It may show company name,
+versioned broad sector, tracked firm count, firm names, disclosed
+first-partnered years, and exact relationship sources. The overlap view counts
+only identical released company IDs shared by two tracked firms and labels the
+result `Tracked relationship overlap`. It is not ownership, syndication,
+portfolio similarity, conviction, capital allocation, co-investment timing, or
+evidence that the firms invested together. Neither view creates a public-company
+mapping or adds a fact to the claim-verdict index.
+
 The website and read-only investor catalog are public without sign-in. The
 currently deployed claim-verification submission requires Cognito sign-in; a
 separately authorized no-sign-up route may be enabled only under its bounded
@@ -769,6 +855,17 @@ valuation, insider, ETF, and event modules remain unavailable until their
 corresponding approved releases exist. Earnings modules appear only for exact
 company identities present in the active earnings release. Crypto assets have canonical
 asset pages separate from company pages.
+
+Cross-section navigation is a projection of the same typed released entity
+graph, never a narrative or inferred relationship. Overview links every primary
+section that has at least one available sub-release; one unavailable sublayer
+must not label the entire primary section unavailable. A mapped security ticker
+in an investor or ETF table may link to its exact Company page. Company is the
+canonical integration surface for exact released manager, ETF, earnings, and
+policy connections, with reciprocal links to their owning sections. Policy may
+link an affected Company only when the typed policy record contains that exact
+released ticker. Available connection controls are links; unavailable states
+remain non-interactive and explicit.
 
 Global search is a deterministic browser-side projection of exact identifiers
 and display metadata already present in active public releases. Matching is

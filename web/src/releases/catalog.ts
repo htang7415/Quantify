@@ -1,7 +1,7 @@
 import rawIndex from "../data/publicReleaseIndex.json";
 import type { PublicCatalog, PublicRelease, PublicReleaseIndex, ReleaseFreshness, ReleaseStatus } from "./types";
 
-const catalogs = new Set<PublicCatalog>(["investors", "markets", "macro", "rates", "etf_flows", "etf_holdings", "crypto", "crypto_exposure", "earnings", "policy", "events"]);
+const catalogs = new Set<PublicCatalog>(["investors", "venture", "markets", "macro", "rates", "etf_flows", "etf_holdings", "crypto", "crypto_exposure", "earnings", "policy", "events"]);
 const statuses = new Set<ReleaseStatus>(["available", "unavailable", "source_review", "revoked"]);
 const freshnessStates = new Set<ReleaseFreshness>(["current", "stale", "not_applicable", "unknown"]);
 
@@ -21,7 +21,7 @@ function nullableString(value: unknown, message: string): string | null {
 
 export function parsePublicReleaseIndex(value: unknown): PublicReleaseIndex {
   const index = record(value, "Public release index is invalid.");
-  if (index.schema_version !== "public-release-index.v2") throw new Error("Public release index schema is unsupported.");
+  if (index.schema_version !== "public-release-index.v3") throw new Error("Public release index schema is unsupported.");
   if (!Array.isArray(index.releases)) throw new Error("Public release index entries are invalid.");
   const releases = index.releases.map((item): PublicRelease => {
     const row = record(item, "Public release entry is invalid.");
@@ -47,7 +47,7 @@ export function parsePublicReleaseIndex(value: unknown): PublicReleaseIndex {
   });
   if (new Set(releases.map((release) => release.catalog)).size !== releases.length) throw new Error("Public release catalogs must be unique.");
   return {
-    schema_version: "public-release-index.v2",
+    schema_version: "public-release-index.v3",
     generated_at: stringValue(index.generated_at, "Public release index generation time is missing."),
     releases
   };

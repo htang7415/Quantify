@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantify.local/schemas/vc_source_bundle.v1.schema.json",
+  "title": "Quantify venture source bundle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "source_id", "created_at", "scope", "taxonomy_version", "firms"],
+  "properties": {
+    "schema_version": { "const": "vc-source-bundle.v1" },
+    "source_id": { "const": "official-vc-portfolio-pages" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "scope": { "type": "string", "minLength": 1 },
+    "taxonomy_version": { "const": "vc-sector-taxonomy.v1" },
+    "firms": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/firm" } }
+  },
+  "$defs": {
+    "sourceUrl": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://((www\\.)?(sequoiacap\\.com|a16z\\.com|foundersfund\\.com|khoslaventures\\.com|generalcatalyst\\.com)|jobs\\.thrivecap\\.com)/"
+    },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "sector": {
+      "enum": ["ai", "autonomy", "climate_energy", "consumer", "defense", "enterprise_software", "fintech", "semiconductors", "space"]
+    },
+    "relationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["company_id", "company_name", "sector", "first_partnered_year", "stage", "participation_role", "follow_on_status", "source_url", "source_sha256"],
+      "properties": {
+        "company_id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "company_name": { "type": "string", "minLength": 1 },
+        "sector": { "$ref": "#/$defs/sector" },
+        "first_partnered_year": { "type": ["integer", "null"], "minimum": 1900, "maximum": 2100 },
+        "stage": { "enum": ["pre_seed_seed", "early", "growth", "undisclosed"] },
+        "participation_role": { "enum": ["lead", "participant", "undisclosed"] },
+        "follow_on_status": { "enum": ["yes", "no", "undisclosed"] },
+        "source_url": { "$ref": "#/$defs/sourceUrl" },
+        "source_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "firm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["firm_id", "name", "category", "strategy_labels", "source_url", "source_sha256", "relationships"],
+      "properties": {
+        "firm_id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "name": { "type": "string", "minLength": 1 },
+        "category": { "const": "core_technology_ai" },
+        "strategy_labels": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "source_url": { "$ref": "#/$defs/sourceUrl" },
+        "source_sha256": { "$ref": "#/$defs/sha256" },
+        "relationships": { "type": "array", "items": { "$ref": "#/$defs/relationship" } }
+      }
+    }
+  }
+}

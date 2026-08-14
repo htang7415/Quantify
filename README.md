@@ -29,6 +29,16 @@ only when the same released security ID appears in both holdings tables; it
 keeps disclosed values, weights, and reported share changes separate and does
 not infer portfolio similarity, trades, or intent.
 
+Venture capital is a separate investor lens with its own release contract. The
+initial release contains 24 manually reviewed firm-to-company relationships
+across Sequoia Capital, Andreessen Horowitz, Founders Fund, and Khosla Ventures.
+It publishes only what each frozen official source supports: company, a broad
+versioned sector classification, disclosed first-partnered year when available,
+and the exact source. Unknown stage, participation role, and follow-on status
+remain `undisclosed`; ownership, check size, value, weight, AUM, valuation,
+markup, and return are neither inferred nor displayed. These private-company
+relationships never enter the public-company ownership index.
+
 ## Connected public intelligence
 
 The public overview connects the frozen investor release to deterministic
@@ -111,7 +121,7 @@ python scripts/build_public_release_candidate.py \
   --security-metadata scripts/investor_security_metadata.json \
   --active-release-index web/src/data/publicReleaseIndex.json \
   --target-directory /tmp/quantify-release-candidate-2026-08-14 \
-  --run-at 2026-08-14T02:00:00Z
+  --run-at 2026-08-14T05:00:00Z
 ~~~
 
 The command performs no network acquisition, active-index mutation,
@@ -133,7 +143,7 @@ target:
 
 ~~~shell
 python scripts/acquire_investor_sec_bundle.py \
-  --user-agent "Quantify Research contact@example.com" \
+  --user-agent "Quantify Research htang7415@gmail.com" \
   --cache-dir /path/to/sec-cache \
   --target-directory /path/to/new-13f-bundle \
   --created-at 2026-08-14T02:00:00Z \
@@ -141,8 +151,25 @@ python scripts/acquire_investor_sec_bundle.py \
 ~~~
 
 Review the resulting `manifest.json` and declared files before passing the
-bundle to compilation. Acquisition does not publish a catalog or approve a
-release.
+bundle to compilation. Acquisition preserves the exact evidence even when the
+tracked managers have different latest reporting periods; compilation still
+fails closed until their latest periods align. Acquisition does not publish a
+catalog or approve a release.
+
+Check a target quarter offline before attempting compilation:
+
+~~~shell
+python scripts/check_investor_filing_readiness.py \
+  --source-manifest /path/to/new-13f-bundle/manifest.json \
+  --target-report-period 2026-06-30 \
+  --checked-at 2026-08-14T03:30:00Z \
+  --output /path/to/new-readiness-report.json
+~~~
+
+The content-addressed report classifies each configured manager as `ready`,
+`waiting`, or `ahead` from the exact bundle snapshot. It always records
+`candidate_build_authorized: false`; readiness is not source review,
+publication approval, or deployment authorization.
 
 The cache-only investor compiler can also be reviewed independently:
 
@@ -153,6 +180,42 @@ python scripts/build_investor_catalog.py \
   --output /tmp/investorCatalog.json \
   --compilation-record /tmp/investorCompilationRecord.json
 ~~~
+
+The venture compiler is also cache-only. It accepts one reviewed official-source
+bundle, validates strict identities, fields, hosts, hashes, dates, and compiled
+sector counts, then writes a catalog and a replay-visible compilation record:
+
+~~~shell
+python scripts/build_vc_catalog.py \
+  --source tests/fixtures/public_data/vc_portfolio_sources_2026-08-13.json \
+  --output /tmp/vcCatalog.json \
+  --record-output /tmp/vcCompilationRecord.json
+~~~
+
+The compilation record always states `publication_authorized: false`. The
+compiler performs no network retrieval, active-index mutation, publication, or
+deployment.
+
+To stage a reviewed Venture change with the rest of the public release, add the
+source bundle to the coordinator command:
+
+~~~shell
+python scripts/build_public_release_candidate.py \
+  --investor-catalog web/src/data/investorCatalog.json \
+  --venture-source tests/fixtures/public_data/vc_portfolio_sources_candidate_2026-08-14.json \
+  --etf-flow-input tests/fixtures/public_data/etf_flows_2026-03-31.json \
+  --etf-holdings-input tests/fixtures/public_data/etf_holdings_2026q2.json \
+  --security-metadata scripts/investor_security_metadata.json \
+  --active-release-index web/src/data/publicReleaseIndex.json \
+  --target-directory /tmp/quantify-release-candidate-2026-08-14 \
+  --run-at 2026-08-14T05:00:00Z
+~~~
+
+The checked-in candidate adds Thrive Capital and General Catalyst from frozen
+firm-operated pages. It is candidate evidence only: it does not change the
+active four-firm Venture release. Any Venture identity or relationship-scope
+change is a Lane B change and requires full review before a separately
+authorized promotion.
 
 ## Review a public-release candidate
 
@@ -165,8 +228,8 @@ python scripts/review_public_release_candidate.py \
   --candidate-directory /tmp/quantify-release-candidate-2026-08-14 \
   --active-release-index web/src/data/publicReleaseIndex.json \
   --active-catalog-directory web/src/data \
-  --policy policies/public_candidate_gate_policy.v1.json \
-  --reviewed-at 2026-08-14T03:00:00Z \
+  --policy policies/public_candidate_gate_policy.v2.json \
+  --reviewed-at 2026-08-14T06:00:00Z \
   --output /tmp/publicCandidateReview.json
 ~~~
 
@@ -175,6 +238,11 @@ still required. Lane B means structural changes or thresholds require full
 review. Every record is content-addressed, carries exact rollback bindings,
 and states `promotion_authorized: false`. The command cannot approve, publish,
 deploy, or mutate the active index.
+
+`public-refresh-candidate.v2`, `public-candidate-review.v2`, and
+`public-candidate-gate-policy.v2` add the optional Venture compilation and its
+exact firm/relationship diff. Omitting `--venture-source` preserves the active
+Venture binding.
 
 ## What Quantify can do
 

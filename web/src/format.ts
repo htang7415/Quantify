@@ -42,3 +42,8 @@ export function holdingChangeText(holding: Holding, compact = false): string {
   const sign = holding.share_delta_pct > 0 ? "+" : "";
   return `${sign}${holding.share_delta_pct.toFixed(1)}%`;
 }
+
+export function directionalPercent(value: number, digits = 1): string {
+  const direction = value > 0 ? "↑" : value < 0 ? "↓" : "—";
+  return `${direction} ${Math.abs(value).toFixed(digits)}%`;
+}

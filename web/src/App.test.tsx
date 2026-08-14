@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
@@ -91,15 +91,22 @@ describe("Quantify web app", () => {
   });
 
   it("shows the connected public overview without inventing unavailable market data", () => {
-    render(<App initialPath="/" />);
+    const { container } = render(<App initialPath="/" />);
 
     expect(screen.getByRole("link", { name: "Quantify home" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Verify a claim" })).toHaveAttribute("href", "/agent");
-    expect(screen.getByRole("heading", { name: /See where capital is/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Latest changes" })).toBeInTheDocument();
-    expect(screen.getAllByText("Release required").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: /See the market.*Keep the evidence in view/i })).toBeInTheDocument();
+    expect(container.querySelectorAll(".overview-headline-line")).toHaveLength(3);
+    expect(screen.getByLabelText("Current release snapshot")).toHaveTextContent("Tracked disclosed value");
+    expect(screen.getByRole("navigation", { name: "Research sections" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Latest released changes" })).toBeInTheDocument();
+    expect(screen.getAllByText(/Release required/).length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "Active releases" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Explore investors" })).toHaveAttribute("href", "/investors");
+    expect(screen.getByRole("link", { name: /Venture capital 4 firms.*24 tracked relationships/i })).toHaveAttribute("href", "/investors/venture");
+    expect(screen.getByRole("link", { name: /04 Intelligence Earnings and policy/i })).toHaveAttribute("href", "/intelligence");
+    expect(screen.getByRole("link", { name: /Open .* research/i })).toHaveAttribute("href", expect.stringMatching(/^\/companies\//));
+    expect(screen.getByRole("link", { name: "Verify a claim →" })).toHaveAttribute("href", "/agent");
   });
 
   it("shows the public investor terminal with the declared filing scope", () => {
@@ -111,6 +118,60 @@ describe("Quantify web app", () => {
     expect(screen.getByText("Pershing Square")).toBeInTheDocument();
     expect(screen.getByText("SEC 13F · Frozen")).toBeInTheDocument();
     expect(screen.getByText(/Values and weights cover only securities disclosed/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Venture capital" })).toHaveAttribute("href", "/investors/venture");
+  });
+
+  it("keeps venture relationships separate from public-market positions", () => {
+    const { container } = render(<App initialPath="/investors/venture" />);
+
+    expect(screen.getByRole("heading", { name: /Follow the firms.*Read the relationships/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tracked venture firms" })).toBeInTheDocument();
+    expect(container.querySelector(".venture-hero")).toHaveClass("terminal-hero");
+    expect(container.querySelector(".venture-card")).toHaveClass("investor-card");
+    expect(screen.getByRole("navigation", { name: "Connected research" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Firms" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByText("Sequoia Capital")).toBeInTheDocument();
+    expect(screen.getByText("Founders Fund")).toBeInTheDocument();
+    expect(screen.getByLabelText("Venture catalog snapshot")).toHaveTextContent("24");
+    expect(screen.getByText(/bounded sample of relationships/i)).toBeInTheDocument();
+    expect(screen.queryByText("Portfolio value")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ownership")).not.toBeInTheDocument();
+  });
+
+  it("shows exact venture sources and preserves undisclosed fields", () => {
+    render(<App initialPath="/investors/venture/khosla-ventures" />);
+
+    expect(screen.getByRole("heading", { name: "Khosla Ventures" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Released relationships" })).toBeInTheDocument();
+    expect(screen.getByText("OpenAI")).toBeInTheDocument();
+    expect(screen.getAllByText("2019").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Undisclosed").length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: /Official.*source/i }).every((link) => link.getAttribute("href")?.startsWith("https://www.khoslaventures.com/"))).toBe(true);
+    expect(screen.getByText(/not capital weighted/i)).toBeInTheDocument();
+  });
+
+  it("projects exact venture company IDs without creating ownership claims", () => {
+    render(<App initialPath="/investors/venture/companies" />);
+
+    expect(screen.getByRole("heading", { name: /One company.*Every tracked firm/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Company relationship index" })).toBeInTheDocument();
+    expect(within(screen.getByRole("navigation", { name: "Venture research views" })).getByRole("link", { name: "Companies" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("heading", { name: "OpenAI" })).toBeInTheDocument();
+    expect(screen.getAllByText("3 firms").length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: "OpenAI source from Khosla Ventures" })).toHaveAttribute("href", expect.stringMatching(/^https:\/\/www\.khoslaventures\.com\//));
+    expect(screen.getByText(/do not establish ownership, syndication/)).toBeInTheDocument();
+  });
+
+  it("shows exact pair overlap without a portfolio-similarity score", () => {
+    render(<App initialPath="/investors/venture/overlap" />);
+
+    expect(screen.getByRole("heading", { name: /Overlap.*without a score/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tracked relationship overlap" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Exact overlap matrix" })).toBeInTheDocument();
+    expect(within(screen.getByRole("navigation", { name: "Venture research views" })).getByRole("link", { name: "Overlap" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByLabelText("Selected tracked relationship overlap")).toHaveTextContent("Shared released companies");
+    expect(screen.getByText(/not proof of the same financing round/)).toBeInTheDocument();
+    expect(screen.queryByText(/similarity score/i)).not.toBeInTheDocument();
   });
 
   it("keeps one product navigation between investors and the agent", () => {
@@ -168,6 +229,7 @@ describe("Quantify web app", () => {
     expect(screen.getByRole("heading", { name: "Allocation" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "History" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /SEC filing/i })).toHaveAttribute("href", expect.stringMatching(/^https:\/\/www\.sec\.gov\//));
+    expect(screen.getAllByRole("link", { name: /NVDA Nvidia corporation/i })[0]).toHaveAttribute("href", "/companies/nvda");
   });
 
   it("withholds derived values when a filing fails the source-integrity check", () => {
@@ -189,6 +251,7 @@ describe("Quantify web app", () => {
     expect(screen.getByText("Sum across tracked managers")).toBeInTheDocument();
     expect(screen.getByText(/not market capitalization, total institutional ownership/i)).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /SEC/i }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: /Policy Named policy available/i })).toHaveAttribute("href", "/intelligence/policy");
   });
 
   it("connects a company to exact released SEC earnings when covered", () => {
@@ -198,6 +261,7 @@ describe("Quantify web app", () => {
     expect(screen.getByText("$111.18B")).toBeInTheDocument();
     expect(screen.getByText("↑ 16.6% YoY")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /0000320193-26-000013/i })).toHaveAttribute("href", expect.stringMatching(/^https:\/\/www\.sec\.gov\/Archives\//));
+    expect(screen.getByRole("link", { name: "All earnings →" })).toHaveAttribute("href", "/intelligence/earnings");
   });
 
   it("connects NVDA only to the exact product-naming export rule", () => {
@@ -207,12 +271,16 @@ describe("Quantify web app", () => {
     expect(screen.getByText("NVIDIA H200 · AMD MI325X")).toBeInTheDocument();
     expect(screen.getByText(/does not establish revenue exposure/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Official source/i })).toHaveAttribute("href", expect.stringMatching(/^https:\/\/www\.federalregister\.gov\//));
+    expect(screen.getByRole("link", { name: "All policy →" })).toHaveAttribute("href", "/intelligence/policy");
   });
 
-  it("lists company ownership views derived from the same frozen release", async () => {
+  it("lists reported company positions derived from the same frozen release", async () => {
     const user = userEvent.setup();
     render(<App initialPath="/companies" />);
 
+    expect(screen.getByRole("heading", { name: "Who reports what." })).toBeInTheDocument();
+    expect(screen.getByText("Derived from 13F release")).toBeInTheDocument();
+    expect(screen.queryByText("Who owns what.")).not.toBeInTheDocument();
     await user.type(screen.getByPlaceholderText("Ticker, issuer, or theme"), "NVDA");
 
     expect(screen.getByText("Nvidia corporation")).toBeInTheDocument();
@@ -269,8 +337,9 @@ describe("Quantify web app", () => {
   it("renders the bounded BLS macro release with explicit calculations and terms", () => {
     render(<App initialPath="/markets/macro" />);
 
-    expect(screen.getByRole("heading", { name: "Three signals. Exact scope." })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Current release" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Macro signals. Exact scope." })).toBeInTheDocument();
+    expect(screen.getByText("3 released observations")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Released observations" })).toBeInTheDocument();
     expect(screen.getByText("3.4%")).toBeInTheDocument();
     expect(screen.getByText("2.5%")).toBeInTheDocument();
     expect(screen.getByText("4.1%")).toBeInTheDocument();
@@ -280,12 +349,15 @@ describe("Quantify web app", () => {
   });
 
   it("keeps intelligence empty until an eligible event release exists", () => {
-    render(<App initialPath="/intelligence" />);
+    const { container } = render(<App initialPath="/intelligence" />);
 
-    expect(screen.getByRole("heading", { name: /What happened. What changed/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "What happened. What changed. What is connected." })).toBeInTheDocument();
+    expect(container.querySelectorAll(".intelligence-page .data-hero h1 > span")).toHaveLength(3);
     expect(screen.getByText("Earnings + policy available")).toBeInTheDocument();
+    expect(screen.getByText("Narrative events unavailable")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /Available/i })).toHaveLength(2);
     expect(screen.getAllByText("Release required")).toHaveLength(2);
+    expect(screen.getByRole("navigation", { name: "Connected research" })).toBeInTheDocument();
   });
 
   it("shows exact public release operations without implying internal health", () => {
@@ -294,7 +366,8 @@ describe("Quantify web app", () => {
     expect(screen.getByRole("heading", { name: "Every public release. One exact state." })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Catalog state" })).toBeInTheDocument();
     expect(screen.getByRole("table")).toBeInTheDocument();
-    expect(screen.getByText("11 declared catalogs")).toBeInTheDocument();
+    expect(screen.getByText("12 declared catalogs")).toBeInTheDocument();
+    expect(screen.getByText("Venture capital")).toBeInTheDocument();
     expect(screen.getByText("Crypto market")).toBeInTheDocument();
     expect(screen.getAllByText("Unavailable").length).toBeGreaterThan(0);
     expect(screen.getByText(/not uptime, review throughput, or production telemetry/i)).toBeInTheDocument();
@@ -320,6 +393,43 @@ describe("Quantify web app", () => {
     expect(screen.getByText("Effective 2026-10-01")).toBeInTheDocument();
     expect(screen.getByText("NVIDIA H200 · AMD MI325X")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /Official source/i })).toHaveLength(3);
+    expect(screen.getByRole("link", { name: "NVDA →" })).toHaveAttribute("href", "/companies/nvda");
+    expect(screen.queryByRole("link", { name: "AMD →" })).not.toBeInTheDocument();
     expect(screen.queryByText(/stocks.*up|stocks.*down|cut probability/i)).not.toBeInTheDocument();
+  });
+
+  it("connects every primary research section through concise released paths", () => {
+    const { rerender } = render(<App initialPath="/markets" />);
+    expect(screen.getByRole("navigation", { name: "Connected research" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Companies Open filed ETF holdings by issuer/i })).toHaveAttribute("href", "/companies");
+    expect(screen.getByText("Macro + rates + filed ETF data available")).toBeInTheDocument();
+    expect(screen.getByText("Broad market release unavailable")).toBeInTheDocument();
+    expect(screen.getByText("Current filed flows + holdings")).toBeInTheDocument();
+
+    rerender(<App initialPath="/investors" />);
+    expect(screen.getByRole("link", { name: /Companies Open a security across reporting managers/i })).toHaveAttribute("href", "/companies");
+
+    rerender(<App initialPath="/companies" />);
+    expect(screen.getByRole("link", { name: /Intelligence Read released earnings and policy records/i })).toHaveAttribute("href", "/intelligence");
+
+    rerender(<App initialPath="/intelligence" />);
+    expect(screen.getByRole("link", { name: /Markets Read rates, ETF, and crypto context/i })).toHaveAttribute("href", "/markets");
+  });
+
+  it("keeps one primary landmark and one page heading on every public route", () => {
+    const routes = [
+      "/", "/markets", "/markets/macro", "/markets/rates", "/markets/etfs", "/markets/etfs/vgt", "/markets/crypto",
+      "/investors", "/investors/compare", "/investors/altimeter-capital", "/investors/venture", "/investors/venture/companies",
+      "/investors/venture/overlap", "/investors/venture/khosla-ventures", "/companies", "/companies/nvda", "/intelligence",
+      "/intelligence/earnings", "/intelligence/policy", "/intelligence/releases", "/agent", "/outside-release"
+    ];
+
+    for (const route of routes) {
+      const view = render(<App initialPath={route} />);
+      expect(view.container.querySelectorAll("main"), route).toHaveLength(1);
+      expect(view.container.querySelectorAll("h1"), route).toHaveLength(1);
+      expect(screen.getByRole("navigation", { name: "Primary navigation" }), route).toBeInTheDocument();
+      view.unmount();
+    }
   });
 });

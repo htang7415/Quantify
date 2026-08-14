@@ -3,6 +3,7 @@ import type { PublicCatalog, PublicRelease, PublicReleaseIndex } from "./types";
 
 const catalogLabels: Record<PublicCatalog, string> = {
   investors: "Investors",
+  venture: "Venture capital",
   markets: "Markets",
   macro: "Macro",
   rates: "Rates",

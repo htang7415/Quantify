@@ -34,7 +34,7 @@ export function GlobalSearch() {
         </header>
         <label className="global-search-input">
           <span aria-hidden="true">⌕</span>
-          <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Company, ticker, manager, ETF, rate, or policy" />
+          <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Company, ticker, manager, venture firm, ETF, rate, or policy" />
           <kbd>Esc</kbd>
         </label>
         <div className="global-search-summary"><span>{query ? `${results.length} matches` : "Explore released entities"}</span><span>Exact identifiers · deterministic text match</span></div>
@@ -44,7 +44,7 @@ export function GlobalSearch() {
             <strong>{entity.symbol && <b>{entity.symbol}</b>}{entity.label}<small>{entity.description}</small></strong>
             <span className="search-release">{entity.availability === "source_review" ? "Source review" : `${entity.sources.length} ${entity.sources.length === 1 ? "release" : "releases"}`}<small>{sentenceCase(entity.sources[0].freshness)}</small></span>
           </a>)}
-          {results.length === 0 && <div className="global-search-empty"><strong>No released match.</strong><p>Try an exact ticker, manager, ETF, macro series, Treasury maturity, or policy authority.</p></div>}
+          {results.length === 0 && <div className="global-search-empty"><strong>No released match.</strong><p>Try an exact ticker, manager, venture firm, ETF, macro series, Treasury maturity, or policy authority.</p></div>}
         </div>
         <footer>Search does not use narrative similarity and cannot create an entity relationship.</footer>
       </section>

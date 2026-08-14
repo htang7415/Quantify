@@ -16,6 +16,7 @@ describe("released entity graph", () => {
     expect(searchReleasedEntities("0001067983").some((entity) => entity.id === "investor:0001067983")).toBe(true);
     expect(searchReleasedEntities("VGT")[0]).toMatchObject({ kind: "ETF", symbol: "VGT" });
     expect(searchReleasedEntities("10Y")[0]).toMatchObject({ id: "rates:10Y", kind: "Rates" });
+    expect(searchReleasedEntities("Founders Fund")[0]).toMatchObject({ id: "venture:founders-fund", kind: "Venture firm" });
     expect(searchReleasedEntities("an unrelated narrative idea")).toEqual([]);
   });
 

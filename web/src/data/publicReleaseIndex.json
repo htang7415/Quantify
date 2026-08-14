@@ -1,6 +1,6 @@
 {
-  "schema_version": "public-release-index.v2",
-  "generated_at": "2026-08-14T01:22:25Z",
+  "schema_version": "public-release-index.v3",
+  "generated_at": "2026-08-14T04:22:21Z",
   "releases": [
     {
       "catalog": "investors",
@@ -10,6 +10,15 @@
       "observed_at": "2026-05-15T00:00:00Z",
       "freshness": "not_applicable",
       "limitations": ["Positions cover only the declared frozen Form 13F reporting scope."]
+    },
+    {
+      "catalog": "venture",
+      "status": "available",
+      "release_id": "vc-2026-08-14-fdff25729f10",
+      "manifest_hash": "fdff25729f1028c485e8aec2e69eebcdedc3b6738eaf9199a8388e182dc22728",
+      "observed_at": "2026-08-14T04:22:21Z",
+      "freshness": "not_applicable",
+      "limitations": ["Bounded official-source sample for four venture firms; no ownership, position value, portfolio weight, valuation, or return is published."]
     },
     {
       "catalog": "markets",

@@ -1,3 +1,4 @@
+import { SectionConnections } from "../SectionConnections";
 import { SiteNav } from "../SiteNav";
 import { cryptoExposureCatalog } from "../crypto/catalog";
 import { etfFlowCatalog, etfFreshness } from "../etfs/catalog";
@@ -11,25 +12,36 @@ const marketRelease = releaseFor("markets");
 const macroRelease = releaseFor("macro");
 const cryptoRelease = releaseFor("crypto");
 const ratesRelease = releaseFor("rates");
+const etfFlowRelease = releaseFor("etf_flows");
+const etfHoldingsRelease = releaseFor("etf_holdings");
+const cryptoExposureRelease = releaseFor("crypto_exposure");
 const treasuryState = ratesFreshness();
 const macroState = macroFreshness();
 const etfState = etfFreshness();
 
 const sections = [
-  { label: "Macro", status: `${macroState === "current" ? "Current" : "Stale"} release`, available: true },
-  { label: "Rates", status: `${treasuryState === "current" ? "Current" : "Stale"} release`, available: true },
-  { label: "ETFs", status: `${etfState === "current" ? "Current" : "Stale"} filed flows`, available: true },
+  { label: "Macro", status: macroRelease.status === "available" ? `${sentenceCase(macroState)} release` : "Release required", available: macroRelease.status === "available" },
+  { label: "Rates", status: ratesRelease.status === "available" ? `${sentenceCase(treasuryState)} release` : "Release required", available: ratesRelease.status === "available" },
+  { label: "ETFs", status: etfFlowRelease.status === "available" && etfHoldingsRelease.status === "available" ? `${sentenceCase(etfState)} filed flows + holdings` : "Complete release required", available: etfFlowRelease.status === "available" && etfHoldingsRelease.status === "available" },
   { label: "Sectors", status: "Release required", available: false },
-  { label: "Crypto", status: "ETP exposure available", available: true },
+  { label: "Crypto", status: cryptoExposureRelease.status === "available" ? "Reported ETP exposure available" : "Release required", available: cryptoExposureRelease.status === "available" },
   { label: "Commodities", status: "Release required", available: false }
 ];
+
+function sectionIdentity(label: string): string {
+  if (label === "Macro") return macroRelease.release_id ?? "Not released";
+  if (label === "Rates") return ratesRelease.release_id ?? "Not released";
+  if (label === "Crypto") return cryptoExposureRelease.release_id ?? "Not released";
+  if (label === "ETFs") return `${etfFlowRelease.release_id ?? "Flows not released"} · ${etfHoldingsRelease.release_id ?? "Holdings not released"}`;
+  return "No values published";
+}
 
 function MarketNav() {
   return <SiteNav active="markets" action={{ label: "Verify a claim", href: "/agent" }} />;
 }
 
 function MarketFooter() {
-  return <footer className="catalog-footer market-catalog-footer"><div><strong>Market data boundary</strong><span>Official BLS macro and Treasury rates are independently released.</span></div><div><p>{marketRelease.limitations[0]} {cryptoRelease.limitations[0]}</p></div><p>Research data only. No price predictions, trade recommendations, or personalized investment advice.</p></footer>;
+  return <footer className="catalog-footer market-catalog-footer"><div><strong>Market data boundary</strong><span>Official BLS, Treasury, and SEC filing datasets are independently released.</span></div><div><p>{marketRelease.limitations[0]} {cryptoRelease.limitations[0]}</p></div><p>Research data only. No price predictions, trade recommendations, or personalized investment advice.</p></footer>;
 }
 
 export function MarketsPage() {
@@ -37,16 +49,21 @@ export function MarketsPage() {
     <main className="data-app markets-page">
       <MarketNav />
       <section className="data-hero market-data-hero page-shell">
-        <div><p className="terminal-eyebrow">Markets · released data</p><h1>Market context.<br />Source visible.</h1><p>Official macro, rates, and filed ETF data—dated, sourced, and separated from unreleased market layers.</p><div className="scope-pills"><span><i /> Macro + rates + ETF flows available</span><span>Broader market release pending</span></div></div>
+        <div><p className="terminal-eyebrow">Markets · released data</p><h1>Market context.<br />Source visible.</h1><p>Official macro, rates, and filed ETF data—dated, sourced, and separated from unreleased market layers.</p><div className="scope-pills"><span><i /> Macro + rates + filed ETF data available</span><span>{marketRelease.status === "available" ? "Broad market release available" : "Broad market release unavailable"}</span></div></div>
         <a className="rates-preview-panel" href="/markets/rates"><span>U.S. Treasury · {readableDate(treasuryRatesCatalog.observed_at.slice(0, 10))} · {treasuryState}</span><div><b>2Y<i>{rate("2Y").toFixed(2)}%</i></b><b>10Y<i>{rate("10Y").toFixed(2)}%</i></b><b>30Y<i>{rate("30Y").toFixed(2)}%</i></b></div><strong>Open yield curve →</strong></a>
       </section>
+      <SectionConnections items={[
+        { label: "Companies", detail: "Open filed ETF holdings by issuer", href: "/companies" },
+        { label: "Investors", detail: "Trace crypto-linked manager positions", href: "/investors" },
+        { label: "Intelligence", detail: "Connect official earnings and policy", href: "/intelligence" }
+      ]} />
       <nav className="market-subnav page-shell" aria-label="Market sections">
         {sections.map((section) => <a className={section.available ? "crypto-link" : ""} href={section.label === "Macro" ? "/markets/macro" : section.label === "Crypto" ? "/markets/crypto" : section.label === "Rates" ? "/markets/rates" : section.label === "ETFs" ? "/markets/etfs" : `/markets#${section.label.toLowerCase()}`} key={section.label}>{section.label}</a>)}
       </nav>
       <section className="release-grid page-shell" aria-labelledby="market-release-title">
         <div className="data-section-head"><div><p className="terminal-eyebrow">Release status</p><h2 id="market-release-title">Market releases</h2></div></div>
         <div className="market-layer-grid">
-          {sections.map((section) => <article className={section.available ? "market-layer-available" : ""} id={section.label.toLowerCase()} key={section.label}><span>{section.label === "Macro" ? `${macroMetric("headline_cpi_yoy").value_pct.toFixed(1)}%` : section.label === "Rates" ? `${rate("10Y").toFixed(2)}%` : section.label === "Crypto" ? "13F" : section.label === "ETFs" ? "N-PORT" : "—"}</span><h3>{section.label}</h3><p>{section.status}</p><i>{section.label === "Macro" ? macroRelease.release_id : section.label === "Rates" ? ratesRelease.release_id : section.label === "Crypto" ? releaseFor("crypto_exposure").release_id : section.label === "ETFs" ? releaseFor("etf_flows").release_id : "No values published"}</i></article>)}
+          {sections.map((section) => <article className={section.available ? "market-layer-available" : ""} id={section.label.toLowerCase()} key={section.label}><span>{section.label === "Macro" ? `${macroMetric("headline_cpi_yoy").value_pct.toFixed(1)}%` : section.label === "Rates" ? `${rate("10Y").toFixed(2)}%` : section.label === "Crypto" ? "13F" : section.label === "ETFs" ? "N-PORT" : "—"}</span><h3>{section.label}</h3><p>{section.status}</p><i>{sectionIdentity(section.label)}</i></article>)}
         </div>
       </section>
       <section className="methodology-panel page-shell"><p className="terminal-eyebrow">Publication path</p><div className="methodology-steps"><span><b>01</b>Approved source</span><span><b>02</b>Exact methodology</span><span><b>03</b>Freshness + correction</span><span><b>04</b>Immutable release</span></div></section>
@@ -69,11 +86,11 @@ export function EtfPage() {
   const netTotal = etfFlowCatalog.funds.reduce((total, fund) => total + fund.three_month_net_flow_usd, 0);
   return <main className="data-app etf-page">
     <MarketNav />
-    <section className="data-hero page-shell"><div><p className="terminal-eyebrow">Markets / ETFs / filed flows</p><h1>Filed fund flows. Exact inputs.</h1><p>Three months of SEC Form N-PORT sales, reinvestments, and redemptions for five funds—without substituting changes in net assets for flows or hiding fund-specific report dates.</p><div className="scope-pills"><span><i /> {sentenceCase(freshness)}</span><span>Observed through {readableDate(etfFlowCatalog.observed_through)}</span><span>Delayed filing view</span></div></div></section>
+    <section className="data-hero page-shell"><div><p className="terminal-eyebrow">Markets / ETFs / filed flows</p><h1>Filed fund flows. Exact inputs.</h1><p>Three months of SEC Form N-PORT sales, reinvestments, and redemptions for {etfFlowCatalog.funds.length} funds—without substituting changes in net assets for flows or hiding fund-specific report dates.</p><div className="scope-pills"><span><i /> {sentenceCase(freshness)}</span><span>Observed through {readableDate(etfFlowCatalog.observed_through)}</span><span>Delayed filing view</span></div></div></section>
     <nav className="market-subnav page-shell" aria-label="Market sections"><a href="/markets">All markets</a><a href="/markets/macro">Macro</a><a href="/markets/rates">Rates</a><a className="active" href="/markets/etfs">ETFs</a><a href="/markets/crypto">Crypto</a></nav>
     <section className="etf-flow-section page-shell" aria-labelledby="etf-flow-title">
       <div className="data-section-head"><div><p className="terminal-eyebrow">SEC Form N-PORT · Item B.6</p><h2 id="etf-flow-title">Three-month filed flows</h2></div><span className={`release-badge freshness-${freshness}`}>{signedMoney(netTotal)} selected universe</span></div>
-      <div className="holdings-scroll"><table className="holdings-table etf-flow-table"><thead><tr><th>Fund</th><th>Category</th><th>Oldest filed month</th><th>Middle filed month</th><th>Latest filed month</th><th>3 months</th><th>Net assets</th><th>Source</th></tr></thead><tbody>{etfFlowCatalog.funds.map((fund) => { const detail = etfHoldingsFund(fund.ticker); return <tr key={fund.fund_id}><td>{detail ? <a href={`/markets/etfs/${detail.slug}`}><strong>{fund.ticker}</strong><span>{fund.name}</span></a> : <><strong>{fund.ticker}</strong><span>{fund.name}</span></>}</td><td>{fund.category}<span>Report {readableDate(fund.report_date)} · filed {readableDate(fund.filed_date)}</span></td>{fund.monthly_flows.map((flow) => <td className={flow.net_flow_usd > 0 ? "positive" : flow.net_flow_usd < 0 ? "negative" : ""} key={flow.month}>{signedMoney(flow.net_flow_usd)}<span>{monthLabel(flow.month)}</span></td>)}<td className={fund.three_month_net_flow_usd > 0 ? "positive" : "negative"}><strong>{signedMoney(fund.three_month_net_flow_usd)}</strong></td><td>{money(fund.net_assets_usd)}</td><td><a className="table-source-link" href={fund.source_url} target="_blank" rel="noreferrer">N-PORT ↗</a></td></tr>; })}</tbody></table></div>
+      <div className="holdings-scroll"><table className="holdings-table etf-flow-table"><thead><tr><th>Fund</th><th>Category</th><th>Oldest filed month</th><th>Middle filed month</th><th>Latest filed month</th><th>3 months</th><th>Net assets</th><th>Source</th></tr></thead><tbody>{etfFlowCatalog.funds.map((fund) => { const detail = etfHoldingsFund(fund.ticker); return <tr key={fund.fund_id}><td>{detail ? <a href={`/markets/etfs/${detail.slug}`}><strong>{fund.ticker}</strong><span>{fund.name}</span></a> : <><strong>{fund.ticker}</strong><span>{fund.name}</span></>}</td><td>{fund.category}<span>Report {readableDate(fund.report_date)} · filed {readableDate(fund.filed_date)}</span></td>{fund.monthly_flows.map((flow) => <td className={flow.net_flow_usd > 0 ? "positive" : flow.net_flow_usd < 0 ? "negative" : ""} key={flow.month}>{signedMoney(flow.net_flow_usd)}<span>{monthLabel(flow.month)}</span></td>)}<td className={fund.three_month_net_flow_usd > 0 ? "positive" : fund.three_month_net_flow_usd < 0 ? "negative" : ""}><strong>{signedMoney(fund.three_month_net_flow_usd)}</strong></td><td>{money(fund.net_assets_usd)}</td><td><a className="table-source-link" href={fund.source_url} target="_blank" rel="noreferrer">N-PORT ↗</a></td></tr>; })}</tbody></table></div>
       <p className="data-note">{etfFlowCatalog.methodology}</p>
     </section>
     <section className="etf-method page-shell"><div><p className="terminal-eyebrow">Calculation boundary</p><h2>Sales + reinvestment − redemptions.</h2></div><div>{etfFlowCatalog.limitations.map((limitation) => <p key={limitation}>{limitation}</p>)}</div></section>
@@ -107,7 +124,7 @@ export function EtfDetailPage({ slug }: { slug: string }) {
 
       <section className="terminal-module" aria-labelledby="etf-comparison-title">
         <div className="module-head"><div><span>02</span><h2 id="etf-comparison-title">ETF comparison</h2></div><p>Fund-specific report dates retained</p></div>
-        <div className="holdings-scroll"><table className="holdings-table etf-comparison-table"><thead><tr><th>Fund</th><th>Three-month filed flow</th><th>Top position</th><th>Top position weight</th><th>Top-ten concentration</th><th>Report date</th></tr></thead><tbody>{etfHoldingsCatalog.funds.map((item) => { const itemFlow = etfFlowCatalog.funds.find((row) => row.ticker === item.ticker); if (!itemFlow) return null; const top = item.holdings[0]; return <tr key={item.fund_id}><td><a href={`/markets/etfs/${item.slug}`}><strong>{item.ticker}</strong><span>{item.name}</span></a></td><td className={itemFlow.three_month_net_flow_usd > 0 ? "positive" : "negative"}>{signedMoney(itemFlow.three_month_net_flow_usd)}</td><td>{top.ticker ?? displayName(top.issuer_name)}</td><td>{top.filed_percentage.toFixed(2)}%</td><td>{item.top_ten_concentration_pct.toFixed(1)}%</td><td>{readableDate(item.report_date)}</td></tr>; })}</tbody></table></div>
+        <div className="holdings-scroll"><table className="holdings-table etf-comparison-table"><thead><tr><th>Fund</th><th>Three-month filed flow</th><th>Top position</th><th>Top position weight</th><th>Top-ten concentration</th><th>Report date</th></tr></thead><tbody>{etfHoldingsCatalog.funds.map((item) => { const itemFlow = etfFlowCatalog.funds.find((row) => row.ticker === item.ticker); if (!itemFlow) return null; const top = item.holdings[0]; return <tr key={item.fund_id}><td><a href={`/markets/etfs/${item.slug}`}><strong>{item.ticker}</strong><span>{item.name}</span></a></td><td className={itemFlow.three_month_net_flow_usd > 0 ? "positive" : itemFlow.three_month_net_flow_usd < 0 ? "negative" : ""}>{signedMoney(itemFlow.three_month_net_flow_usd)}</td><td>{top.ticker ?? displayName(top.issuer_name)}</td><td>{top.filed_percentage.toFixed(2)}%</td><td>{item.top_ten_concentration_pct.toFixed(1)}%</td><td>{readableDate(item.report_date)}</td></tr>; })}</tbody></table></div>
       </section>
 
       <section className="etf-method etf-detail-boundary"><div><p className="terminal-eyebrow">Publication boundary</p><h2>Filed positions, not current exposure.</h2></div><div>{etfHoldingsCatalog.limitations.map((limitation) => <p key={limitation}>{limitation}</p>)}</div></section>
@@ -126,12 +143,12 @@ export function MacroPage() {
     <main className="data-app macro-page">
       <MarketNav />
       <section className="data-hero macro-hero page-shell">
-        <div><p className="terminal-eyebrow">Markets / macro / official release</p><h1>Three signals. Exact scope.</h1><p>Headline inflation, core inflation, and unemployment from a frozen U.S. Bureau of Labor Statistics release—dated, reproducible, and without a forecast.</p><div className="scope-pills"><span><i /> {sentenceCase(freshness)}</span><span>Period {macroPeriod(blsMacroCatalog.observed_period)}</span></div></div>
+        <div><p className="terminal-eyebrow">Markets / macro / official release</p><h1>Macro signals. Exact scope.</h1><p>Headline inflation, core inflation, and unemployment from a frozen U.S. Bureau of Labor Statistics release—dated, reproducible, and without a forecast.</p><div className="scope-pills"><span><i /> {blsMacroCatalog.observations.length} released observations</span><span>{sentenceCase(freshness)} · {macroPeriod(blsMacroCatalog.observed_period)}</span></div></div>
         <a className="source-button" href={blsMacroCatalog.terms_url} target="_blank" rel="noreferrer">BLS data terms ↗</a>
       </section>
       <nav className="market-subnav page-shell" aria-label="Market sections"><a href="/markets">All markets</a><a className="active" href="/markets/macro">Macro</a><a href="/markets/rates">Rates</a><a href="/markets/etfs">ETFs</a><a href="/markets/crypto">Crypto</a></nav>
       <section className="macro-metric-grid page-shell" aria-labelledby="macro-metrics-title">
-        <div className="data-section-head"><div><p className="terminal-eyebrow">BLS observations</p><h2 id="macro-metrics-title">Current release</h2></div><span className={`release-badge freshness-${freshness}`}>{sentenceCase(freshness)}</span></div>
+      <div className="data-section-head"><div><p className="terminal-eyebrow">BLS observations</p><h2 id="macro-metrics-title">Released observations</h2></div><span className={`release-badge freshness-${freshness}`}>{sentenceCase(freshness)}</span></div>
         <div className="macro-card-grid">
           {blsMacroCatalog.observations.map((metric) => <article className="macro-metric-card" key={metric.metric_id}>
             <div><span>{metric.label}</span><a href={metric.source_url} target="_blank" rel="noreferrer">{metric.series_id} ↗</a></div>
@@ -201,7 +218,7 @@ export function CryptoPage() {
             <article className="crypto-asset-card" key={asset.symbol}>
               <div><strong>{asset.symbol}</strong><span>{asset.name}</span></div><i>Native asset · {asset.network}</i>
               <dl><div><dt>Spot price</dt><dd>—</dd></div><div><dt>Reported ETP value</dt><dd>{money(asset.reported_etp_value_usd)}</dd></div><div><dt>Managers</dt><dd>{asset.reporting_manager_count}</dd></div></dl>
-              <p>{asset.positions.length ? `${asset.positions.length} released ETP position · market data unavailable.` : "No ETP position in the tracked manager release · market data unavailable."}</p>
+              <p>{asset.positions.length ? `${asset.positions.length} released ETP ${asset.positions.length === 1 ? "position" : "positions"} · market data unavailable.` : "No ETP position in the tracked manager release · market data unavailable."}</p>
             </article>
           ))}
         </div>

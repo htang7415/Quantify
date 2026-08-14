@@ -1,9 +1,10 @@
 import { useState } from "react";
+import { SectionConnections } from "../SectionConnections";
 import { SiteNav } from "../SiteNav";
 import { earningsForTicker } from "../earnings/catalog";
 import { etfExposuresForTicker } from "../etfs/holdingsCatalog";
 import { policyEventsForTicker } from "../policy/catalog";
-import { displayName, holdingChangeText, money, quarter, sentenceCase } from "../format";
+import { directionalPercent, displayName, holdingChangeText, money, quarter, sentenceCase } from "../format";
 import { CatalogFooter } from "../investors/InvestorPages";
 import { investorCatalog } from "../investors/catalog";
 import { buildCompanyOwnership } from "./ownership";
@@ -26,13 +27,18 @@ export function CompanyIndex() {
       <CompanyNav />
       <section className="data-hero page-shell">
         <div>
-          <p className="terminal-eyebrow">Company ownership / {quarter(investorCatalog.report_period)}</p>
-          <h1>Who owns what.</h1>
+          <p className="terminal-eyebrow">Reported company positions / {quarter(investorCatalog.report_period)}</p>
+          <h1>Who reports what.</h1>
           <p>Reported manager positions connected to each mapped security in Quantify's frozen 13F release.</p>
-          <div className="scope-pills"><span><i /> Derived from release</span><span>Not total institutional ownership</span></div>
+          <div className="scope-pills"><span><i /> Derived from 13F release</span><span>Not total institutional ownership</span></div>
         </div>
         <label className="terminal-search"><span>Search companies</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ticker, issuer, or theme" /></label>
       </section>
+      <SectionConnections items={[
+        { label: "Investors", detail: "Trace exact reporting-manager positions", href: "/investors" },
+        { label: "Markets", detail: "Open filed ETF and market context", href: "/markets" },
+        { label: "Intelligence", detail: "Read released earnings and policy records", href: "/intelligence" }
+      ]} />
       <section className="company-directory page-shell" aria-labelledby="company-directory-title">
         <div className="data-section-head"><div><p className="terminal-eyebrow">Released mappings</p><h2 id="company-directory-title">{matches.length} companies</h2></div></div>
         <div className="company-card-grid">
@@ -46,7 +52,7 @@ export function CompanyIndex() {
                 <div><dt>Reporting managers</dt><dd>{company.reporting_manager_count}</dd></div>
               </dl>
               <div className="company-card-connections" aria-label={`${company.ticker} released connections`}><span>{connections.etfRows} ETF {connections.etfRows === 1 ? "row" : "rows"}</span><span>{connections.earningsAvailable ? "Earnings" : "No earnings release"}</span><span>{connections.policyEvents} policy {connections.policyEvents === 1 ? "event" : "events"}</span></div>
-              <span className="card-open">Open ownership →</span>
+              <span className="card-open">Open reported positions →</span>
             </a>;
           })}
         </div>
@@ -71,10 +77,10 @@ export function CompanyDetail({ slug }: { slug: string }) {
       <div className="detail-shell">
         <a className="back-link" href="/companies">← All companies</a>
         <header className="company-detail-head">
-          <div><p className="terminal-eyebrow">Reported ownership view</p><h1><span>{company.ticker}</span>{displayName(company.issuer)}</h1><p>{company.themes.join(" · ") || "Unclassified"}</p></div>
+          <div><p className="terminal-eyebrow">Reported position view</p><h1><span>{company.ticker}</span>{displayName(company.issuer)}</h1><p>{company.themes.join(" · ") || "Unclassified"}</p></div>
           <span className="release-badge">{quarter(investorCatalog.report_period)} · Frozen</span>
         </header>
-        <section className="overview-module" aria-label="Company ownership overview">
+        <section className="overview-module" aria-label="Reported company position overview">
           <div className="overview-metric"><strong>{money(company.tracked_disclosed_value_usd)}</strong><span>Sum across tracked managers</span></div>
           <div className="overview-metric"><strong>{company.reporting_manager_count}</strong><span>Reporting managers</span></div>
           <div className="overview-metric"><strong>{company.reported_position_count}</strong><span>Reported security rows</span></div>
@@ -109,13 +115,13 @@ export function CompanyDetail({ slug }: { slug: string }) {
         </section>}
 
         {earnings && <section className="terminal-module company-earnings-module" aria-labelledby="company-earnings-title">
-          <div className="module-head"><div><span>{earningsModule}</span><h2 id="company-earnings-title">Reported earnings</h2></div><p>SEC 10-Q · exact comparable facts</p></div>
-          <div className="company-earnings-grid"><div><span>Revenue</span><strong>{money(earnings.revenue.value)}</strong><b>↑ {earnings.revenue.yoy_change_pct.toFixed(1)}% YoY</b></div><div><span>Diluted EPS</span><strong>${earnings.diluted_eps.value.toFixed(2)}</strong><b>↑ {earnings.diluted_eps.yoy_change_pct.toFixed(1)}% YoY</b></div><div><span>Fiscal period</span><strong>FY{earnings.fiscal_year} {earnings.fiscal_period}</strong><b>Filed {earnings.filed_at}</b></div><div><span>SEC source</span><strong>{earnings.form}</strong><a href={earnings.filing_url} target="_blank" rel="noreferrer">{earnings.accession} ↗</a></div></div>
+          <div className="module-head"><div><span>{earningsModule}</span><h2 id="company-earnings-title">Reported earnings</h2></div><a className="module-connection-link" href="/intelligence/earnings">All earnings →</a></div>
+          <div className="company-earnings-grid"><div><span>Revenue</span><strong>{money(earnings.revenue.value)}</strong><b>{directionalPercent(earnings.revenue.yoy_change_pct)} YoY</b></div><div><span>Diluted EPS</span><strong>${earnings.diluted_eps.value.toFixed(2)}</strong><b>{directionalPercent(earnings.diluted_eps.yoy_change_pct)} YoY</b></div><div><span>Fiscal period</span><strong>FY{earnings.fiscal_year} {earnings.fiscal_period}</strong><b>Filed {earnings.filed_at}</b></div><div><span>SEC source</span><strong>{earnings.form}</strong><a href={earnings.filing_url} target="_blank" rel="noreferrer">{earnings.accession} ↗</a></div></div>
           <p className="company-scope-note">Reported results only. No estimates, surprise labels, guidance interpretation, future earnings date, or price reaction.</p>
         </section>}
 
         {policyEvents.length > 0 && <section className="terminal-module company-policy-module" aria-labelledby="company-policy-title">
-          <div className="module-head"><div><span>{policyModule}</span><h2 id="company-policy-title">Named policy scope</h2></div><p>Official record · not predicted impact</p></div>
+          <div className="module-head"><div><span>{policyModule}</span><h2 id="company-policy-title">Named policy scope</h2></div><a className="module-connection-link" href="/intelligence/policy">All policy →</a></div>
           {policyEvents.map((event) => <article className="company-policy-event" key={event.event_id}><div><span>{event.authority_name}</span><strong>{event.title}</strong><p>{event.details.kind === "advanced_computing_export_rule" ? event.details.named_products.join(" · ") : event.source_document_id}</p></div><div><span>Effective</span><strong>{event.effective_at}</strong><a href={event.source_url} target="_blank" rel="noreferrer">Official source ↗</a></div></article>)}
           <p className="company-scope-note">The official rule expressly names a product associated with this ticker. This connection does not establish revenue exposure, financial impact, or price direction.</p>
         </section>}
@@ -123,10 +129,10 @@ export function CompanyDetail({ slug }: { slug: string }) {
         <section className="connection-panel" aria-labelledby="company-connections-title">
           <div><p className="terminal-eyebrow">Connected intelligence</p><h2 id="company-connections-title">More forces, when released.</h2></div>
           <div className="connection-grid">
-            <span><b>Investors</b><i className="available">Available</i></span>
-            <span><b>ETF exposure</b><i className={etfExposures.length ? "available" : ""}>{etfExposures.length ? `${etfExposures.length} filed top-ten ${etfExposures.length === 1 ? "row" : "rows"}` : "No mapped row in release"}</i></span>
-            <span><b>Earnings</b><i className={earnings ? "available" : ""}>{earnings ? "Available" : "Not in current release"}</i></span>
-            <span><b>Policy + events</b><i className={policyEvents.length ? "available" : ""}>{policyEvents.length ? "Named policy available" : "No named policy in release"}</i></span>
+            <a href="#company-managers-title"><b>Investors</b><i className="available">Available · view managers →</i></a>
+            {etfExposures.length ? <a href={`/markets/etfs/${etfExposures[0].fund.slug}`}><b>ETF exposure</b><i className="available">{etfExposures.length} filed top-ten {etfExposures.length === 1 ? "row" : "rows"} →</i></a> : <span><b>ETF exposure</b><i>No mapped row in release</i></span>}
+            {earnings ? <a href="/intelligence/earnings"><b>Earnings</b><i className="available">Available · open intelligence →</i></a> : <span><b>Earnings</b><i>Not in current release</i></span>}
+            {policyEvents.length ? <a href="/intelligence/policy"><b>Policy</b><i className="available">Named policy available →</i></a> : <span><b>Policy</b><i>No named policy in release</i></span>}
           </div>
         </section>
       </div>

@@ -11,7 +11,7 @@ from scripts.build_public_release_candidate import build_candidate
 
 
 ROOT = Path(__file__).resolve().parents[1]
-RUN_AT = "2026-08-14T02:00:00Z"
+RUN_AT = "2026-08-14T05:00:00Z"
 
 
 def paths() -> dict[str, Path]:
@@ -158,12 +158,32 @@ def test_existing_target_and_implicit_time_fail_closed(tmp_path: Path) -> None:
 
 
 def test_candidate_manifest_schema_declares_review_and_rollback_boundaries() -> None:
-    schema = load(ROOT / "schemas/public_refresh_candidate.v1.schema.json")
-    assert schema["properties"]["schema_version"]["const"] == "public-refresh-candidate.v1"
+    schema = load(ROOT / "schemas/public_refresh_candidate.v2.schema.json")
+    assert schema["properties"]["schema_version"]["const"] == "public-refresh-candidate.v2"
     assert schema["properties"]["status"]["const"] == "ready_for_review"
     assert schema["properties"]["publication_authorized"]["const"] is False
     assert "investor_compilation" in schema["required"]
+    assert "venture_compilation" in schema["required"]
     assert schema["properties"]["previous_bindings"]["minItems"] == 2
+
+
+def test_candidate_compiles_reviewed_venture_source_without_promoting_it(tmp_path: Path) -> None:
+    active = paths()
+    target = tmp_path / "venture-candidate"
+    source = ROOT / "tests/fixtures/public_data/vc_portfolio_sources_candidate_2026-08-14.json"
+
+    manifest = build_candidate(**active, target_directory=target, run_at=RUN_AT, venture_source_path=source)
+
+    assert manifest["publication_authorized"] is False
+    assert manifest["venture_compilation"]["publication_authorized"] is False
+    assert manifest["venture_compilation"]["firm_count"] == 6
+    assert manifest["venture_compilation"]["relationship_count"] == 36
+    assert {row["catalog"] for row in manifest["previous_bindings"]} == {"venture", "etf_flows", "etf_holdings"}
+    catalog = load(target / "catalogs/vcCatalog.json")
+    index = {row["catalog"]: row for row in load(target / "publicReleaseIndex.json")["releases"]}
+    assert catalog["release_id"] == "vc-2026-08-14-6ff758da0f36"
+    assert index["venture"]["manifest_hash"] == catalog["manifest_hash"]
+    assert load(active["active_release_index_path"])["releases"][1]["release_id"] != catalog["release_id"]
 
 
 def test_manifest_bound_investor_compilation_is_replayable_and_network_free(tmp_path: Path, monkeypatch) -> None:

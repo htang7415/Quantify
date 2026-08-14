@@ -6,6 +6,7 @@ import { OverviewPage } from "./OverviewPage";
 import { VerificationPage } from "./VerificationPage";
 import { InvestorComparisonPage, InvestorDashboard, InvestorDetail } from "./investors/InvestorPages";
 import { ReleaseOperationsPage } from "./releases/ReleaseOperationsPage";
+import { VentureCompaniesPage, VentureDashboard, VentureDetail, VentureOverlapPage } from "./venture/VenturePages";
 import type { VerificationRequest, VerificationResponse } from "./types";
 
 type Verifier = (request: VerificationRequest) => Promise<VerificationResponse>;
@@ -23,6 +24,11 @@ export function App({ verifier, initialPath }: { verifier?: Verifier; initialPat
   if (path === "/markets/crypto") return <CryptoPage />;
   if (path === "/investors") return <InvestorDashboard />;
   if (path === "/investors/compare") return <InvestorComparisonPage />;
+  if (path === "/investors/venture") return <VentureDashboard />;
+  if (path === "/investors/venture/companies") return <VentureCompaniesPage />;
+  if (path === "/investors/venture/overlap") return <VentureOverlapPage />;
+  const ventureMatch = path.match(/^\/investors\/venture\/([a-z0-9-]+)$/);
+  if (ventureMatch) return <VentureDetail firmId={ventureMatch[1]} />;
   const investorMatch = path.match(/^\/investors\/([a-z0-9-]+)$/);
   if (investorMatch) return <InvestorDetail slug={investorMatch[1]} />;
   if (path === "/companies") return <CompanyIndex />;

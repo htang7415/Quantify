@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantify.local/schemas/public_candidate_gate_policy.v2.schema.json",
+  "title": "Quantify public candidate gate policy v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "policy_id", "allowed_changed_catalogs",
+    "maximum_manager_scope_change", "maximum_source_review_increase",
+    "maximum_manager_value_change_basis_points", "maximum_manager_holdings_change_basis_points",
+    "maximum_etf_net_assets_change_basis_points", "require_no_status_regression",
+    "require_no_observation_regression", "require_investor_crypto_dependency_rebuild",
+    "require_venture_full_review", "lane_a_spot_review_required", "lane_b_full_review_required"
+  ],
+  "properties": {
+    "schema_version": { "const": "public-candidate-gate-policy.v2" },
+    "policy_id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "allowed_changed_catalogs": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["investors", "venture", "markets", "macro", "rates", "etf_flows", "etf_holdings", "crypto", "crypto_exposure", "earnings", "policy", "events"] }
+    },
+    "maximum_manager_scope_change": { "type": "integer", "minimum": 0 },
+    "maximum_source_review_increase": { "type": "integer", "minimum": 0 },
+    "maximum_manager_value_change_basis_points": { "type": "integer", "minimum": 0 },
+    "maximum_manager_holdings_change_basis_points": { "type": "integer", "minimum": 0 },
+    "maximum_etf_net_assets_change_basis_points": { "type": "integer", "minimum": 0 },
+    "require_no_status_regression": { "const": true },
+    "require_no_observation_regression": { "const": true },
+    "require_investor_crypto_dependency_rebuild": { "const": true },
+    "require_venture_full_review": { "const": true },
+    "lane_a_spot_review_required": { "const": true },
+    "lane_b_full_review_required": { "const": true }
+  }
+}

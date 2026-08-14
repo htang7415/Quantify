@@ -18,8 +18,8 @@ from tests.test_public_release_candidate import RUN_AT, make_investor_source_bun
 
 
 ROOT = Path(__file__).resolve().parents[1]
-POLICY = ROOT / "policies/public_candidate_gate_policy.v1.json"
-REVIEWED_AT = "2026-08-14T03:00:00Z"
+POLICY = ROOT / "policies/public_candidate_gate_policy.v2.json"
+REVIEWED_AT = "2026-08-14T06:00:00Z"
 
 
 def load(path: Path) -> dict:
@@ -103,7 +103,7 @@ def test_candidate_artifact_tampering_and_extra_files_fail_closed(tmp_path: Path
 def test_base_index_and_rollback_must_match_active_bytes(tmp_path: Path) -> None:
     candidate = build_pinned_candidate(tmp_path)
     changed_index = load(ROOT / "web/src/data/publicReleaseIndex.json")
-    changed_index["generated_at"] = "2026-08-14T02:59:00Z"
+    changed_index["generated_at"] = "2026-08-14T05:59:00Z"
     changed_index_path = tmp_path / "changed-index.json"
     changed_index_path.write_text(json.dumps(changed_index), encoding="utf-8")
     with pytest.raises(CandidateReviewError, match="base release index hash"):
@@ -194,7 +194,11 @@ def test_versioned_thresholds_deterministically_route_to_lane_b() -> None:
     flows = {"added_funds": [], "removed_funds": [], "funds": []}
     holdings = {"added_funds": [], "removed_funds": [], "funds": []}
 
-    lane, reasons = classify(policy=policy, changes=changes, investor=investors, flows=flows, holdings=holdings)
+    venture = {
+        "added_firm_ids": [], "removed_firm_ids": [],
+        "added_relationships": [], "removed_relationships": [],
+    }
+    lane, reasons = classify(policy=policy, changes=changes, investor=investors, flows=flows, holdings=holdings, venture=venture)
 
     assert lane == "lane_b"
     assert reasons == ["manager_value_change_threshold:0000000001"]
@@ -209,3 +213,23 @@ def test_policy_controls_cannot_be_disabled(tmp_path: Path) -> None:
 
     with pytest.raises(CandidateReviewError, match="non-bypassable"):
         review(candidate, policy=policy_path)
+
+
+def test_venture_candidate_is_lane_b_with_exact_scope_metrics(tmp_path: Path) -> None:
+    candidate = tmp_path / "venture-candidate"
+    source = ROOT / "tests/fixtures/public_data/vc_portfolio_sources_candidate_2026-08-14.json"
+    build_candidate(**paths(), target_directory=candidate, run_at=RUN_AT, venture_source_path=source)
+
+    record = review(candidate)
+
+    assert record["lane"] == "lane_b"
+    assert record["status"] == "requires_full_review"
+    assert record["promotion_authorized"] is False
+    assert record["reasons"] == ["venture_full_review_required"]
+    assert record["metrics"]["venture"]["added_firm_ids"] == ["general-catalyst", "thrive-capital"]
+    assert record["metrics"]["venture"]["removed_firm_ids"] == []
+    assert record["metrics"]["venture"]["previous_firm_count"] == 4
+    assert record["metrics"]["venture"]["candidate_firm_count"] == 6
+    assert record["metrics"]["venture"]["previous_relationship_count"] == 24
+    assert record["metrics"]["venture"]["candidate_relationship_count"] == 36
+    assert {row["catalog"] for row in record["rollback_bindings"]} == {"venture", "etf_flows", "etf_holdings"}

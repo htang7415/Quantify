@@ -10,8 +10,9 @@ import { releaseFor } from "../releases/catalog";
 import type { PublicCatalog, ReleaseFreshness } from "../releases/types";
 import { etfFlowCatalog } from "../etfs/catalog";
 import { etfHoldingsFund } from "../etfs/holdingsCatalog";
+import { ventureCatalog } from "../venture/catalog";
 
-export type SearchEntityKind = "Investor" | "Company" | "ETF" | "Macro" | "Rates" | "Crypto" | "Policy";
+export type SearchEntityKind = "Investor" | "Venture firm" | "Company" | "ETF" | "Macro" | "Rates" | "Crypto" | "Policy";
 
 export type SearchEntitySource = {
   catalog: PublicCatalog;
@@ -68,6 +69,21 @@ export function buildSearchEntityGraph(): SearchEntity[] {
       identifiers: [manager.reporting_manager_cik, manager.reporting_manager_name, manager.slug, manager.latest_filing.accession, manager.category, manager.primary_theme],
       sources: [investorSource],
       availability: manager.status === "available" ? "released" : "source_review"
+    });
+  }
+
+  const ventureSource = source("venture");
+  for (const firm of ventureCatalog.firms) {
+    entities.push({
+      id: `venture:${firm.firm_id}`,
+      kind: "Venture firm",
+      label: firm.name,
+      symbol: null,
+      description: `${firm.tracked_relationship_count} tracked official relationships · bounded sample`,
+      href: `/investors/venture/${firm.firm_id}`,
+      identifiers: [firm.firm_id, ...firm.strategy_labels, ...firm.relationships.map((row) => row.company_name)],
+      sources: [ventureSource],
+      availability: "released"
     });
   }
 
@@ -188,7 +204,7 @@ function score(entity: SearchEntity, query: string): number | null {
   return null;
 }
 
-const kindOrder: Record<SearchEntityKind, number> = { Company: 0, Investor: 1, ETF: 2, Macro: 3, Rates: 4, Crypto: 5, Policy: 6 };
+const kindOrder: Record<SearchEntityKind, number> = { Company: 0, Investor: 1, "Venture firm": 2, ETF: 3, Macro: 4, Rates: 5, Crypto: 6, Policy: 7 };
 
 export function searchReleasedEntities(query: string, limit = 10): SearchEntity[] {
   const cleanQuery = normalized(query);

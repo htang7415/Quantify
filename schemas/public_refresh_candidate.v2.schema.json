@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantify.local/schemas/public_refresh_candidate.v2.schema.json",
+  "title": "Quantify public refresh candidate v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "run_id", "generated_at", "status", "publication_authorized",
+    "investor_compilation", "venture_compilation", "base_release_index_sha256",
+    "inputs", "outputs", "previous_bindings", "limitations"
+  ],
+  "properties": {
+    "schema_version": { "const": "public-refresh-candidate.v2" },
+    "run_id": { "type": "string", "pattern": "^public-refresh-[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-f0-9]{12}$" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "status": { "const": "ready_for_review" },
+    "publication_authorized": { "const": false },
+    "investor_compilation": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/investorCompilation" }] },
+    "venture_compilation": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/ventureCompilation" }] },
+    "base_release_index_sha256": { "$ref": "#/$defs/hash" },
+    "inputs": { "type": "array", "minItems": 5, "items": { "$ref": "#/$defs/input" } },
+    "outputs": { "type": "array", "minItems": 4, "items": { "$ref": "#/$defs/output" } },
+    "previous_bindings": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/binding" } },
+    "limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "input": {
+      "type": "object", "additionalProperties": false,
+      "required": ["input", "sha256"],
+      "properties": { "input": { "type": "string", "minLength": 1 }, "sha256": { "$ref": "#/$defs/hash" } }
+    },
+    "output": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact", "sha256", "release_id", "manifest_hash"],
+      "properties": {
+        "artifact": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/hash" },
+        "release_id": { "type": ["string", "null"] },
+        "manifest_hash": { "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }] }
+      }
+    },
+    "binding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["catalog", "status", "release_id", "manifest_hash", "observed_at", "freshness"],
+      "properties": {
+        "catalog": { "enum": ["investors", "venture", "etf_flows", "etf_holdings", "crypto_exposure"] },
+        "status": { "enum": ["available", "unavailable", "source_review", "revoked"] },
+        "release_id": { "type": ["string", "null"] },
+        "manifest_hash": { "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }] },
+        "observed_at": { "type": ["string", "null"] },
+        "freshness": { "enum": ["current", "stale", "not_applicable", "unknown"] }
+      }
+    },
+    "investorCompilation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "source_manifest_sha256", "source_created_at", "security_metadata_sha256", "compiler_contract", "quarters", "resource_count", "catalog_release_id", "catalog_manifest_hash"],
+      "properties": {
+        "schema_version": { "const": "investor-compilation-record.v1" },
+        "source_manifest_sha256": { "$ref": "#/$defs/hash" },
+        "source_created_at": { "type": "string", "format": "date-time" },
+        "security_metadata_sha256": { "$ref": "#/$defs/hash" },
+        "compiler_contract": { "const": "investor-catalog.v1" },
+        "quarters": { "type": "integer", "minimum": 2, "maximum": 8 },
+        "resource_count": { "type": "integer", "minimum": 1 },
+        "catalog_release_id": { "type": "string", "minLength": 1 },
+        "catalog_manifest_hash": { "$ref": "#/$defs/hash" }
+      }
+    },
+    "ventureCompilation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "source_manifest_sha256", "source_created_at", "compiler_contract", "catalog_release_id", "catalog_manifest_hash", "firm_count", "relationship_count", "publication_authorized"],
+      "properties": {
+        "schema_version": { "const": "vc-compilation-record.v1" },
+        "source_manifest_sha256": { "$ref": "#/$defs/hash" },
+        "source_created_at": { "type": "string", "format": "date-time" },
+        "compiler_contract": { "const": "build-vc-catalog.v1" },
+        "catalog_release_id": { "type": "string", "minLength": 1 },
+        "catalog_manifest_hash": { "$ref": "#/$defs/hash" },
+        "firm_count": { "type": "integer", "minimum": 1 },
+        "relationship_count": { "type": "integer", "minimum": 0 },
+        "publication_authorized": { "const": false }
+      }
+    }
+  }
+}

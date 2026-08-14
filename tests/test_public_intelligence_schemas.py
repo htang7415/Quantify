@@ -10,7 +10,7 @@ def load_json(relative_path: str) -> dict:
 
 
 def test_public_release_fixture_matches_declared_catalog_contract() -> None:
-    schema = load_json("schemas/public_release_index.v2.schema.json")
+    schema = load_json("schemas/public_release_index.v3.schema.json")
     release_index = load_json("web/src/data/publicReleaseIndex.json")
     investor_catalog = load_json("web/src/data/investorCatalog.json")
 
@@ -20,6 +20,10 @@ def test_public_release_fixture_matches_declared_catalog_contract() -> None:
     assert releases["investors"]["status"] == "available"
     assert releases["investors"]["release_id"] == investor_catalog["release_id"]
     assert releases["investors"]["manifest_hash"] == investor_catalog["manifest_hash"]
+    venture_catalog = load_json("web/src/data/vcCatalog.json")
+    assert releases["venture"]["status"] == "available"
+    assert releases["venture"]["release_id"] == venture_catalog["release_id"]
+    assert releases["venture"]["manifest_hash"] == venture_catalog["manifest_hash"]
     assert all(
         releases[catalog]["status"] == "unavailable"
         for catalog in {"markets", "crypto", "events"}
@@ -138,21 +142,51 @@ def test_investor_compilation_record_binds_source_metadata_and_output() -> None:
     }.issubset(schema["required"])
 
 
+def test_venture_contracts_are_source_bound_and_cannot_authorize_publication() -> None:
+    source_schema = load_json("schemas/vc_source_bundle.v1.schema.json")
+    catalog_schema = load_json("schemas/vc_catalog.v1.schema.json")
+    record_schema = load_json("schemas/vc_compilation_record.v1.schema.json")
+    catalog = load_json("web/src/data/vcCatalog.json")
+    compilation = load_json("web/src/data/vcCompilationRecord.json")
+
+    assert source_schema["properties"]["schema_version"]["const"] == "vc-source-bundle.v1"
+    assert catalog_schema["properties"]["schema_version"]["const"] == "vc-catalog.v1"
+    assert record_schema["properties"]["publication_authorized"]["const"] is False
+    assert compilation["publication_authorized"] is False
+    assert compilation["catalog_release_id"] == catalog["release_id"]
+    assert compilation["catalog_manifest_hash"] == catalog["manifest_hash"]
+    relationship = catalog_schema["$defs"]["relationship"]
+    assert relationship["additionalProperties"] is False
+    assert {"first_partnered_year", "stage", "participation_role", "follow_on_status", "source_url", "source_sha256"}.issubset(relationship["required"])
+    forbidden = {"ownership", "position_value", "investment_value", "aum", "valuation", "return", "weight"}
+    assert forbidden.isdisjoint(relationship["properties"])
+
+
+def test_investor_filing_readiness_schema_is_bounded_and_never_authorizes_a_candidate() -> None:
+    schema = load_json("schemas/investor_filing_readiness.v1.schema.json")
+    manager = schema["$defs"]["manager"]
+    assert schema["properties"]["schema_version"]["const"] == "investor-filing-readiness.v1"
+    assert schema["properties"]["candidate_build_authorized"]["const"] is False
+    assert {"source_manifest_sha256", "target_report_period", "ready_manager_count", "managers"}.issubset(schema["required"])
+    assert manager["properties"]["status"]["enum"] == ["ready", "waiting", "ahead"]
+
+
 def test_public_candidate_gate_policy_keeps_review_and_dependency_controls_non_bypassable() -> None:
-    schema = load_json("schemas/public_candidate_gate_policy.v1.schema.json")
-    policy = load_json("policies/public_candidate_gate_policy.v1.json")
+    schema = load_json("schemas/public_candidate_gate_policy.v2.schema.json")
+    policy = load_json("policies/public_candidate_gate_policy.v2.json")
     assert policy["schema_version"] == schema["properties"]["schema_version"]["const"]
     assert policy["require_no_status_regression"] is True
     assert policy["require_no_observation_regression"] is True
     assert policy["require_investor_crypto_dependency_rebuild"] is True
+    assert policy["require_venture_full_review"] is True
     assert policy["lane_a_spot_review_required"] is True
     assert policy["lane_b_full_review_required"] is True
 
 
 def test_public_candidate_review_schema_is_typed_and_cannot_authorize_promotion() -> None:
-    schema = load_json("schemas/public_candidate_review.v1.schema.json")
+    schema = load_json("schemas/public_candidate_review.v2.schema.json")
     metrics = schema["$defs"]["metrics"]
-    assert schema["properties"]["schema_version"]["const"] == "public-candidate-review.v1"
+    assert schema["properties"]["schema_version"]["const"] == "public-candidate-review.v2"
     assert schema["properties"]["promotion_authorized"]["const"] is False
     assert metrics["additionalProperties"] is False
-    assert {"investors", "etf_flows", "etf_holdings", "crypto_dependency"}.issubset(metrics["required"])
+    assert {"investors", "venture", "etf_flows", "etf_holdings", "crypto_dependency"}.issubset(metrics["required"])

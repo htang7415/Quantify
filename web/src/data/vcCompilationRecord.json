@@ -1,0 +1,11 @@
+{
+  "schema_version": "vc-compilation-record.v1",
+  "source_manifest_sha256": "5a967fd3f34efbba49f6b6ba67b6381b035b8548732b23d7b7f4065ff1eb272a",
+  "source_created_at": "2026-08-14T04:22:21Z",
+  "compiler_contract": "build-vc-catalog.v1",
+  "catalog_release_id": "vc-2026-08-14-fdff25729f10",
+  "catalog_manifest_hash": "fdff25729f1028c485e8aec2e69eebcdedc3b6738eaf9199a8388e182dc22728",
+  "firm_count": 4,
+  "relationship_count": 24,
+  "publication_authorized": false
+}

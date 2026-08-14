@@ -85,17 +85,13 @@ def acquire_bundle(
         raise ValueError("source bundle target directory already exists")
 
     recorder = RecordingClient(client)
-    latest_periods: set[str] = set()
     for manager in MANAGERS:
         submissions = recorder.get_json(SEC_SUBMISSIONS.format(cik=manager.reporting_cik))
         filings = filing_rows(submissions, quarters)
         if len(filings) < 2:
             raise ValueError(f"{manager.firm} does not have two compatible recent 13F filings")
-        latest_periods.add(filings[0]["report_period"])
         for filing in filings:
             information_table_xml(recorder, manager.reporting_cik, filing["accession"])
-    if len(latest_periods) != 1:
-        raise ValueError(f"featured managers do not share a latest reporting period: {sorted(latest_periods)}")
 
     resources = []
     artifact_payloads: dict[str, bytes] = {}

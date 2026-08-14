@@ -1,4 +1,4 @@
-export type PublicCatalog = "investors" | "markets" | "macro" | "rates" | "etf_flows" | "etf_holdings" | "crypto" | "crypto_exposure" | "earnings" | "policy" | "events";
+export type PublicCatalog = "investors" | "venture" | "markets" | "macro" | "rates" | "etf_flows" | "etf_holdings" | "crypto" | "crypto_exposure" | "earnings" | "policy" | "events";
 export type ReleaseStatus = "available" | "unavailable" | "source_review" | "revoked";
 export type ReleaseFreshness = "current" | "stale" | "not_applicable" | "unknown";
 
@@ -13,7 +13,7 @@ export type PublicRelease = {
 };
 
 export type PublicReleaseIndex = {
-  schema_version: "public-release-index.v2";
+  schema_version: "public-release-index.v3";
   generated_at: string;
   releases: PublicRelease[];
 };

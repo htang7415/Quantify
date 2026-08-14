@@ -25,19 +25,21 @@ try:
     from scripts.build_etf_flow_catalog import compile_catalog as compile_etf_flows
     from scripts.build_etf_holdings_catalog import compile_catalog as compile_etf_holdings
     from scripts.build_investor_catalog import compile_catalog_from_bundle
+    from scripts.build_vc_catalog import compile_catalog as compile_vc
 except ModuleNotFoundError:  # Direct `python scripts/...` invocation.
     from build_crypto_exposure_catalog import compile_catalog as compile_crypto_exposure
     from build_crypto_exposure_catalog import load_metadata as load_crypto_exposure_metadata
     from build_etf_flow_catalog import compile_catalog as compile_etf_flows
     from build_etf_holdings_catalog import compile_catalog as compile_etf_holdings
     from build_investor_catalog import compile_catalog_from_bundle
+    from build_vc_catalog import compile_catalog as compile_vc
 
 
-CANDIDATE_SCHEMA_VERSION = "public-refresh-candidate.v1"
-INDEX_SCHEMA_VERSION = "public-release-index.v2"
+CANDIDATE_SCHEMA_VERSION = "public-refresh-candidate.v2"
+INDEX_SCHEMA_VERSION = "public-release-index.v3"
 INVESTOR_SCHEMA_VERSION = "investor-catalog.v1"
 EXPECTED_CATALOGS = {
-    "investors", "markets", "macro", "rates", "etf_flows", "etf_holdings",
+    "investors", "venture", "markets", "macro", "rates", "etf_flows", "etf_holdings",
     "crypto", "crypto_exposure", "earnings", "policy", "events",
 }
 HEX_64 = set("0123456789abcdef")
@@ -173,6 +175,7 @@ def candidate_index(
     holdings_catalog: dict[str, Any],
     run_at: str,
     crypto_exposure_catalog: dict[str, Any] | None = None,
+    venture_catalog: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     result = deepcopy(active_index)
     result["generated_at"] = run_at
@@ -189,6 +192,8 @@ def candidate_index(
         investor_observed_at = f"{investor_catalog['source_fresh_through']}T00:00:00Z"
         replacements["investors"] = (investor_catalog, investor_observed_at, "not_applicable")
         replacements["crypto_exposure"] = (crypto_exposure_catalog, investor_observed_at, "not_applicable")
+    if venture_catalog is not None:
+        replacements["venture"] = (venture_catalog, venture_catalog["observed_at"], "not_applicable")
     previous: list[dict[str, Any]] = []
     for row in result["releases"]:
         replacement = replacements.get(row["catalog"])
@@ -238,6 +243,7 @@ def build_candidate(
     run_at: str,
     investor_source_manifest_path: Path | None = None,
     crypto_exposure_metadata_path: Path | None = None,
+    venture_source_path: Path | None = None,
 ) -> dict[str, Any]:
     parse_run_at(run_at)
     if target_directory.exists():
@@ -262,6 +268,8 @@ def build_candidate(
     else:
         assert investor_catalog_path is not None
         inputs["investor_catalog"] = investor_catalog_path
+    if venture_source_path is not None:
+        inputs["venture_source"] = venture_source_path
     input_payloads: dict[str, bytes] = {}
     for name, path in inputs.items():
         try:
@@ -275,6 +283,8 @@ def build_candidate(
     active_index = load_object(active_release_index_path, "active public release index")
     validate_release_index(active_index)
     investor_compilation = None
+    venture_compilation = None
+    venture_catalog = None
     crypto_catalog = None
     if investor_source_manifest_path is not None:
         investor_catalog, investor_compilation = compile_catalog_from_bundle(
@@ -297,6 +307,10 @@ def build_candidate(
 
     flow_catalog = compile_etf_flows(flow_source)
     holdings_catalog = compile_etf_holdings(holdings_source, flow_catalog, security_metadata)
+    if venture_source_path is not None:
+        venture_catalog, venture_compilation = compile_vc(input_payloads["venture_source"])
+        if parse_run_at(run_at) < parsed_timestamp(venture_compilation["source_created_at"], "venture source creation time"):
+            raise ValueError("run_at cannot precede the venture source creation time")
     validate_temporal_order(parse_run_at(run_at), active_index, (flow_catalog, holdings_catalog))
     next_index, previous_bindings = candidate_index(
         active_index,
@@ -305,6 +319,7 @@ def build_candidate(
         holdings_catalog,
         run_at,
         crypto_catalog,
+        venture_catalog,
     )
 
     artifacts = {
@@ -323,6 +338,10 @@ def build_candidate(
         output_catalogs["catalogs/cryptoExposureCatalog.json"] = crypto_catalog
     if investor_compilation is not None:
         artifacts["catalogs/investorCompilationRecord.json"] = pretty_bytes(investor_compilation)
+    if venture_catalog is not None and venture_compilation is not None:
+        artifacts["catalogs/vcCatalog.json"] = pretty_bytes(venture_catalog)
+        artifacts["catalogs/vcCompilationRecord.json"] = pretty_bytes(venture_compilation)
+        output_catalogs["catalogs/vcCatalog.json"] = venture_catalog
     output_records = [
         output_record(name, payload, output_catalogs.get(name))
         for name, payload in sorted(artifacts.items())
@@ -334,6 +353,7 @@ def build_candidate(
         "status": "ready_for_review",
         "publication_authorized": False,
         "investor_compilation": investor_compilation,
+        "venture_compilation": venture_compilation,
         "base_release_index_sha256": sha256_bytes(input_payloads["active_release_index"]),
         "inputs": [
             {"input": name, "sha256": sha256_bytes(payload)}
@@ -344,6 +364,7 @@ def build_candidate(
         "limitations": [
             "This directory is a review candidate and is not an active or approved public release.",
             "The investor catalog is either a hash-validated compiled input or is compiled only from the declared cache-only SEC source bundle.",
+            "Venture output, when present, is compiled only from the declared reviewed cache-only source bundle and requires full review.",
             "Promotion and deployment require separate review and explicit authorization.",
         ],
     }
@@ -377,6 +398,7 @@ def main() -> None:
     parser.add_argument("--security-metadata", type=Path, required=True)
     parser.add_argument("--crypto-exposure-metadata", type=Path, default=Path("scripts/crypto_exposure_metadata.json"))
     parser.add_argument("--active-release-index", type=Path, required=True)
+    parser.add_argument("--venture-source", type=Path)
     parser.add_argument("--target-directory", type=Path, required=True)
     parser.add_argument("--run-at", required=True, help="Exact UTC timestamp, for example 2026-08-14T02:00:00Z")
     args = parser.parse_args()
@@ -390,6 +412,7 @@ def main() -> None:
         run_at=args.run_at,
         investor_source_manifest_path=args.investor_source_manifest,
         crypto_exposure_metadata_path=args.crypto_exposure_metadata if args.investor_source_manifest else None,
+        venture_source_path=args.venture_source,
     )
     print(f"wrote {args.target_directory} ({manifest['run_id']}; review required)")
 

@@ -24,22 +24,25 @@ except ModuleNotFoundError:  # Direct `python scripts/...` invocation.
     from build_public_release_candidate import canonical_bytes, validate_investor_catalog, validate_release_index
 
 
-POLICY_SCHEMA = "public-candidate-gate-policy.v1"
-REVIEW_SCHEMA = "public-candidate-review.v1"
+POLICY_SCHEMA = "public-candidate-gate-policy.v2"
+REVIEW_SCHEMA = "public-candidate-review.v2"
 CATALOG_ARTIFACTS = {
     "investors": "catalogs/investorCatalog.json",
+    "venture": "catalogs/vcCatalog.json",
     "etf_flows": "catalogs/etfFlowCatalog.json",
     "etf_holdings": "catalogs/etfHoldingsCatalog.json",
     "crypto_exposure": "catalogs/cryptoExposureCatalog.json",
 }
 CATALOG_SCHEMAS = {
     "investors": "investor-catalog.v1",
+    "venture": "vc-catalog.v1",
     "etf_flows": "etf-flow-catalog.v2",
     "etf_holdings": "etf-holdings-catalog.v1",
     "crypto_exposure": "crypto-exposure-catalog.v1",
 }
 ACTIVE_CATALOG_FILES = {
     "investors": "investorCatalog.json",
+    "venture": "vcCatalog.json",
     "etf_flows": "etfFlowCatalog.json",
     "etf_holdings": "etfHoldingsCatalog.json",
     "crypto_exposure": "cryptoExposureCatalog.json",
@@ -50,10 +53,11 @@ POLICY_FIELDS = {
     "maximum_manager_value_change_basis_points", "maximum_manager_holdings_change_basis_points",
     "maximum_etf_net_assets_change_basis_points", "require_no_status_regression",
     "require_no_observation_regression", "require_investor_crypto_dependency_rebuild",
+    "require_venture_full_review",
     "lane_a_spot_review_required", "lane_b_full_review_required",
 }
 BINDING_FIELDS = ("catalog", "status", "release_id", "manifest_hash", "observed_at", "freshness")
-CATALOG_NAMES = {"investors", "markets", "macro", "rates", "etf_flows", "etf_holdings", "crypto", "crypto_exposure", "earnings", "policy", "events"}
+CATALOG_NAMES = {"investors", "venture", "markets", "macro", "rates", "etf_flows", "etf_holdings", "crypto", "crypto_exposure", "earnings", "policy", "events"}
 REVIEW_FIELDS = {
     "schema_version", "review_id", "reviewed_at", "candidate_run_id", "candidate_manifest_sha256",
     "base_release_index_sha256", "policy_id", "policy_sha256", "status", "lane",
@@ -102,7 +106,7 @@ def load_policy(path: Path) -> tuple[dict[str, Any], str]:
     catalogs = policy.get("allowed_changed_catalogs")
     if not isinstance(catalogs, list) or not catalogs or len(catalogs) != len(set(catalogs)):
         raise CandidateReviewError("public candidate changed-catalog allowlist is invalid")
-    if any(catalog not in {"investors", "markets", "macro", "rates", "etf_flows", "etf_holdings", "crypto", "crypto_exposure", "earnings", "policy", "events"} for catalog in catalogs):
+    if any(catalog not in CATALOG_NAMES for catalog in catalogs):
         raise CandidateReviewError("public candidate changed-catalog allowlist is invalid")
     integer_fields = (
         "maximum_manager_scope_change", "maximum_source_review_increase",
@@ -114,7 +118,7 @@ def load_policy(path: Path) -> tuple[dict[str, Any], str]:
     boolean_fields = (
         "require_no_status_regression", "require_no_observation_regression",
         "require_investor_crypto_dependency_rebuild", "lane_a_spot_review_required",
-        "lane_b_full_review_required",
+        "lane_b_full_review_required", "require_venture_full_review",
     )
     if any(policy.get(field) is not True for field in boolean_fields):
         raise CandidateReviewError("public candidate non-bypassable policy controls are invalid")
@@ -175,7 +179,11 @@ def replay_catalog(catalog_name: str, catalog: dict[str, Any]) -> None:
         expected_release = (
             f"etf-flows-{catalog.get('observed_through', '')}-{stored_hash[:12]}"
             if catalog_name == "etf_flows"
-            else f"crypto-exposure-{catalog.get('report_period', '')}-{stored_hash[:12]}"
+            else (
+                f"crypto-exposure-{catalog.get('report_period', '')}-{stored_hash[:12]}"
+                if catalog_name == "crypto_exposure"
+                else f"vc-{catalog.get('source_fresh_through', '')}-{stored_hash[:12]}"
+            )
         )
     digest = sha256_bytes(canonical_bytes(unsigned))
     if digest != stored_hash or stored_release != expected_release:
@@ -185,10 +193,10 @@ def replay_catalog(catalog_name: str, catalog: dict[str, Any]) -> None:
 def replay_candidate_manifest(manifest: dict[str, Any]) -> None:
     expected_fields = {
         "schema_version", "run_id", "generated_at", "status", "publication_authorized",
-        "investor_compilation", "base_release_index_sha256", "inputs", "outputs",
+        "investor_compilation", "venture_compilation", "base_release_index_sha256", "inputs", "outputs",
         "previous_bindings", "limitations",
     }
-    if set(manifest) != expected_fields or manifest.get("schema_version") != "public-refresh-candidate.v1":
+    if set(manifest) != expected_fields or manifest.get("schema_version") != "public-refresh-candidate.v2":
         raise CandidateReviewError("candidate manifest contract is invalid")
     if manifest.get("status") != "ready_for_review" or manifest.get("publication_authorized") is not False:
         raise CandidateReviewError("candidate manifest review boundary is invalid")
@@ -323,6 +331,32 @@ def etf_holdings_metrics(active: dict[str, Any], candidate: dict[str, Any]) -> d
     }
 
 
+def venture_metrics(active: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any]:
+    previous = {row["firm_id"]: row for row in active["firms"]}
+    current = {row["firm_id"]: row for row in candidate["firms"]}
+    previous_relationships = {
+        (firm_id, relationship["company_id"])
+        for firm_id, firm in previous.items()
+        for relationship in firm["relationships"]
+    }
+    candidate_relationships = {
+        (firm_id, relationship["company_id"])
+        for firm_id, firm in current.items()
+        for relationship in firm["relationships"]
+    }
+    relationship = lambda key: {"firm_id": key[0], "company_id": key[1]}
+    return {
+        "previous_firm_count": len(previous),
+        "candidate_firm_count": len(current),
+        "added_firm_ids": sorted(set(current) - set(previous)),
+        "removed_firm_ids": sorted(set(previous) - set(current)),
+        "previous_relationship_count": len(previous_relationships),
+        "candidate_relationship_count": len(candidate_relationships),
+        "added_relationships": [relationship(key) for key in sorted(candidate_relationships - previous_relationships)],
+        "removed_relationships": [relationship(key) for key in sorted(previous_relationships - candidate_relationships)],
+    }
+
+
 def classify(
     *,
     policy: dict[str, Any],
@@ -330,6 +364,7 @@ def classify(
     investor: dict[str, Any],
     flows: dict[str, Any],
     holdings: dict[str, Any],
+    venture: dict[str, Any],
 ) -> tuple[str, list[str]]:
     reasons: list[str] = []
     changed_catalogs = [row["catalog"] for row in changes if row["changed"]]
@@ -365,6 +400,13 @@ def classify(
         reasons.append("etf_holdings_fund_scope_change")
     if any(row["previous_published_rows"] != row["candidate_published_rows"] for row in holdings["funds"]):
         reasons.append("etf_published_row_count_change")
+    venture_changed = any(row["catalog"] == "venture" and row["changed"] for row in changes)
+    venture_scope_changed = bool(
+        venture["added_firm_ids"] or venture["removed_firm_ids"]
+        or venture["added_relationships"] or venture["removed_relationships"]
+    )
+    if venture_changed or venture_scope_changed:
+        reasons.append("venture_full_review_required")
     for change in changes:
         previous, candidate = change["previous"], change["candidate"]
         if previous["status"] == "available" and candidate["status"] != "available":
@@ -409,7 +451,7 @@ def replay_review_record(value: object) -> dict[str, Any]:
             raise CandidateReviewError("public candidate catalog changes are invalid")
         change_catalogs.add(change["catalog"])
     metrics = value.get("metrics")
-    if not isinstance(metrics, dict) or set(metrics) != {"identity_change_count", "investors", "etf_flows", "etf_holdings", "crypto_dependency"}:
+    if not isinstance(metrics, dict) or set(metrics) != {"identity_change_count", "investors", "venture", "etf_flows", "etf_holdings", "crypto_dependency"}:
         raise CandidateReviewError("public candidate review metrics are invalid")
     if type(metrics.get("identity_change_count")) is not int or metrics["identity_change_count"] != sum(change["changed"] for change in changes):
         raise CandidateReviewError("public candidate identity-change count is invalid")
@@ -422,6 +464,24 @@ def replay_review_record(value: object) -> dict[str, Any]:
         or crypto["rebuild_required"] != crypto["investor_changed"]
     ):
         raise CandidateReviewError("public candidate crypto dependency metrics are invalid")
+    venture = metrics.get("venture")
+    venture_fields = {
+        "previous_firm_count", "candidate_firm_count", "added_firm_ids", "removed_firm_ids",
+        "previous_relationship_count", "candidate_relationship_count", "added_relationships", "removed_relationships",
+    }
+    if not isinstance(venture, dict) or set(venture) != venture_fields:
+        raise CandidateReviewError("public candidate venture metrics are invalid")
+    count_fields = ("previous_firm_count", "candidate_firm_count", "previous_relationship_count", "candidate_relationship_count")
+    if any(type(venture.get(field)) is not int or venture[field] < 0 for field in count_fields):
+        raise CandidateReviewError("public candidate venture counts are invalid")
+    for field in ("added_firm_ids", "removed_firm_ids"):
+        values = venture.get(field)
+        if not isinstance(values, list) or values != sorted(set(values)) or any(not isinstance(item, str) or not item for item in values):
+            raise CandidateReviewError("public candidate venture firm changes are invalid")
+    for field in ("added_relationships", "removed_relationships"):
+        values = venture.get(field)
+        if not isinstance(values, list) or any(not isinstance(item, dict) or set(item) != {"firm_id", "company_id"} or any(not isinstance(item[key], str) or not item[key] for key in item) for item in values):
+            raise CandidateReviewError("public candidate venture relationship changes are invalid")
     rollback = value.get("rollback_bindings")
     if not isinstance(rollback, list) or any(not valid_binding(row) for row in rollback) or len({row["catalog"] for row in rollback}) != len(rollback):
         raise CandidateReviewError("public candidate rollback bindings are invalid")
@@ -467,6 +527,8 @@ def review_candidate(
         expected_inputs.add("investor_catalog")
     else:
         expected_inputs.update({"investor_source_manifest", "crypto_exposure_metadata"})
+    if manifest.get("venture_compilation") is not None:
+        expected_inputs.add("venture_source")
     if set(input_hashes) != expected_inputs:
         raise CandidateReviewError("candidate input set is invalid")
     expected_artifacts = {
@@ -475,6 +537,8 @@ def review_candidate(
     }
     if manifest.get("investor_compilation") is not None:
         expected_artifacts.update({"catalogs/cryptoExposureCatalog.json", "catalogs/investorCompilationRecord.json"})
+    if manifest.get("venture_compilation") is not None:
+        expected_artifacts.update({"catalogs/vcCatalog.json", "catalogs/vcCompilationRecord.json"})
     if set(declared) != expected_artifacts:
         raise CandidateReviewError("candidate artifact set is invalid")
     active_index, active_index_payload = load_object(active_release_index_path, "active public release index")
@@ -517,6 +581,8 @@ def review_candidate(
     expected_rollback_catalogs = {"etf_flows", "etf_holdings"}
     if manifest.get("investor_compilation") is not None:
         expected_rollback_catalogs.update({"investors", "crypto_exposure"})
+    if manifest.get("venture_compilation") is not None:
+        expected_rollback_catalogs.add("venture")
     if set(previous_by_catalog) != expected_rollback_catalogs:
         raise CandidateReviewError("candidate rollback catalog set is invalid")
     for catalog, row in active_rows.items():
@@ -574,6 +640,33 @@ def review_candidate(
         if input_hashes["investor_catalog"] != sha256_bytes(active_investor_payload):
             raise CandidateReviewError("candidate pinned investor input does not match the active catalog")
 
+    venture_compilation = manifest.get("venture_compilation")
+    if venture_compilation is not None:
+        venture_fields = {
+            "schema_version", "source_manifest_sha256", "source_created_at", "compiler_contract",
+            "catalog_release_id", "catalog_manifest_hash", "firm_count", "relationship_count",
+            "publication_authorized",
+        }
+        if (
+            not isinstance(venture_compilation, dict) or set(venture_compilation) != venture_fields
+            or venture_compilation.get("schema_version") != "vc-compilation-record.v1"
+            or venture_compilation.get("compiler_contract") != "build-vc-catalog.v1"
+            or venture_compilation.get("publication_authorized") is not False
+            or not valid_hash(venture_compilation.get("source_manifest_sha256"))
+            or type(venture_compilation.get("firm_count")) is not int or venture_compilation["firm_count"] < 1
+            or type(venture_compilation.get("relationship_count")) is not int or venture_compilation["relationship_count"] < 0
+            or venture_compilation.get("catalog_release_id") != candidate_catalogs["venture"]["release_id"]
+            or venture_compilation.get("catalog_manifest_hash") != candidate_catalogs["venture"]["manifest_hash"]
+            or venture_compilation.get("source_manifest_sha256") != input_hashes["venture_source"]
+        ):
+            raise CandidateReviewError("candidate venture compilation record does not bind the venture catalog")
+        compilation_output = declared["catalogs/vcCompilationRecord.json"]
+        if compilation_output.get("release_id") is not None or compilation_output.get("manifest_hash") is not None:
+            raise CandidateReviewError("candidate venture compilation output identity is invalid")
+        compilation_artifact, _ = load_object(candidate_directory / "catalogs/vcCompilationRecord.json", "venture compilation record")
+        if compilation_artifact != venture_compilation:
+            raise CandidateReviewError("candidate venture compilation record does not replay")
+
     selected_crypto = candidate_catalogs.get("crypto_exposure", active_catalogs["crypto_exposure"])
     selected_investor = candidate_catalogs["investors"]
     investor_changed = binding(active_rows["investors"]) != binding(candidate_rows["investors"])
@@ -594,6 +687,8 @@ def review_candidate(
     investor_diff = investor_metrics(active_catalogs["investors"], selected_investor)
     flow_diff = etf_flow_metrics(active_catalogs["etf_flows"], candidate_catalogs["etf_flows"])
     holdings_diff = etf_holdings_metrics(active_catalogs["etf_holdings"], candidate_catalogs["etf_holdings"])
+    selected_venture = candidate_catalogs.get("venture", active_catalogs["venture"])
+    venture_diff = venture_metrics(active_catalogs["venture"], selected_venture)
     crypto_dependency = {
         "investor_changed": investor_changed,
         "crypto_exposure_changed": crypto_changed,
@@ -606,6 +701,7 @@ def review_candidate(
         investor=investor_diff,
         flows=flow_diff,
         holdings=holdings_diff,
+        venture=venture_diff,
     )
     record = {
         "schema_version": REVIEW_SCHEMA,
@@ -624,6 +720,7 @@ def review_candidate(
         "metrics": {
             "identity_change_count": sum(row["changed"] for row in catalog_changes),
             "investors": investor_diff,
+            "venture": venture_diff,
             "etf_flows": flow_diff,
             "etf_holdings": holdings_diff,
             "crypto_dependency": crypto_dependency,
@@ -663,7 +760,7 @@ def main() -> None:
     parser.add_argument("--candidate-directory", type=Path, required=True)
     parser.add_argument("--active-release-index", type=Path, required=True)
     parser.add_argument("--active-catalog-directory", type=Path, required=True)
-    parser.add_argument("--policy", type=Path, default=Path("policies/public_candidate_gate_policy.v1.json"))
+    parser.add_argument("--policy", type=Path, default=Path("policies/public_candidate_gate_policy.v2.json"))
     parser.add_argument("--reviewed-at", required=True, help="Exact UTC review timestamp ending in Z")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()

@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
+import { SectionConnections } from "../SectionConnections";
 import { SiteNav } from "../SiteNav";
+import { tickerSlug } from "../companies/ownership";
 import { displayName, holdingChangeText, money, quarter, readableDate, sentenceCase } from "../format";
 import { investorCatalog } from "./catalog";
 import { compareInvestors } from "./comparison";
@@ -77,6 +79,10 @@ export function InvestorDashboard() {
       <TerminalNav />
       <section className="terminal-hero">
         <div>
+          <nav className="investor-universe-tabs" aria-label="Investor universe">
+            <a className="active" aria-current="page" href="/investors">Public markets</a>
+            <a href="/investors/venture">Venture capital</a>
+          </nav>
           <p className="terminal-eyebrow">Investor filings · {quarter(investorCatalog.report_period)}</p>
           <h1>Follow the money.<br /><span>Read the changes.</span></h1>
           <p>Reported positions, portfolio weights, and quarter-over-quarter share changes from frozen SEC filings.</p>
@@ -92,6 +98,12 @@ export function InvestorDashboard() {
           <div><dt>Source through</dt><dd>{readableDate(investorCatalog.source_fresh_through)}</dd></div>
         </dl>
       </section>
+
+      <SectionConnections items={[
+        { label: "Companies", detail: "Open a security across reporting managers", href: "/companies" },
+        { label: "Markets", detail: "Trace filed ETF and crypto-linked exposure", href: "/markets" },
+        { label: "Intelligence", detail: "Read released earnings and policy records", href: "/intelligence" }
+      ]} />
 
       <section className="investor-index" aria-labelledby="investor-index-title">
         <div className="index-toolbar">
@@ -168,8 +180,8 @@ export function InvestorComparisonPage() {
 
       <section className="terminal-module comparison-table-section" aria-labelledby="comparison-table-title">
         <div className="module-head"><div><span>01</span><h2 id="comparison-table-title">Position comparison</h2></div><p>Shared first · largest disclosed weight next</p></div>
-        <div className="holdings-scroll"><table className="holdings-table comparison-table"><thead><tr><th>Security</th><th>{displayName(left.firm)} weight</th><th>{displayName(right.firm)} weight</th><th>Weight gap</th><th>{displayName(left.firm)} QoQ shares</th><th>{displayName(right.firm)} QoQ shares</th><th>Match</th></tr></thead><tbody>{comparison.rows.map((row) => <tr key={row.securityId}><td><strong>{row.ticker ?? row.cusip}</strong><span>{displayName(row.issuer)} · CUSIP {row.cusip}</span></td><td>{row.left ? <><strong>{row.left.weight_pct.toFixed(2)}%</strong><span>{money(row.left.value_usd)}</span></> : "—"}</td><td>{row.right ? <><strong>{row.right.weight_pct.toFixed(2)}%</strong><span>{money(row.right.value_usd)}</span></> : "—"}</td><td className={row.weightGapPp > 0 ? "positive" : row.weightGapPp < 0 ? "negative" : ""}>{row.weightGapPp > 0 ? "+" : ""}{row.weightGapPp.toFixed(2)} pp<span>First minus second</span></td><td>{comparisonChange(row.left)}</td><td>{comparisonChange(row.right)}</td><td><span className={row.shared ? "comparison-match shared" : "comparison-match"}>{row.shared ? "Exact shared ID" : "One manager only"}</span></td></tr>)}</tbody></table></div>
-        <p className="data-note">Shared means the same released security ID appears in both current holdings tables. It is not a similarity score, trade observation, or account-level portfolio comparison.</p>
+        <div className="holdings-scroll"><table className="holdings-table comparison-table"><thead><tr><th>Security</th><th>{displayName(left.firm)} weight</th><th>{displayName(right.firm)} weight</th><th>Weight gap</th><th>{displayName(left.firm)} QoQ shares</th><th>{displayName(right.firm)} QoQ shares</th><th>Match</th></tr></thead><tbody>{comparison.rows.map((row) => <tr key={row.securityId}><td>{row.ticker ? <a className="security-entity-link" href={`/companies/${tickerSlug(row.ticker)}`}><strong>{row.ticker}</strong><span>{displayName(row.issuer)} · CUSIP {row.cusip}</span></a> : <><strong>{row.cusip}</strong><span>{displayName(row.issuer)} · CUSIP {row.cusip}</span></>}</td><td>{row.left ? <><strong>{row.left.weight_pct.toFixed(2)}%</strong><span>{money(row.left.value_usd)}</span></> : "—"}</td><td>{row.right ? <><strong>{row.right.weight_pct.toFixed(2)}%</strong><span>{money(row.right.value_usd)}</span></> : "—"}</td><td className={row.weightGapPp > 0 ? "positive" : row.weightGapPp < 0 ? "negative" : ""}>{row.weightGapPp > 0 ? "+" : ""}{row.weightGapPp.toFixed(2)} pp<span>First minus second</span></td><td>{comparisonChange(row.left)}</td><td>{comparisonChange(row.right)}</td><td><span className={row.shared ? "comparison-match shared" : "comparison-match"}>{row.shared ? "Exact shared ID" : "One manager only"}</span></td></tr>)}</tbody></table></div>
+        <p className="data-note">Shared means the same released security ID appears in both latest released holdings tables. It is not a similarity score, trade observation, or account-level portfolio comparison.</p>
       </section>
     </div>
     <CatalogFooter />
@@ -203,7 +215,7 @@ function HoldingsTable({ manager }: { manager: InvestorManager }) {
           <thead><tr><th>Security</th><th>Instrument</th><th>Value</th><th>Weight</th><th>Shares</th><th>QoQ shares</th></tr></thead>
           <tbody>{holdings.map((holding) => (
             <tr key={holding.security_id}>
-              <td><strong>{securityLabel(holding)}</strong><span>{displayName(holding.issuer)}</span></td>
+              <td>{holding.ticker ? <a className="security-entity-link" href={`/companies/${tickerSlug(holding.ticker)}`}><strong>{holding.ticker}</strong><span>{displayName(holding.issuer)}</span></a> : <><strong>{holding.cusip}</strong><span>{displayName(holding.issuer)}</span></>}</td>
               <td>{holding.put_call ? `${sentenceCase(holding.put_call)} option` : sentenceCase(holding.instrument_type)}<span>CUSIP {holding.cusip}</span></td>
               <td>{money(holding.value_usd)}</td>
               <td><strong>{holding.weight_pct.toFixed(2)}%</strong><span className={holding.weight_delta_pp > 0 ? "positive" : holding.weight_delta_pp < 0 ? "negative" : ""}>{holding.weight_delta_pp > 0 ? "+" : ""}{holding.weight_delta_pp.toFixed(2)} pp</span></td>
@@ -225,7 +237,7 @@ function ChangesModule({ manager }: { manager: InvestorManager }) {
       <div className="change-columns">
         {kinds.map((kind) => {
           const rows = manager.changes.filter((holding) => holding.change === kind).slice(0, 5);
-          return <article key={kind} className={`change-column change-column-${kind}`}><h3>{sentenceCase(kind)}</h3>{rows.length ? rows.map((holding) => <div key={holding.security_id}><span><b>{securityLabel(holding)}</b><i>{displayName(holding.issuer)}</i></span><strong>{kind === "new" ? money(holding.value_usd) : holdingChangeText(holding)}</strong></div>) : <p>None reported</p>}</article>;
+          return <article key={kind} className={`change-column change-column-${kind}`}><h3>{sentenceCase(kind)}</h3>{rows.length ? rows.map((holding) => <div key={holding.security_id}>{holding.ticker ? <a className="security-entity-link" href={`/companies/${tickerSlug(holding.ticker)}`}><b>{holding.ticker}</b><i>{displayName(holding.issuer)}</i></a> : <span><b>{holding.cusip}</b><i>{displayName(holding.issuer)}</i></span>}<strong>{kind === "new" ? money(holding.value_usd) : holdingChangeText(holding)}</strong></div>) : <p>None reported</p>}</article>;
         })}
       </div>
     </section>
@@ -254,7 +266,7 @@ function Sparkline({ series }: { series: HistorySeries }) {
 function HistoryModule({ manager }: { manager: InvestorManager }) {
   return (
     <section className="terminal-module" id="history" aria-labelledby="history-title">
-      <div className="module-head"><div><span>05</span><h2 id="history-title">History</h2></div><p>Top current positions · five quarters</p></div>
+      <div className="module-head"><div><span>05</span><h2 id="history-title">History</h2></div><p>Top positions in latest released filing · five quarters</p></div>
       <div className="history-table">{manager.history.map((series) => {
         const first = series.points[0]?.weight_pct ?? 0;
         const last = series.points.at(-1)?.weight_pct ?? 0;

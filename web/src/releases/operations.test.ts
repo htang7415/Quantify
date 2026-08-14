@@ -20,8 +20,8 @@ describe("release operations projection", () => {
   });
 
   it("uses concise sentence-case catalog labels", () => {
+    expect(releaseCatalogLabel("venture")).toBe("Venture capital");
     expect(releaseCatalogLabel("etf_holdings")).toBe("ETF holdings");
     expect(releaseCatalogLabel("crypto_exposure")).toBe("Crypto exposure");
   });
 });
-

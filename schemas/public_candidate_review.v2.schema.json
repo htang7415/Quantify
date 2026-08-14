@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantify.local/schemas/public_candidate_review.v2.schema.json",
+  "title": "Quantify public candidate review record v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "review_id", "reviewed_at", "candidate_run_id",
+    "candidate_manifest_sha256", "base_release_index_sha256", "policy_id", "policy_sha256",
+    "status", "lane", "promotion_authorized", "reasons", "catalog_changes", "metrics",
+    "rollback_bindings", "artifact_hashes", "manifest_hash"
+  ],
+  "properties": {
+    "schema_version": { "const": "public-candidate-review.v2" },
+    "review_id": { "type": "string", "pattern": "^public-candidate-review-[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-f0-9]{12}$" },
+    "reviewed_at": { "type": "string", "format": "date-time" },
+    "candidate_run_id": { "type": "string", "minLength": 1 },
+    "candidate_manifest_sha256": { "$ref": "#/$defs/hash" },
+    "base_release_index_sha256": { "$ref": "#/$defs/hash" },
+    "policy_id": { "type": "string", "minLength": 1 },
+    "policy_sha256": { "$ref": "#/$defs/hash" },
+    "status": { "enum": ["requires_spot_review", "requires_full_review"] },
+    "lane": { "enum": ["lane_a", "lane_b"] },
+    "promotion_authorized": { "const": false },
+    "reasons": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "catalog_changes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/catalogChange" } },
+    "metrics": { "$ref": "#/$defs/metrics" },
+    "rollback_bindings": { "type": "array", "items": { "$ref": "#/$defs/binding" } },
+    "artifact_hashes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/artifact" } },
+    "manifest_hash": { "$ref": "#/$defs/hash" }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "binding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["catalog", "status", "release_id", "manifest_hash", "observed_at", "freshness"],
+      "properties": {
+        "catalog": { "enum": ["investors", "venture", "markets", "macro", "rates", "etf_flows", "etf_holdings", "crypto", "crypto_exposure", "earnings", "policy", "events"] },
+        "status": { "enum": ["available", "unavailable", "source_review", "revoked"] },
+        "release_id": { "type": ["string", "null"] },
+        "manifest_hash": { "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }] },
+        "observed_at": { "type": ["string", "null"] },
+        "freshness": { "enum": ["current", "stale", "not_applicable", "unknown"] }
+      }
+    },
+    "catalogChange": {
+      "type": "object", "additionalProperties": false,
+      "required": ["catalog", "changed", "previous", "candidate"],
+      "properties": {
+        "catalog": { "type": "string", "minLength": 1 },
+        "changed": { "type": "boolean" },
+        "previous": { "$ref": "#/$defs/binding" },
+        "candidate": { "$ref": "#/$defs/binding" }
+      }
+    },
+    "artifact": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact", "sha256"],
+      "properties": { "artifact": { "type": "string", "minLength": 1 }, "sha256": { "$ref": "#/$defs/hash" } }
+    },
+    "metrics": {
+      "type": "object", "additionalProperties": false,
+      "required": ["identity_change_count", "investors", "venture", "etf_flows", "etf_holdings", "crypto_dependency"],
+      "properties": {
+        "identity_change_count": { "type": "integer", "minimum": 0 },
+        "investors": { "$ref": "public_candidate_review.v1.schema.json#/$defs/investor_metrics" },
+        "venture": { "$ref": "#/$defs/ventureMetrics" },
+        "etf_flows": { "$ref": "public_candidate_review.v1.schema.json#/$defs/etf_flow_metrics" },
+        "etf_holdings": { "$ref": "public_candidate_review.v1.schema.json#/$defs/etf_holdings_metrics" },
+        "crypto_dependency": { "$ref": "public_candidate_review.v1.schema.json#/$defs/crypto_dependency" }
+      }
+    },
+    "ventureMetrics": {
+      "type": "object", "additionalProperties": false,
+      "required": ["previous_firm_count", "candidate_firm_count", "added_firm_ids", "removed_firm_ids", "previous_relationship_count", "candidate_relationship_count", "added_relationships", "removed_relationships"],
+      "properties": {
+        "previous_firm_count": { "type": "integer", "minimum": 0 },
+        "candidate_firm_count": { "type": "integer", "minimum": 0 },
+        "added_firm_ids": { "$ref": "#/$defs/idList" },
+        "removed_firm_ids": { "$ref": "#/$defs/idList" },
+        "previous_relationship_count": { "type": "integer", "minimum": 0 },
+        "candidate_relationship_count": { "type": "integer", "minimum": 0 },
+        "added_relationships": { "type": "array", "items": { "$ref": "#/$defs/relationshipId" } },
+        "removed_relationships": { "type": "array", "items": { "$ref": "#/$defs/relationshipId" } }
+      }
+    },
+    "idList": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z0-9-]+$" } },
+    "relationshipId": {
+      "type": "object", "additionalProperties": false,
+      "required": ["firm_id", "company_id"],
+      "properties": {
+        "firm_id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "company_id": { "type": "string", "pattern": "^[a-z0-9-]+$" }
+      }
+    }
+  }
+}

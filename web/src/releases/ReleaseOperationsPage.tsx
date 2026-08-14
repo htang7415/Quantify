@@ -60,14 +60,14 @@ export function ReleaseOperationsPage() {
             </tr>)}</tbody>
           </table>
         </div>
-        <p className="data-note">Counts are exact arithmetic over public-release-index.v2. They are not uptime, review throughput, or production telemetry.</p>
+        <p className="data-note">Counts are exact arithmetic over public-release-index.v3. They are not uptime, review throughput, or production telemetry.</p>
       </section>
 
       <section className="release-lifecycle page-shell" aria-labelledby="candidate-lifecycle-title">
         <div><p className="terminal-eyebrow">Offline candidate lifecycle</p><h2 id="candidate-lifecycle-title">Source to review, without implicit publish.</h2><p>Each boundary is explicit. The candidate coordinator cannot activate a catalog or deploy the website.</p></div>
         <ol>
           <li><span>01</span><div><strong>Reviewed local inputs</strong><p>Exact source files, metadata, active bindings, and hashes.</p></div></li>
-          <li><span>02</span><div><strong>Deterministic compile</strong><p>ETF flows compile before release-bound ETF holdings.</p></div></li>
+          <li><span>02</span><div><strong>Deterministic compile</strong><p>Selected catalogs compile from reviewed local inputs in declared dependency order.</p></div></li>
           <li><span>03</span><div><strong>Candidate manifest</strong><p>Input hashes, output hashes, release IDs, and rollback bindings.</p></div></li>
           <li><span>04</span><div><strong>Separate review</strong><p>Promotion and deployment still require their own authorization.</p></div></li>
         </ol>

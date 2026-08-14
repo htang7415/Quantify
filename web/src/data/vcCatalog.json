@@ -1,0 +1,426 @@
+{
+  "schema_version": "vc-catalog.v1",
+  "release_id": "vc-2026-08-14-fdff25729f10",
+  "source_manifest_hash": "5a967fd3f34efbba49f6b6ba67b6381b035b8548732b23d7b7f4065ff1eb272a",
+  "observed_at": "2026-08-14T04:22:21Z",
+  "source_fresh_through": "2026-08-14",
+  "scope": "Twenty-four manually reviewed public firm-to-company relationships across four venture firms in the Core technology / AI tracking group.",
+  "methodology": "Publish only manually reviewed firm-to-company relationships from declared official firm pages. Count broad reviewed sector classifications by tracked company; do not infer ownership, value, stage, role, follow-on activity, or completeness.",
+  "limitations": [
+    "This is a bounded sample of relationships publicly presented by four venture firms, not a complete or current fund portfolio.",
+    "Company count and sector count describe only tracked released relationships and are not weighted by invested capital, ownership, valuation, or return.",
+    "Undisclosed timing, stage, participation role, follow-on status, ownership, and position value are not estimated."
+  ],
+  "firms": [
+    {
+      "firm_id": "andreessen-horowitz",
+      "name": "Andreessen Horowitz",
+      "category": "core_technology_ai",
+      "strategy_labels": [
+        "Technology",
+        "Stage agnostic"
+      ],
+      "source_url": "https://a16z.com/portfolio/",
+      "source_sha256": "53b6de995e72dd216c9767166ff114ef5214d9f3622c9d6b27253cbf79d9be63",
+      "tracked_relationship_count": 6,
+      "sector_counts": [
+        {
+          "sector": "enterprise_software",
+          "company_count": 2
+        },
+        {
+          "sector": "ai",
+          "company_count": 1
+        },
+        {
+          "sector": "consumer",
+          "company_count": 1
+        },
+        {
+          "sector": "fintech",
+          "company_count": 1
+        },
+        {
+          "sector": "space",
+          "company_count": 1
+        }
+      ],
+      "relationships": [
+        {
+          "company_id": "airbnb",
+          "company_name": "Airbnb",
+          "sector": "consumer",
+          "first_partnered_year": null,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://a16z.com/portfolio/",
+          "source_sha256": "53b6de995e72dd216c9767166ff114ef5214d9f3622c9d6b27253cbf79d9be63"
+        },
+        {
+          "company_id": "coinbase",
+          "company_name": "Coinbase",
+          "sector": "fintech",
+          "first_partnered_year": null,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://a16z.com/portfolio/",
+          "source_sha256": "53b6de995e72dd216c9767166ff114ef5214d9f3622c9d6b27253cbf79d9be63"
+        },
+        {
+          "company_id": "databricks",
+          "company_name": "Databricks",
+          "sector": "enterprise_software",
+          "first_partnered_year": null,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://a16z.com/portfolio/",
+          "source_sha256": "53b6de995e72dd216c9767166ff114ef5214d9f3622c9d6b27253cbf79d9be63"
+        },
+        {
+          "company_id": "figma",
+          "company_name": "Figma",
+          "sector": "enterprise_software",
+          "first_partnered_year": null,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://a16z.com/portfolio/",
+          "source_sha256": "53b6de995e72dd216c9767166ff114ef5214d9f3622c9d6b27253cbf79d9be63"
+        },
+        {
+          "company_id": "openai",
+          "company_name": "OpenAI",
+          "sector": "ai",
+          "first_partnered_year": null,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://a16z.com/portfolio/",
+          "source_sha256": "53b6de995e72dd216c9767166ff114ef5214d9f3622c9d6b27253cbf79d9be63"
+        },
+        {
+          "company_id": "spacex",
+          "company_name": "SpaceX",
+          "sector": "space",
+          "first_partnered_year": null,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://a16z.com/portfolio/",
+          "source_sha256": "53b6de995e72dd216c9767166ff114ef5214d9f3622c9d6b27253cbf79d9be63"
+        }
+      ]
+    },
+    {
+      "firm_id": "founders-fund",
+      "name": "Founders Fund",
+      "category": "core_technology_ai",
+      "strategy_labels": [
+        "Technology",
+        "Frontier"
+      ],
+      "source_url": "https://foundersfund.com/portfolio/",
+      "source_sha256": "d375228df9a456d629af790aa076b18ab8af581ca135a7d8dd30e81864432b7e",
+      "tracked_relationship_count": 6,
+      "sector_counts": [
+        {
+          "sector": "fintech",
+          "company_count": 2
+        },
+        {
+          "sector": "ai",
+          "company_count": 1
+        },
+        {
+          "sector": "defense",
+          "company_count": 1
+        },
+        {
+          "sector": "enterprise_software",
+          "company_count": 1
+        },
+        {
+          "sector": "space",
+          "company_count": 1
+        }
+      ],
+      "relationships": [
+        {
+          "company_id": "anduril",
+          "company_name": "Anduril",
+          "sector": "defense",
+          "first_partnered_year": null,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://foundersfund.com/portfolio/",
+          "source_sha256": "d375228df9a456d629af790aa076b18ab8af581ca135a7d8dd30e81864432b7e"
+        },
+        {
+          "company_id": "openai",
+          "company_name": "OpenAI",
+          "sector": "ai",
+          "first_partnered_year": null,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://foundersfund.com/portfolio/",
+          "source_sha256": "d375228df9a456d629af790aa076b18ab8af581ca135a7d8dd30e81864432b7e"
+        },
+        {
+          "company_id": "palantir",
+          "company_name": "Palantir",
+          "sector": "enterprise_software",
+          "first_partnered_year": null,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://foundersfund.com/portfolio/",
+          "source_sha256": "d375228df9a456d629af790aa076b18ab8af581ca135a7d8dd30e81864432b7e"
+        },
+        {
+          "company_id": "ramp",
+          "company_name": "Ramp",
+          "sector": "fintech",
+          "first_partnered_year": null,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://foundersfund.com/portfolio/",
+          "source_sha256": "d375228df9a456d629af790aa076b18ab8af581ca135a7d8dd30e81864432b7e"
+        },
+        {
+          "company_id": "spacex",
+          "company_name": "SpaceX",
+          "sector": "space",
+          "first_partnered_year": null,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://foundersfund.com/portfolio/",
+          "source_sha256": "d375228df9a456d629af790aa076b18ab8af581ca135a7d8dd30e81864432b7e"
+        },
+        {
+          "company_id": "stripe",
+          "company_name": "Stripe",
+          "sector": "fintech",
+          "first_partnered_year": null,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://foundersfund.com/portfolio/",
+          "source_sha256": "d375228df9a456d629af790aa076b18ab8af581ca135a7d8dd30e81864432b7e"
+        }
+      ]
+    },
+    {
+      "firm_id": "khosla-ventures",
+      "name": "Khosla Ventures",
+      "category": "core_technology_ai",
+      "strategy_labels": [
+        "Technology",
+        "Frontier",
+        "Sustainability"
+      ],
+      "source_url": "https://www.khoslaventures.com/portfolio",
+      "source_sha256": "f948eafddce77dd1e73d92ac16d2a5acaf391abdc81fdb751d6324adaa79c6d5",
+      "tracked_relationship_count": 6,
+      "sector_counts": [
+        {
+          "sector": "ai",
+          "company_count": 2
+        },
+        {
+          "sector": "autonomy",
+          "company_count": 1
+        },
+        {
+          "sector": "climate_energy",
+          "company_count": 1
+        },
+        {
+          "sector": "consumer",
+          "company_count": 1
+        },
+        {
+          "sector": "fintech",
+          "company_count": 1
+        }
+      ],
+      "relationships": [
+        {
+          "company_id": "commonwealth-fusion-systems",
+          "company_name": "Commonwealth Fusion Systems",
+          "sector": "climate_energy",
+          "first_partnered_year": 2018,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://www.khoslaventures.com/portfolio/commonwealth-fusion-systems-cfs",
+          "source_sha256": "9159fb24b7ee1a4ae7a6ebf0a4d88bf625100e43f194eaa508b607bf33330cf3"
+        },
+        {
+          "company_id": "doordash",
+          "company_name": "DoorDash",
+          "sector": "consumer",
+          "first_partnered_year": 2013,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://www.khoslaventures.com/portfolio/doordash",
+          "source_sha256": "aa42ba0d35fcf5ed18d9b348345f1c6d1886cb5e13ab55c95f40cf8427c1659c"
+        },
+        {
+          "company_id": "openai",
+          "company_name": "OpenAI",
+          "sector": "ai",
+          "first_partnered_year": 2019,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://www.khoslaventures.com/portfolio/openai",
+          "source_sha256": "01951774b2186b007c24d90afca93d20c6b5de5545c0c5173dcec29f58e292ed"
+        },
+        {
+          "company_id": "stripe",
+          "company_name": "Stripe",
+          "sector": "fintech",
+          "first_partnered_year": 2014,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://www.khoslaventures.com/portfolio/stripe",
+          "source_sha256": "4c028138ba7aa4d3f914064f0b1112b27beb27f7e4399887caeec35f449db043"
+        },
+        {
+          "company_id": "synchron",
+          "company_name": "Synchron",
+          "sector": "ai",
+          "first_partnered_year": 2021,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://www.khoslaventures.com/portfolio/synchron",
+          "source_sha256": "876436be30057206fbecb59b48bd648285b417ff818e62d23069ef12505de74c"
+        },
+        {
+          "company_id": "waabi",
+          "company_name": "Waabi",
+          "sector": "autonomy",
+          "first_partnered_year": 2021,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://www.khoslaventures.com/portfolio/waabi",
+          "source_sha256": "a8e457fa3e66f11e768389df5d5992a4694ae79434d5acd84bab88a61f6ab4f5"
+        }
+      ]
+    },
+    {
+      "firm_id": "sequoia-capital",
+      "name": "Sequoia Capital",
+      "category": "core_technology_ai",
+      "strategy_labels": [
+        "Technology",
+        "Company building"
+      ],
+      "source_url": "https://sequoiacap.com/our-companies/",
+      "source_sha256": "7c6c515ee3d3ba7dde95767efdc987b6ef08afea423e405b338bf07edb624092",
+      "tracked_relationship_count": 6,
+      "sector_counts": [
+        {
+          "sector": "enterprise_software",
+          "company_count": 2
+        },
+        {
+          "sector": "consumer",
+          "company_count": 1
+        },
+        {
+          "sector": "fintech",
+          "company_count": 1
+        },
+        {
+          "sector": "semiconductors",
+          "company_count": 1
+        },
+        {
+          "sector": "space",
+          "company_count": 1
+        }
+      ],
+      "relationships": [
+        {
+          "company_id": "airbnb",
+          "company_name": "Airbnb",
+          "sector": "consumer",
+          "first_partnered_year": null,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://sequoiacap.com/our-companies/",
+          "source_sha256": "7c6c515ee3d3ba7dde95767efdc987b6ef08afea423e405b338bf07edb624092"
+        },
+        {
+          "company_id": "linear",
+          "company_name": "Linear",
+          "sector": "enterprise_software",
+          "first_partnered_year": null,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://sequoiacap.com/our-companies/",
+          "source_sha256": "7c6c515ee3d3ba7dde95767efdc987b6ef08afea423e405b338bf07edb624092"
+        },
+        {
+          "company_id": "nvidia",
+          "company_name": "NVIDIA",
+          "sector": "semiconductors",
+          "first_partnered_year": null,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://sequoiacap.com/our-companies/",
+          "source_sha256": "7c6c515ee3d3ba7dde95767efdc987b6ef08afea423e405b338bf07edb624092"
+        },
+        {
+          "company_id": "spacex",
+          "company_name": "SpaceX",
+          "sector": "space",
+          "first_partnered_year": null,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://sequoiacap.com/our-companies/",
+          "source_sha256": "7c6c515ee3d3ba7dde95767efdc987b6ef08afea423e405b338bf07edb624092"
+        },
+        {
+          "company_id": "stripe",
+          "company_name": "Stripe",
+          "sector": "fintech",
+          "first_partnered_year": null,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://sequoiacap.com/our-companies/",
+          "source_sha256": "7c6c515ee3d3ba7dde95767efdc987b6ef08afea423e405b338bf07edb624092"
+        },
+        {
+          "company_id": "vanta",
+          "company_name": "Vanta",
+          "sector": "enterprise_software",
+          "first_partnered_year": null,
+          "stage": "undisclosed",
+          "participation_role": "undisclosed",
+          "follow_on_status": "undisclosed",
+          "source_url": "https://sequoiacap.com/our-companies/",
+          "source_sha256": "7c6c515ee3d3ba7dde95767efdc987b6ef08afea423e405b338bf07edb624092"
+        }
+      ]
+    }
+  ],
+  "manifest_hash": "fdff25729f1028c485e8aec2e69eebcdedc3b6738eaf9199a8388e182dc22728"
+}
