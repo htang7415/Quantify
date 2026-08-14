@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantify.local/schemas/agent_presentation.v1.schema.json",
+  "title": "Quantify shared agent presentation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "state", "message", "primary_action", "progress_labels", "details"],
+  "properties": {
+    "schema_version": { "const": "agent-presentation.v1" },
+    "state": { "enum": ["completed", "requires_review", "unavailable"] },
+    "message": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "summary", "scope"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "scope": { "type": "string", "minLength": 1, "maxLength": 160 }
+      }
+    },
+    "primary_action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "label"],
+      "properties": {
+        "action": { "enum": ["inspect_sources", "revise_question", "view_coverage", "review_methodology", "open_review"] },
+        "label": { "type": "string", "minLength": 1, "maxLength": 40 }
+      }
+    },
+    "progress_labels": { "const": ["Understand", "Research", "Check"] },
+    "details": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "sections"],
+      "properties": {
+        "available": { "type": "boolean" },
+        "sections": {
+          "type": "array",
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": { "enum": ["sources", "counterpoints", "methodology", "release", "audit"] }
+        }
+      }
+    }
+  }
+}

@@ -194,6 +194,26 @@ text. The provider-free evaluation boundary performs no model or tool call,
 retry, persistence, API action, or deployment. Connecting a pinned planner and
 executing independently typed tool requests remain separately gated work.
 
+The provider-free execution runner now consumes those validated plans without
+accepting arguments from the plan itself. An application-controlled stage
+provider supplies each existing typed tool request just before use. The runner
+checks intent, company, date, release, policy, stage, dependency, and request
+bindings; each approved adapter reauthorizes its action; and only validated
+result metadata enters one task-local artifact registry. Calculation can use
+only its declared search artifact, review can reference only registered result,
+statement, and citation IDs, and explicit verification can run only through an
+injected deterministic verifier whose evidence and audit scope match the task.
+The replayable `agent-execution-result.v1` document exposes hashes, states, and
+authorized identifiers without raw facts, disclosure text, provider output, or
+verdict composition. It remains local and adds no planner call, persistence,
+worker action, API route, public form, or deployment.
+
+The future web and mobile clients share `agent-presentation.v1`: one state, one
+short message, one scope line, one primary action, and the fixed working labels
+`Understand`, `Research`, and `Check`. Sources, counterpoints, methodology,
+release, and audit information remain optional detail sections. Provider,
+policy, token, and internal tool terminology is excluded from primary copy.
+
 ## Build an offline public-release candidate
 
 The candidate coordinator compiles reviewed local ETF-flow and ETF-holdings

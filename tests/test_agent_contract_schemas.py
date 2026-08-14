@@ -51,3 +51,45 @@ def test_model_attempt_schema_excludes_raw_provider_and_user_text() -> None:
     }.issubset(properties)
     assert not {"question", "prompt", "output", "reasoning"}.intersection(properties)
     assert document["additionalProperties"] is False
+
+
+def test_agent_execution_schema_exposes_metadata_not_raw_tool_results() -> None:
+    document = schema("agent_execution_result.v1.schema.json")
+    properties = document["properties"]
+    artifact = document["$defs"]["artifact"]
+
+    assert properties["schema_version"]["const"] == "agent-execution-result.v1"
+    assert set(artifact["properties"]) == {
+        "stage_id",
+        "tool_name",
+        "request_hash",
+        "result_hash",
+        "dependency_result_hashes",
+        "status",
+        "statement_ids",
+        "citation_ids",
+        "claim_ids",
+    }
+    assert not {"result", "facts", "contexts", "verdicts"}.intersection(
+        artifact["properties"]
+    )
+    assert document["additionalProperties"] is False
+
+
+def test_shared_agent_presentation_keeps_one_short_message_and_action() -> None:
+    document = schema("agent_presentation.v1.schema.json")
+    properties = document["properties"]
+    message = properties["message"]
+
+    assert properties["schema_version"]["const"] == "agent-presentation.v1"
+    assert properties["progress_labels"]["const"] == [
+        "Understand",
+        "Research",
+        "Check",
+    ]
+    assert message["properties"]["title"]["maxLength"] == 64
+    assert message["properties"]["summary"]["maxLength"] == 600
+    assert set(properties["primary_action"]["properties"]) == {"action", "label"}
+    assert not {"provider", "policy", "token_usage", "tool_name"}.intersection(
+        properties
+    )

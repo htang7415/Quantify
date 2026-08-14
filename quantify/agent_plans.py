@@ -278,6 +278,18 @@ class AgentPlanStage:
     purpose: AgentPlanPurpose
     depends_on_stage_ids: tuple[str, ...]
 
+    def __post_init__(self) -> None:
+        _require_id(self.stage_id, field="stage_id", code="invalid_result")
+        if (
+            not isinstance(self.tool_name, AgentToolName)
+            or not isinstance(self.purpose, AgentPlanPurpose)
+            or _PURPOSE_BY_TOOL.get(self.tool_name) is not self.purpose
+            or not isinstance(self.depends_on_stage_ids, tuple)
+            or any(not isinstance(item, str) for item in self.depends_on_stage_ids)
+            or len(set(self.depends_on_stage_ids)) != len(self.depends_on_stage_ids)
+        ):
+            raise AgentPlanError("invalid_result", "plan stage is invalid")
+
     def to_document(self) -> dict[str, object]:
         return {
             "stage_id": self.stage_id,
@@ -298,6 +310,70 @@ class AgentPlanResult:
     stages: tuple[AgentPlanStage, ...]
     unavailable_reason: AgentPlanUnavailableReason | None
     schema_version: str = "agent-plan-result.v1"
+
+    def __post_init__(self) -> None:
+        expected_plan_hash = hash_document(
+            {
+                "request_hash": self.request_hash,
+                "proposal_hash": self.proposal_hash,
+            }
+        )
+        if (
+            self.schema_version != "agent-plan-result.v1"
+            or self.plan_id != f"agent-plan-{expected_plan_hash[:32]}"
+            or not self.task_id
+            or not isinstance(self.request_hash, str)
+            or not _HASH_PATTERN.fullmatch(self.request_hash)
+            or not isinstance(self.proposal_hash, str)
+            or not _HASH_PATTERN.fullmatch(self.proposal_hash)
+            or not isinstance(self.task_intent, ResearchIntent)
+            or not isinstance(self.status, AgentPlanStatus)
+            or not isinstance(self.stages, tuple)
+            or not all(isinstance(stage, AgentPlanStage) for stage in self.stages)
+            or len(self.stages) > _MAXIMUM_ACTIONS
+        ):
+            raise AgentPlanError("invalid_result", "plan result is invalid")
+        if self.status is AgentPlanStatus.UNAVAILABLE:
+            if self.stages or not isinstance(
+                self.unavailable_reason, AgentPlanUnavailableReason
+            ):
+                raise AgentPlanError("invalid_result", "unavailable plan is invalid")
+            return
+        if not self.stages or self.unavailable_reason is not None:
+            raise AgentPlanError("invalid_result", "planned result is invalid")
+        seen_ids: set[str] = set()
+        seen_tools: set[AgentToolName] = set()
+        for stage in self.stages:
+            if (
+                stage.stage_id in seen_ids
+                or stage.tool_name in seen_tools
+                or not intent_allows_tool(self.task_intent, stage.tool_name)
+                or any(item not in seen_ids for item in stage.depends_on_stage_ids)
+            ):
+                raise AgentPlanError("invalid_result", "plan stage graph is invalid")
+            dependency_tools = {
+                prior.tool_name
+                for prior in self.stages
+                if prior.stage_id in stage.depends_on_stage_ids
+            }
+            if (
+                stage.tool_name is AgentToolName.CALCULATE_APPROVED_EVIDENCE
+                and AgentToolName.SEARCH_APPROVED_EVIDENCE_RELEASE
+                not in dependency_tools
+            ):
+                raise AgentPlanError("invalid_result", "calculation dependency is invalid")
+            if (
+                stage.tool_name is AgentToolName.CREATE_REVIEW_TASK
+                and not stage.depends_on_stage_ids
+            ):
+                raise AgentPlanError("invalid_result", "review dependency is invalid")
+            seen_ids.add(stage.stage_id)
+            seen_tools.add(stage.tool_name)
+        if any(
+            stage.tool_name is AgentToolName.CREATE_REVIEW_TASK
+            for stage in self.stages[:-1]
+        ):
+            raise AgentPlanError("invalid_result", "review must be terminal")
 
     def to_document(self) -> dict[str, object]:
         return {

@@ -803,6 +803,47 @@ separately validated tool request with policy reauthorization and deterministic
 `research-answer.v1` composition. Explicit claim-verification verdicts remain
 the sole output of the deterministic verifier.
 
+The provider-free execution boundary is `agent-execution-result.v1`. It accepts
+only a validated plan, its independently admitted plan request and question
+context, current policy pointers, and a stage-request provider controlled by
+the application. The plan never supplies executable arguments. Immediately
+before each stage, the provider supplies an instance of that tool's existing
+versioned request type; deterministic code proves its stage, intent, company,
+as-of date, release, request hash, dependency, and policy scope before the
+existing approved tool adapter reauthorizes and executes it. The first runner
+does not call a planner or create tool requests from model text.
+
+Each execution owns a task-local artifact registry. A registered artifact binds
+one plan stage and tool to its canonical request hash, result hash, dependency
+result hashes, terminal tool status, and exact statement, citation, or claim
+identifiers exposed by the validated result. The registry retains typed result
+objects only inside that execution. Unknown tasks, plans, stages, dependencies,
+request hashes, result hashes, statement IDs, citation IDs, and claim IDs fail
+closed. Calculation resolves only an exact-search artifact declared as its
+plan dependency; review references only artifacts and identifiers already in
+the same registry. A model-visible identifier is never sufficient authority.
+
+The runner executes stages in their validated order, once each, subject to the
+plan action cap. It rechecks current policy before every action and before
+returning the execution record. Typed partial or unavailable retrieval remains
+visible and may support a later independent stage, but an invalid dependency,
+revoked policy, unavailable required input, missing deterministic verifier, or
+tool failure stops safely without fallback. `requires_review` is terminal. The
+execution result contains artifact metadata and one unavailable reason, not raw
+tool output, a research answer, or a verdict composed by the runner. A later
+composer must build `research-answer.v1` only from this registry and separately
+authorized interpretation warrants.
+
+Web and mobile use one `agent-presentation.v1` grammar over these shared
+contracts. The primary surface contains, in order: one result state, one short answer or
+reason, one plain scope line, and one next safe action. `Ask Quantify` shows
+only three working labels: `Understand`, `Research`, and `Check`. Facts,
+analysis, context, and verification are visually distinct, while citations,
+methodology, release identity, policy identity, and audit identity remain under
+`Details`. Internal tool names, hashes, queues, provider attempts, token counts,
+policy terminology, and architecture are never primary-interface copy. Web and
+mobile may change layout but not wording, state meaning, or information order.
+
 The private pilot foundation implements the SQS batch-adaptation and
 control-plane boundaries described above. Its guarded offline IAM-only
 admission command may validate and durably queue one task only when an
@@ -1225,12 +1266,16 @@ parallel, but they converge at the same contracts and gates before exposure.
    policy-controlled internal tools delegate to all four adapters. The
    canonical intent matrix, versioned agent-plan request/result contracts,
    independently grounded provider-free plan validator, and attributable
-   model-attempt record now bound plans to admitted scope, ordered tools,
+   model-attempt record now bind plans to admitted scope, ordered tools,
    action/model budgets, provider outcome, validation outcome, and replay
    hashes without storing raw user or provider text. They have no API, model,
-   live retrieval, similarity expansion, or verdict authority. Next connect a
-   provider-free bounded runner to independently typed tool requests, then
-   connect one pinned model in a private orchestration loop.
+   live retrieval, similarity expansion, or verdict authority. The local
+   provider-free execution runner now consumes independently supplied typed
+   stage requests, reauthorizes every approved tool, binds results into one
+   task-local artifact registry, rejects cross-task or cross-stage references,
+   and emits only replayable execution metadata. It does not compose an answer
+   or verdict. Next compose `research-answer.v1` deterministically from the
+   registry, then connect one pinned model in a private orchestration loop.
    Model-assisted composition remains private until admission, cost, and
    public-task gates pass.
 8. **Account and access decisions — specification work may run in parallel with
