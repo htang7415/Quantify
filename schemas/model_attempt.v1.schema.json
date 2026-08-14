@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantify.local/schemas/model_attempt.v1.schema.json",
+  "title": "Quantify model-attempt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "attempt_id", "task_id", "plan_request_hash", "runtime_policy_bundle_hash", "sequence_number", "model", "provider_status", "validation_status", "provider_attempt_id", "output_hash", "usage", "limitations"],
+  "properties": {
+    "schema_version": { "const": "model-attempt.v1" },
+    "attempt_id": { "type": "string", "pattern": "^model-attempt-[a-f0-9]{32}$" },
+    "task_id": { "$ref": "#/$defs/id" },
+    "plan_request_hash": { "$ref": "#/$defs/hash" },
+    "runtime_policy_bundle_hash": { "$ref": "#/$defs/hash" },
+    "sequence_number": { "type": "integer", "minimum": 1, "maximum": 8 },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "model_id", "model_version", "secret_version", "prompt_contract_hash", "tool_contract_hash"],
+      "properties": {
+        "provider": { "$ref": "#/$defs/id" },
+        "model_id": { "$ref": "#/$defs/id" },
+        "model_version": { "$ref": "#/$defs/id" },
+        "secret_version": { "$ref": "#/$defs/id" },
+        "prompt_contract_hash": { "$ref": "#/$defs/hash" },
+        "tool_contract_hash": { "$ref": "#/$defs/hash" }
+      }
+    },
+    "provider_status": { "enum": ["not_started", "completed", "ambiguous", "unavailable"] },
+    "validation_status": { "enum": ["not_evaluated", "accepted", "rejected"] },
+    "provider_attempt_id": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9._:-]{1,128}$" },
+    "output_hash": { "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }] },
+    "usage": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["input_tokens", "output_tokens", "actual_cost_micro_usd"],
+          "properties": {
+            "input_tokens": { "type": "integer", "minimum": 0 },
+            "output_tokens": { "type": "integer", "minimum": 0 },
+            "actual_cost_micro_usd": { "type": "integer", "minimum": 0 }
+          }
+        },
+        { "type": "null" }
+      ]
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "provider_status": { "const": "completed" } } },
+      "then": {
+        "properties": {
+          "provider_attempt_id": { "type": "string" },
+          "output_hash": { "$ref": "#/$defs/hash" },
+          "usage": { "type": "object" },
+          "validation_status": { "enum": ["accepted", "rejected"] }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "provider_status": { "enum": ["not_started", "ambiguous", "unavailable"] } } },
+      "then": {
+        "properties": {
+          "output_hash": { "const": null },
+          "usage": { "const": null },
+          "validation_status": { "const": "not_evaluated" }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,128}$" }
+  }
+}

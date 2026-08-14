@@ -6,17 +6,17 @@ export type RouteMetadata = {
 };
 
 const defaultDescription =
-  "Research released public-company information and verify claims against declared evidence with an inspectable audit trail.";
+  "Explore released investment data and intelligence, inspect evidence-bound analysis, and verify claims with a declared scope and audit trail.";
 
 const exactRoutes: Record<string, Omit<RouteMetadata, "indexable">> = {
   "/": {
-    title: "Quantify — AI research agent for company evidence",
-    description: "Turn a bounded public-company question into released data, source-bound information, typed intelligence, and a deterministic verification result.",
+    title: "Quantify — Evidence-bound AI investment research",
+    description: "Explore released company, ownership, earnings, macro, rates, and policy data; connect typed intelligence; and verify claims against declared evidence.",
     canonicalPath: "/"
   },
   "/product": {
     title: "Product — Quantify",
-    description: "See how the Quantify AI research agent moves from objective and scope to released data, connected intelligence, and deterministic claim verification.",
+    description: "See how Quantify separates released data, typed intelligence, cited analysis, and deterministic claim verification in one research system.",
     canonicalPath: "/product"
   },
   "/coverage": {

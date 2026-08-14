@@ -14,6 +14,7 @@ from datetime import date
 from hashlib import sha256
 import json
 import re
+from urllib.parse import urlparse
 
 from quantify.engine import EvidenceSnapshot, EvidenceValue
 from quantify.harness import SnapshotBuild
@@ -23,6 +24,8 @@ from quantify.release_factory import EvidenceRelease
 
 
 _HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+_ACCESSION_PATTERN = re.compile(r"^[0-9]{10}-[0-9]{2}-[0-9]{6}$")
+_MAX_NARRATIVE_CHARS = 12_000
 
 
 class IndexedReleaseError(ValueError):
@@ -233,7 +236,9 @@ class NarrativeDisclosureChunk:
     evidence_release_manifest_hash: str
     cik: str
     filing_accession: str
-    source_span: str
+    filed_at: date
+    source_url: str
+    source_span: tuple[int, int]
     text: str
     chunk_hash: str
 
@@ -243,12 +248,43 @@ class NarrativeDisclosureChunk:
             field="evidence_release_manifest_hash",
         )
         object.__setattr__(self, "cik", SecCompanyFactsClient.normalize_cik(self.cik))
-        if not self.filing_accession or not self.source_span or not self.text:
+        if not isinstance(self.filing_accession, str) or not _ACCESSION_PATTERN.fullmatch(
+            self.filing_accession
+        ):
+            raise IndexedReleaseError("narrative filing accession is invalid")
+        if not isinstance(self.filed_at, date):
+            raise IndexedReleaseError("narrative filing date is invalid")
+        parsed_url = urlparse(self.source_url) if isinstance(self.source_url, str) else None
+        if (
+            parsed_url is None
+            or parsed_url.scheme != "https"
+            or not parsed_url.netloc
+            or parsed_url.username
+            or parsed_url.password
+        ):
+            raise IndexedReleaseError("narrative source URL must be HTTPS")
+        if (
+            not isinstance(self.source_span, tuple)
+            or len(self.source_span) != 2
+            or any(not isinstance(item, int) or isinstance(item, bool) for item in self.source_span)
+            or self.source_span[0] < 0
+            or self.source_span[0] >= self.source_span[1]
+        ):
+            raise IndexedReleaseError("narrative source span is invalid")
+        if (
+            not isinstance(self.text, str)
+            or not self.text
+            or self.text != self.text.strip()
+            or len(self.text) > _MAX_NARRATIVE_CHARS
+            or self.source_span[1] - self.source_span[0] != len(self.text)
+        ):
             raise IndexedReleaseError("narrative disclosure chunk is incomplete")
         if self.chunk_hash != _hash(
             {
                 "cik": self.cik,
                 "filing_accession": self.filing_accession,
+                "filed_at": self.filed_at.isoformat(),
+                "source_url": self.source_url,
                 "source_span": self.source_span,
                 "text": self.text,
             }
@@ -262,14 +298,20 @@ class NarrativeDisclosureChunk:
         evidence_release_manifest_hash: str,
         cik: str,
         filing_accession: str,
-        source_span: str,
+        filed_at: date,
+        source_url: str,
+        source_span: tuple[int, int],
         text: str,
     ) -> "NarrativeDisclosureChunk":
         normalized_cik = SecCompanyFactsClient.normalize_cik(cik)
+        if not isinstance(filed_at, date):
+            raise IndexedReleaseError("narrative filing date is invalid")
         chunk_hash = _hash(
             {
                 "cik": normalized_cik,
                 "filing_accession": filing_accession,
+                "filed_at": filed_at.isoformat(),
+                "source_url": source_url,
                 "source_span": source_span,
                 "text": text,
             }
@@ -278,6 +320,8 @@ class NarrativeDisclosureChunk:
             evidence_release_manifest_hash=evidence_release_manifest_hash,
             cik=normalized_cik,
             filing_accession=filing_accession,
+            filed_at=filed_at,
+            source_url=source_url,
             source_span=source_span,
             text=text,
             chunk_hash=chunk_hash,
@@ -316,6 +360,8 @@ class NarrativeContextIndex:
                     {
                         "cik": chunk.cik,
                         "filing_accession": chunk.filing_accession,
+                        "filed_at": chunk.filed_at.isoformat(),
+                        "source_url": chunk.source_url,
                         "source_span": chunk.source_span,
                         "chunk_hash": chunk.chunk_hash,
                     }
@@ -325,12 +371,34 @@ class NarrativeContextIndex:
         )
 
     def context(
-        self, *, evidence_release_manifest_hash: str, cik: str
+        self,
+        *,
+        evidence_release_manifest_hash: str,
+        cik: str,
+        as_of_date: date | None = None,
+        filing_accessions: tuple[str, ...] = (),
     ) -> tuple[NarrativeDisclosureChunk, ...]:
         if evidence_release_manifest_hash != self.evidence_release_manifest_hash:
             return ()
         normalized_cik = SecCompanyFactsClient.normalize_cik(cik)
-        return tuple(chunk for chunk in self.chunks if chunk.cik == normalized_cik)
+        if as_of_date is not None and not isinstance(as_of_date, date):
+            raise IndexedReleaseError("narrative context as-of date is invalid")
+        if not isinstance(filing_accessions, tuple) or any(
+            not isinstance(accession, str)
+            or not _ACCESSION_PATTERN.fullmatch(accession)
+            for accession in filing_accessions
+        ):
+            raise IndexedReleaseError("narrative context filing scope is invalid")
+        if len(set(filing_accessions)) != len(filing_accessions):
+            raise IndexedReleaseError("narrative context filing scope is invalid")
+        requested = set(filing_accessions)
+        return tuple(
+            chunk
+            for chunk in self.chunks
+            if chunk.cik == normalized_cik
+            and (as_of_date is None or chunk.filed_at <= as_of_date)
+            and (not requested or chunk.filing_accession in requested)
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -382,6 +450,8 @@ class IndexedEvidenceRelease:
         issuers = set(self.evidence_release.issuer_ciks)
         if any(snapshot.request.cik not in issuers for snapshot in ordered):
             raise IndexedReleaseError("indexed snapshot issuer is outside the evidence release")
+        if any(chunk.cik not in issuers for chunk in self.narrative_context.chunks):
+            raise IndexedReleaseError("narrative chunk issuer is outside the evidence release")
         evidence_ids = {
             evidence.evidence_id
             for snapshot in ordered
@@ -500,9 +570,16 @@ class NarrativeContextRetriever:
         self._narrative_index = narrative_index
 
     def context(
-        self, *, evidence_release_manifest_hash: str, cik: str
+        self,
+        *,
+        evidence_release_manifest_hash: str,
+        cik: str,
+        as_of_date: date | None = None,
+        filing_accessions: tuple[str, ...] = (),
     ) -> tuple[NarrativeDisclosureChunk, ...]:
         return self._narrative_index.context(
             evidence_release_manifest_hash=evidence_release_manifest_hash,
             cik=cik,
+            as_of_date=as_of_date,
+            filing_accessions=filing_accessions,
         )

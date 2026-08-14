@@ -297,12 +297,17 @@ def test_indexed_snapshot_adapter_replays_the_existing_evidence_acquisition_path
 
 def test_narrative_context_is_manifest_filtered_and_cannot_change_a_verdict() -> None:
     release = _v1_release()
+    narrative_text = (
+        "This issuer disclosure is context only and does not establish a fact."
+    )
     chunk = NarrativeDisclosureChunk.create(
         evidence_release_manifest_hash=release.manifest_hash,
         cik="789019",
         filing_accession="0000950170-24-087843",
-        source_span="risk-factors:1",
-        text="This issuer disclosure is context only and does not establish a fact.",
+        filed_at=date(2024, 7, 30),
+        source_url="https://www.sec.gov/Archives/msft-2024.htm",
+        source_span=(120, 120 + len(narrative_text)),
+        text=narrative_text,
     )
     indexed, embedded, request = _compiled_msft_release(narrative_chunks=(chunk,))
     retriever = NarrativeContextRetriever(narrative_index=indexed.narrative_context)

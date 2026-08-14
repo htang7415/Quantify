@@ -133,18 +133,18 @@ export function VerificationPage({ verifier = verifyAnalysis }: { verifier?: Ver
 
       <section className="hero shell" id="top">
         <div className="hero-copy">
-          <p className="eyebrow">Quantify AI research agent</p>
+          <p className="eyebrow">Quantify Agent · Current task: verification</p>
           <h1>Turn a company claim into a reviewable result.</h1>
           <p className="hero-text">
-            Declare the objective and scope. Quantify binds released data, checks evidence
-            and counterevidence, and returns a deterministic verdict with an audit identity.
+            Quantify spans released data, typed intelligence, cited analysis, and verification.
+            This public task currently checks one supported company claim and returns a deterministic verdict with an audit identity.
           </p>
           <div className="hero-actions">
             <a className="button button-dark" href="#verify">
               Check a claim <span aria-hidden="true">↓</span>
             </a>
-            <a className="button button-light" href="#trust">
-              How it stays bounded
+            <a className="button button-light" href="/#research">
+              Explore released research
             </a>
           </div>
         </div>
@@ -154,7 +154,7 @@ export function VerificationPage({ verifier = verifyAnalysis }: { verifier?: Ver
               <span className="agent-orb" aria-hidden="true" />
               <div>
                 <strong>Quantify Agent</strong>
-              <span>Evidence-bound verification</span>
+              <span>Current task · evidence-bound verification</span>
               </div>
             </div>
             <span className="agent-status"><i className="status-dot" /> Contract ready</span>
@@ -185,10 +185,10 @@ export function VerificationPage({ verifier = verifyAnalysis }: { verifier?: Ver
       </section>
 
       <section className="trust-bar shell" id="trust" aria-label="Quantify principles">
-        <span>Exact scope</span>
-        <span>Released data</span>
-        <span>Deterministic verdicts</span>
-        <span>Review when unclear</span>
+        <span>Data · released</span>
+        <span>Intelligence · typed</span>
+        <span>AI analysis · gated</span>
+        <span>Verification · available</span>
       </section>
 
       <section className="agent-model shell" aria-labelledby="agent-model-title">
@@ -205,22 +205,23 @@ export function VerificationPage({ verifier = verifyAnalysis }: { verifier?: Ver
           <p className="eyebrow">Layered authority</p>
           <h2 id="scale-title">Each layer controls one thing.</h2>
           <p>
-            Every result is constrained to its declared release. An empty verified set or
-            a review-required result is a valid outcome.
+            The broader product separates research explanation from claim authority.
+            Every current verification result remains constrained to its declared release.
           </p>
         </div>
         <div className="scale-grid">
           <article><span className="scale-number">01</span><h3>Data</h3><p>Only declared structured facts from the frozen release can warrant a verdict.</p></article>
           <article><span className="scale-number">02</span><h3>Intelligence</h3><p>Typed compatible connections organize facts without creating new ones.</p></article>
-          <article><span className="scale-number">03</span><h3>Verification</h3><p>Deterministic code returns the verdict or stops for review.</p></article>
+          <article><span className="scale-number">03</span><h3>Analysis</h3><p>Interpretation must retain statement types, citations, counterpoints, and limitations.</p></article>
+          <article><span className="scale-number">04</span><h3>Verification</h3><p>Deterministic code returns the verdict or stops for review.</p></article>
         </div>
       </section>
 
       <section className="workspace shell" id="verify">
         <div className="section-heading">
-          <p className="eyebrow">Quantify verification</p>
+          <p className="eyebrow">Available Agent task · Verification</p>
           <h2>Check a claim before it travels.</h2>
-          <p>Configure one bounded task. Receive the current safe contract: verdict, declared evidence scope, limitation, and audit reference.</p>
+          <p>Use released data and deterministic verification now. Cited AI analysis remains gated. This task returns a verdict, declared evidence scope, limitation, and audit reference.</p>
         </div>
         <div className="task-context release-signal" aria-label="Current agent task context">
           <div><span>Agent task · {taskState}</span><strong>Verify a company-analysis claim</strong></div>

@@ -18,6 +18,8 @@ import json
 import re
 from typing import Generic, Mapping, Protocol, TypeVar
 
+from quantify.research_intents import ALL_AGENT_TOOLS
+
 
 _HASH_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 _IDENTIFIER_PATTERN = re.compile(r"^[a-z][a-z0-9_.-]{0,127}$")
@@ -32,14 +34,7 @@ _REQUIRED_PROHIBITED_ACTIONS = frozenset(
         "trade_execution",
     }
 )
-_KNOWN_TOOLS = frozenset(
-    {
-        "verify_claims",
-        "search_approved_evidence_release",
-        "create_review_task",
-        "narrative_context",
-    }
-)
+_KNOWN_TOOLS = ALL_AGENT_TOOLS
 _KNOWN_SOURCES = frozenset({"structured_fact", "narrative_disclosure"})
 
 

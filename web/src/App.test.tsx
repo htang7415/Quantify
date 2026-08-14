@@ -23,7 +23,8 @@ describe("Quantify web app", () => {
   it("shows the product boundary", () => {
     render(<App initialPath="/agent" />);
     expect(screen.getByRole("heading", { name: "Turn a company claim into a reviewable result." })).toBeInTheDocument();
-    expect(screen.getAllByText("Exact scope").length).toBeGreaterThan(0);
+    expect(screen.getByText("Data · released")).toBeInTheDocument();
+    expect(screen.getByText("AI analysis · gated")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Every stage has one job." })).toBeInTheDocument();
     expect(within(screen.getByRole("list", { name: "Quantify agent operating model" })).getAllByRole("listitem")).toHaveLength(5);
     expect(screen.getByRole("heading", { name: "Each layer controls one thing." })).toBeInTheDocument();
@@ -159,7 +160,7 @@ describe("Quantify web app", () => {
 
     expect(screen.getByRole("link", { name: "Quantify home" })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /Open Agent/ })[0]).toHaveAttribute("href", "/agent");
-    expect(screen.getByRole("heading", { name: /Ask the question.*See the system work/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Research markets.*Analyze with evidence/i })).toBeInTheDocument();
     expect(screen.getByLabelText("Versioned verification sample")).toHaveTextContent("Evaluation fixture · Microsoft · 10-K");
     expect(screen.getByLabelText("Versioned verification sample")).toHaveTextContent("$245.12B");
     expect(screen.getByLabelText("Versioned verification sample")).toHaveTextContent("Audit 75b9cf2d09…90722e");
@@ -169,20 +170,35 @@ describe("Quantify web app", () => {
     expect(screen.getByRole("heading", { name: "The agent knows what it can use." })).toBeInTheDocument();
     expect(screen.getByText("12 declared catalogs. Status comes directly from the public release index.")).toBeInTheDocument();
     expect(screen.getByText(/0 \/ 3 released/)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Choose the research job." })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Browse released records." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Start with the job." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Explore released records." })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Connect compatible facts." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Explain the evidence." })).toBeInTheDocument();
+    expect(screen.getByText("Available · released")).toBeInTheDocument();
+    expect(screen.getByText("Available · typed")).toBeInTheDocument();
+    expect(screen.getByText("Gated next · no public task")).toBeInTheDocument();
+    expect(screen.getByText("Available · bounded")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Verify one claim." })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Data and information, released by scope." })).toBeInTheDocument();
+    const releasedResearch = screen.getByRole("heading", { name: "Evidence, released by scope." }).closest("section");
+    const systemLogic = screen.getByRole("heading", { name: "One objective. Five controlled stages." }).closest("section");
+    expect(releasedResearch?.compareDocumentPosition(systemLogic as Node) ?? 0).toBeTruthy();
+    expect(releasedResearch?.compareDocumentPosition(systemLogic as Node)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
     expect(screen.getByRole("link", { name: /Investors.*reporting managers/i })).toHaveAttribute("href", "/investors");
     expect(screen.getByRole("link", { name: /Venture.*4 firms and 24 official-source relationships/i })).toHaveAttribute("href", "/investors/venture");
-    expect(screen.getByRole("heading", { name: "Useful because it shows its limits." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "AI analysis should show its work." })).toBeInTheDocument();
     expect(screen.queryByText(/real-time market/i)).not.toBeInTheDocument();
   });
 
   it("states the current commercial access boundary without an unsupported conversion form", () => {
     render(<App initialPath="/product" />);
 
+    const productLayers = screen.getByRole("heading", { name: "Different jobs. Clear authority." }).closest("section");
+    const operatingModel = screen.getByRole("heading", { name: "A visible chain of responsibility." }).closest("section");
+    expect(productLayers?.compareDocumentPosition(operatingModel as Node)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
     expect(screen.getByRole("heading", { name: "The commercial boundary stays visible." })).toBeInTheDocument();
     expect(screen.getByText("Browse without sign-in")).toBeInTheDocument();
     expect(screen.getByText("Controlled access")).toBeInTheDocument();
@@ -276,11 +292,12 @@ describe("Quantify web app", () => {
   it("explains the product authority without implying autonomous verdicts", () => {
     render(<App initialPath="/product" />);
 
-    expect(screen.getByRole("heading", { name: /One system.*Three research modes/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /One system.*Four research layers/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "A visible chain of responsibility." })).toBeInTheDocument();
     expect(within(screen.getByRole("list", { name: "Quantify agent operating model" })).getAllByRole("listitem")).toHaveLength(5);
-    expect(screen.getByRole("heading", { name: /The agent researches.*The verifier decides/i })).toBeInTheDocument();
-    expect(screen.getByText("Untrusted until validated.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /The agent explains.*The verifier decides/i })).toBeInTheDocument();
+    expect(screen.getByText("Every statement stays untrusted until validated.")).toBeInTheDocument();
+    expect(screen.getByText("Model-assisted research answers under the new grounded contract")).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "Current and gated product capabilities" })).toBeInTheDocument();
     expect(screen.getByText("One structured extraction step; zero production resolution actions")).toBeInTheDocument();
   });

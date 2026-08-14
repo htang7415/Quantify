@@ -83,16 +83,16 @@ export function OverviewPage() {
 
       <section className="commercial-hero page-shell">
         <div className="commercial-hero-copy">
-          <p className="terminal-eyebrow">AI research agent · released public-company data</p>
-          <h1>Ask the question.<br /><span>See the system work.</span></h1>
-          <p>Quantify turns a bounded company claim into a declared scope, released data, source-bound information, typed intelligence, and a deterministic result you can inspect.</p>
+          <p className="terminal-eyebrow">Evidence-bound AI investment research</p>
+          <h1>Research markets.<br /><span>Analyze with evidence.</span></h1>
+          <p>Quantify brings company filings, ownership, earnings, macro, rates, and policy into one inspectable system. Explore released data and intelligence today, then verify factual claims against a declared evidence scope.</p>
           <div className="overview-actions">
-            <a className="button button-dark" href="/agent">Open Agent <span aria-hidden="true">↗</span></a>
-            <a className="button button-light" href="#research">Explore released research</a>
+            <a className="button button-dark" href="#research">Explore research <span aria-hidden="true">↓</span></a>
+            <a className="button button-light" href="/agent">Verify a claim</a>
           </div>
           <div className="commercial-proofline" aria-label="Product boundaries">
             <span><i /> {availableReleases.length} of {publicReleaseIndex.releases.length} catalogs released</span>
-            <span>Evidence scope visible</span>
+            <span>Model-assisted analysis gated</span>
             <span>No trading or predictions</span>
           </div>
         </div>
@@ -106,39 +106,38 @@ export function OverviewPage() {
         <a href="/coverage">Inspect coverage →</a>
       </section>
 
-      <section className="agent-operating-system product-modes page-shell" aria-labelledby="agent-operating-title">
-        <div className="commercial-section-head split-head">
-          <div><p className="terminal-eyebrow">System logic</p><h2 id="agent-operating-title">One objective. Five controlled stages.</h2></div>
-          <p>The agent can organize the work. Released data and deterministic code control what becomes a result.</p>
-        </div>
-        <AgentSystemMap />
-      </section>
-
-      <ReleaseDataSystem />
-
       <section className="product-modes page-shell" aria-labelledby="product-modes-title">
         <div className="commercial-section-head">
-          <p className="terminal-eyebrow">Start with the job</p>
-          <h2 id="product-modes-title">Choose the research job.</h2>
-          <p>Each path names what you provide, what Quantify returns, and where the current release stops.</p>
+          <p className="terminal-eyebrow">Four research layers</p>
+          <h2 id="product-modes-title">Start with the job.</h2>
+          <p>Each path states what Quantify can return now—and where the current release stops.</p>
         </div>
         <div className="product-mode-grid">
           <article>
-            <span>01 / Information</span>
-            <h3>Browse released records.</h3>
-            <p>Input: a market, manager, or company. Output: source-bound records from active frozen releases.</p>
-            <a href="#research">Browse research →</a>
+            <span>01 / Data</span>
+            <strong className="product-mode-state is-available">Available · released</strong>
+            <h3>Explore released records.</h3>
+            <p>Company, investor, earnings, macro, rates, ETF, and policy records with visible source, time, scope, and limits.</p>
+            <a href="#research">Explore research →</a>
           </article>
           <article>
             <span>02 / Intelligence</span>
+            <strong className="product-mode-state is-available">Available · typed</strong>
             <h3>Connect compatible facts.</h3>
-            <p>Input: a released entity or period. Output: exact typed relationships, changes, and official actions.</p>
-            <a href="/intelligence">Connect facts →</a>
+            <p>Exact entity, period, ownership, earnings, and policy connections derived from active compatible releases.</p>
+            <a href="/intelligence">Open intelligence →</a>
+          </article>
+          <article className="product-mode-gated">
+            <span>03 / Analysis</span>
+            <strong className="product-mode-state">Gated next · no public task</strong>
+            <h3>Explain the evidence.</h3>
+            <p>Deterministic metrics and source-bound explanations are available in research views. General cited AI analysis is not public.</p>
           </article>
           <article className="product-mode-featured">
-            <span>03 / Verification</span>
+            <span>04 / Verification</span>
+            <strong className="product-mode-state is-current">Available · bounded</strong>
             <h3>Verify one claim.</h3>
-            <p>Input: company, as-of date, and factual claim. Output: verdict, scope, limitation, and audit identity.</p>
+            <p>Submit a supported company, as-of date, and factual claim. Receive a deterministic verdict, limitation, and audit identity.</p>
             <a href="/agent">Verify a claim →</a>
           </article>
         </div>
@@ -147,7 +146,7 @@ export function OverviewPage() {
       <section className="research-grid-section" id="research" aria-labelledby="research-grid-title">
         <div className="page-shell">
           <div className="commercial-section-head split-head">
-            <div><p className="terminal-eyebrow">Released research</p><h2 id="research-grid-title">Data and information, released by scope.</h2></div>
+            <div><p className="terminal-eyebrow">Released research</p><h2 id="research-grid-title">Evidence, released by scope.</h2></div>
             <p>Unavailable layers stay unavailable. Every active layer shows when and how it was observed.</p>
           </div>
           <div className="research-entry-grid">
@@ -179,34 +178,44 @@ export function OverviewPage() {
         </div>
       </section>
 
+      <section className="agent-operating-system product-modes page-shell" aria-labelledby="agent-operating-title">
+        <div className="commercial-section-head split-head">
+          <div><p className="terminal-eyebrow">System logic</p><h2 id="agent-operating-title">One objective. Five controlled stages.</h2></div>
+          <p>The agent can organize the work. Released data and deterministic code control what becomes a result.</p>
+        </div>
+        <AgentSystemMap />
+      </section>
+
+      <ReleaseDataSystem />
+
       <section className="agent-principle page-shell signal-surface">
         <div>
           <p className="signal-kicker">A more accountable AI agent</p>
-          <h2>Useful because it shows its limits.</h2>
+          <h2>AI analysis should show its work.</h2>
         </div>
         <div className="agent-principle-grid">
           <article><span>Scope</span><strong>Know exactly what the agent checked.</strong></article>
-          <article><span>Evidence</span><strong>Trace facts back to the declared release.</strong></article>
-          <article><span>Counterevidence</span><strong>See what could qualify or defeat the claim.</strong></article>
-          <article><span>Review</span><strong>Get an explicit stop when ambiguity remains.</strong></article>
+          <article><span>Data</span><strong>Trace every factual statement to a released source.</strong></article>
+          <article><span>Analysis</span><strong>Separate calculations, interpretation, and open questions.</strong></article>
+          <article><span>Verification</span><strong>Let deterministic code—not the model—decide claims.</strong></article>
         </div>
         <a className="button signal-button" href="/product">See how Quantify works →</a>
       </section>
 
       <section className="workflow-section page-shell">
-        <div className="commercial-section-head"><p className="terminal-eyebrow">Built for review</p><h2>Research that can move through a team.</h2></div>
+        <div className="commercial-section-head"><p className="terminal-eyebrow">Built for decisions, not advice</p><h2>Research that stays inspectable.</h2></div>
         <div className="workflow-list">
-          <article><span>Research</span><strong>Check disclosure claims before they enter a report.</strong><i>Claim → evidence → verdict</i></article>
+          <article><span>Investor research</span><strong>Build a source-visible view of a company and its context.</strong><i>Company → evidence → questions</i></article>
           <article><span>Strategy</span><strong>Connect companies, policy, earnings, and reported capital.</strong><i>Entity → release → source</i></article>
-          <article><span>Investor relations</span><strong>Inspect how official company facts support a statement.</strong><i>Statement → qualification → citation</i></article>
-          <article><span>Compliance-sensitive teams</span><strong>Preserve scope and audit identity for review.</strong><i>Result → reviewer → record</i></article>
+          <article><span>Learning</span><strong>Understand financial and policy concepts through released examples.</strong><i>Concept → data → explanation</i></article>
+          <article><span>Institutional review</span><strong>Preserve scope, citations, and audit identity for review.</strong><i>Result → reviewer → record</i></article>
         </div>
       </section>
 
       <section className="commercial-cta page-shell">
-        <p className="terminal-eyebrow">Start with one claim</p>
-        <h2>Put the evidence in the room.</h2>
-        <p>Verification is bounded to the declared frozen release. Review-required is a valid result.</p>
+        <p className="terminal-eyebrow">Current Agent task · Verification</p>
+        <h2>Verify what matters.</h2>
+        <p>The public Agent currently verifies supported Microsoft or Apple claims. Broader cited AI analysis remains gated.</p>
         <a className="button button-dark" href="/agent">Open Quantify Agent →</a>
       </section>
 

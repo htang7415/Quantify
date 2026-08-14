@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantify.local/schemas/agent_plan_request.v1.schema.json",
+  "title": "Quantify agent-plan request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "task_id", "task_intent", "question_hash", "entity", "as_of", "release", "policy", "allowed_tools", "budgets", "contracts"],
+  "properties": {
+    "schema_version": { "const": "agent-plan-request.v1" },
+    "task_id": { "$ref": "#/$defs/id" },
+    "task_intent": { "enum": ["explore", "analyze", "compare", "verify"] },
+    "question_hash": { "$ref": "#/$defs/hash" },
+    "entity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity_type", "cik"],
+      "properties": {
+        "entity_type": { "const": "company" },
+        "cik": { "type": "string", "pattern": "^[0-9]{10}$" }
+      }
+    },
+    "as_of": { "type": "string", "format": "date" },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["release_id", "manifest_hash"],
+      "properties": {
+        "release_id": { "type": "string", "minLength": 1 },
+        "manifest_hash": { "$ref": "#/$defs/hash" }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtime_policy_bundle_hash", "release_gate_policy_hash"],
+      "properties": {
+        "runtime_policy_bundle_hash": { "$ref": "#/$defs/hash" },
+        "release_gate_policy_hash": { "$ref": "#/$defs/hash" }
+      }
+    },
+    "allowed_tools": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/tool" }
+    },
+    "budgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maximum_actions", "maximum_model_calls"],
+      "properties": {
+        "maximum_actions": { "type": "integer", "minimum": 1, "maximum": 8 },
+        "maximum_model_calls": { "type": "integer", "minimum": 1, "maximum": 8 }
+      }
+    },
+    "contracts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prompt_contract_hash", "tool_contract_hash"],
+      "properties": {
+        "prompt_contract_hash": { "$ref": "#/$defs/hash" },
+        "tool_contract_hash": { "$ref": "#/$defs/hash" }
+      }
+    }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,128}$" },
+    "tool": {
+      "enum": ["verify_claims", "search_approved_evidence_release", "calculate_approved_evidence", "create_review_task", "narrative_context"]
+    }
+  }
+}

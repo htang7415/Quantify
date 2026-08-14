@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantify.local/schemas/approved_narrative_context_result.v1.schema.json",
+  "title": "Quantify approved narrative context result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_hash",
+    "status",
+    "release",
+    "contexts",
+    "unavailable",
+    "omitted_chunk_count",
+    "limitation"
+  ],
+  "properties": {
+    "schema_version": { "const": "approved-narrative-context-result.v1" },
+    "request_hash": { "$ref": "#/$defs/sha256" },
+    "status": { "enum": ["completed", "partial", "unavailable"] },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["release_id", "manifest_hash"],
+      "properties": {
+        "release_id": { "type": "string", "minLength": 1 },
+        "manifest_hash": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "contexts": {
+      "type": "array",
+      "maxItems": 16,
+      "items": { "$ref": "#/$defs/context" }
+    },
+    "unavailable": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/unavailable" }
+    },
+    "omitted_chunk_count": { "type": "integer", "minimum": 0 },
+    "limitation": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "accession": {
+      "type": "string",
+      "pattern": "^[0-9]{10}-[0-9]{2}-[0-9]{6}$"
+    },
+    "source_span": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_char", "end_char"],
+      "properties": {
+        "start_char": { "type": "integer", "minimum": 0 },
+        "end_char": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "context_id",
+        "statement_id",
+        "kind",
+        "statement_text",
+        "entity_cik",
+        "filing_accession",
+        "filed_at",
+        "citation"
+      ],
+      "properties": {
+        "context_id": { "type": "string", "pattern": "^context-[a-f0-9]{64}$" },
+        "statement_id": { "type": "string", "pattern": "^context-[a-f0-9]{64}$" },
+        "kind": { "const": "narrative_context" },
+        "statement_text": { "type": "string", "minLength": 1, "maxLength": 12000 },
+        "entity_cik": { "type": "string", "pattern": "^[0-9]{10}$" },
+        "filing_accession": { "$ref": "#/$defs/accession" },
+        "filed_at": { "type": "string", "format": "date" },
+        "citation": { "$ref": "#/$defs/citation" }
+      }
+    },
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "citation_id",
+        "source_type",
+        "verification_role",
+        "release_manifest_hash",
+        "source_record_id",
+        "source_url",
+        "evidence_id",
+        "chunk_hash",
+        "source_span"
+      ],
+      "properties": {
+        "citation_id": { "type": "string", "pattern": "^citation-context-[a-f0-9]{64}$" },
+        "source_type": { "const": "narrative_disclosure" },
+        "verification_role": { "const": "context_only" },
+        "release_manifest_hash": { "$ref": "#/$defs/sha256" },
+        "source_record_id": { "$ref": "#/$defs/accession" },
+        "source_url": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "evidence_id": { "type": "null" },
+        "chunk_hash": { "$ref": "#/$defs/sha256" },
+        "source_span": { "$ref": "#/$defs/source_span" }
+      }
+    },
+    "unavailable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request", "reason", "detail"],
+      "properties": {
+        "request": { "type": "string", "minLength": 1 },
+        "reason": {
+          "enum": [
+            "narrative_context_not_released",
+            "filing_context_not_released"
+          ]
+        },
+        "detail": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

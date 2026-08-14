@@ -1,20 +1,23 @@
 # Quantify
 
-## Systematic AI research agent for public-company evidence
+## Evidence-bound AI investment research agent
 
-Quantify is an AI research agent for investors, analysts, and institutions that
-need to know whether a company-analysis claim can stand behind its evidence.
+Quantify is an AI investment research agent for self-directed investors,
+learners, analysts, and institutions that want to understand companies,
+markets, and policy through inspectable evidence.
 
-Its visible operating path is objective, scope, released data, typed
-intelligence, and deterministic verification. It does not simply generate a
+The product has four distinct layers: released data, typed intelligence, cited
+analysis, and deterministic claim verification. It does not simply generate a
 persuasive answer: exact released records retain their source, time, scope, and
-limitations while deterministic code controls the final claim verdict and audit
-identity.
+limitations; model-assisted analysis stays untrusted until validated; and only
+deterministic code controls a claim verdict and audit identity.
 
-Use the public product for one of three bounded research jobs:
+Use the public product across four bounded research jobs:
 
 - browse source-bound records from an active release;
-- connect only compatible facts with exact typed identities and periods; or
+- connect only compatible facts with exact typed identities and periods;
+- inspect deterministic metrics and source-bound explanations while the
+  general model-assisted research-answer task remains gated; or
 - verify one company-analysis claim and receive a verdict, evidence scope,
   limitation, and audit identity.
 
@@ -114,6 +117,82 @@ The Intelligence section also includes a read-only release-operations page.
 It projects exact status, freshness, observation time, release ID, manifest
 hash, and limitation fields from the public release index. It is not an uptime
 or internal-review dashboard.
+
+## Grounded analysis boundary
+
+The repository defines `research-answer.v1` for future explore, analyze, and
+compare tasks. The contract separates released facts, deterministic
+calculations, warranted interpretation, narrative context, and open questions.
+The local provider-free validator checks an independently admitted entity and
+release scope, exact citation authorization, reference integrity, calculation
+replay, interpretation warrants, deterministic answer composition, model and
+verifier attribution, audit identity, and prohibited investment-output
+language. It returns a detached canonical document or fails closed.
+
+This validator is not connected to a model, worker, API, or public form. It
+does not make general AI analysis available and cannot create a verification
+verdict.
+
+The first provider-free evidence-search slice is also implemented locally.
+`approved-evidence-search-request.v1` accepts one company, as-of date, frozen
+release identity, and at most 32 exact metric/period/unit keys. The adapter
+searches only the already compiled `IndexedEvidenceRelease` and returns a
+versioned `approved-evidence-search-result.v1`: exact structured facts with
+canonical decimal strings and citation authorizations, plus explicit
+`exact_fact_not_found` outcomes. Request and result hashes make replay visible.
+It has no similarity ranking, narrative fallback, live retrieval, model call,
+verdict authority, worker, or public route.
+
+The deterministic calculation slice adds `approved-calculation-request.v1` and
+`approved-calculation-result.v1`. A request references only released-fact
+statement IDs from one exact search result; it cannot provide values, formulas,
+code, source text, or model instructions. The provider-free adapter performs
+bounded sums, differences, percent changes, and percentage-point changes with
+decimal round-half-even behavior. It rejects reversed or incompatible periods,
+mixed metrics for comparisons, unit mismatches, missing facts, zero percent
+baselines, and release/hash drift. Its output replays directly as a
+`research-answer.v1` deterministic-calculation statement. The internal tool
+name is policy-known for tests but is not enabled in deployed policy, connected
+to a worker, or exposed through an API or public form.
+
+The release-scoped narrative slice is also implemented locally through
+`approved-narrative-context-request.v1` and
+`approved-narrative-context-result.v1`. A request binds an exact company,
+as-of date, frozen release, optional filing accessions, and a maximum of 16
+chunks; it cannot provide a prompt, URL, source text, ranking instruction,
+provider, or licensed-news request. The provider-free adapter returns only
+compiled disclosure text with exact filing date, HTTPS source, character span,
+chunk hash, replay hashes, and explicit truncation or unavailable outcomes.
+Every authorization is fixed to `narrative_disclosure` and `context_only`, with
+no evidence ID or measurement. Indexed-release archive `1.2.0` replays the new
+source metadata. Empty-narrative `1.1.0` archives remain replayable; a legacy
+archive containing narrative chunks fails closed until it is recompiled with
+the required metadata. The internal tool remains policy-gated and is not
+connected to a model, worker, API, public form, semantic retriever, or verdict
+path.
+
+The review boundary is implemented locally through
+`approved-review-task-request.v1` and `approved-review-task-result.v1`. A
+request binds one concise admitted question and typed reason to the exact
+release, runtime and release-gate policy hashes, source-result hashes,
+statement or citation IDs, origin, and audit manifest. The provider-free
+adapter returns an idempotent `requires_review` record whose ID derives from the
+canonical request hash. It cannot assign a reviewer, approve, persist, notify,
+publish, call a model, or compose a verdict. The policy-known internal tool is
+not enabled in deployed policy or exposed through an API or public form.
+
+The bounded planning boundary is implemented locally through one canonical
+research-intent matrix, `agent-plan-request.v1`, `agent-plan-result.v1`, and
+`model-attempt.v1`. The plan request persists only a hash of the exact admitted
+question and binds company, date, release, policy, tool, prompt, action, and
+model-call scope. A model proposal can name only ordered intent-compatible
+stages; it cannot include arguments, facts, citations, answers, URLs, code, or
+verdicts. Deterministic validation accepts or rejects the proposal, and the
+model-attempt record preserves provider/model/version, prompt and tool hashes,
+usage, cost, output hash, and validation state without raw user or provider
+text. The provider-free evaluation boundary performs no model or tool call,
+retry, persistence, API action, or deployment. Connecting a pinned planner and
+executing independently typed tool requests remain separately gated work.
 
 ## Build an offline public-release candidate
 
@@ -351,7 +430,8 @@ remains deliberately bounded to maintain reliability and responsible access.
 
 ## Clear boundaries
 
-Quantify is a research-verification product. It does not:
+Quantify is an investment research product with deterministic verification as
+its trust layer. It does not:
 
 - predict prices or market movements;
 - make buy, sell, hold, allocation, or position-size recommendations;
@@ -361,10 +441,12 @@ Quantify is a research-verification product. It does not:
 
 ## The goal
 
-Quantify makes research more publishable, reviewable, and trustworthy.
+Quantify makes investment research more understandable, inspectable,
+reviewable, and trustworthy.
 
-Instead of asking, “Can an AI write this?”
+Instead of asking only, “Can an AI explain this?”
 
-Ask, “Can this claim be proven?”
+Ask, “What does the data show, how is the analysis grounded, and can this claim
+be proven?”
 
 [Visit Quantify](https://d3ljopjg1qmt4.cloudfront.net/)

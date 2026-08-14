@@ -190,3 +190,283 @@ def test_public_candidate_review_schema_is_typed_and_cannot_authorize_promotion(
     assert schema["properties"]["promotion_authorized"]["const"] is False
     assert metrics["additionalProperties"] is False
     assert {"investors", "venture", "etf_flows", "etf_holdings", "crypto_dependency"}.issubset(metrics["required"])
+
+
+def test_research_answer_contract_separates_analysis_from_verifier_authority() -> None:
+    schema = load_json("schemas/research_answer.v1.schema.json")
+    statement = schema["$defs"]["statement"]
+    verification = schema["$defs"]["verification_result"]
+
+    assert schema["properties"]["schema_version"]["const"] == "research-answer.v1"
+    assert schema["additionalProperties"] is False
+    assert {
+        "release_scope",
+        "answer_statement_ids",
+        "statements",
+        "citations",
+        "counterpoint_statement_ids",
+        "unavailable",
+        "limitations",
+        "model_contract",
+        "verification_results",
+        "audit_manifest_hash",
+    }.issubset(schema["required"])
+    assert statement["properties"]["kind"]["enum"] == [
+        "released_fact",
+        "deterministic_calculation",
+        "agent_interpretation",
+        "narrative_context",
+        "open_question",
+    ]
+    assert "measurement" in statement["required"]
+    calculation = schema["$defs"]["calculation"]
+    assert schema["$defs"]["measurement"]["properties"]["value"]["type"] == "string"
+    assert calculation["properties"]["operation"]["enum"] == [
+        "sum",
+        "difference",
+        "percent_change",
+        "percentage_point_change",
+    ]
+    assert calculation["properties"]["decimal_places"]["maximum"] == 12
+    assert calculation["properties"]["value"]["type"] == "string"
+    assert verification["properties"]["authority"]["const"] == "deterministic_verifier"
+    forbidden = {"recommendation", "price_target", "allocation", "trade_instruction", "confidence"}
+    assert forbidden.isdisjoint(schema["properties"])
+
+
+def test_research_answer_citations_keep_narrative_and_news_context_only() -> None:
+    citation = load_json("schemas/research_answer.v1.schema.json")["$defs"]["citation"]
+    rules = {
+        rule["if"]["properties"]["source_type"]["const"]: rule["then"]["properties"]
+        for rule in citation["allOf"]
+    }
+
+    assert rules["structured_fact"]["verification_role"]["const"] == "verdict_evidence"
+    assert rules["structured_fact"]["evidence_id"]["type"] == "string"
+    assert rules["structured_fact"]["source_span"]["type"] == "null"
+    for source_type in ("narrative_disclosure", "licensed_news"):
+        assert rules[source_type]["verification_role"]["const"] == "context_only"
+        assert rules[source_type]["evidence_id"]["type"] == "null"
+        assert rules[source_type]["chunk_hash"]["$ref"] == "#/$defs/sha256"
+        assert rules[source_type]["source_span"]["$ref"] == "#/$defs/source_span"
+
+
+def test_research_answer_model_contract_is_replay_visible_when_present() -> None:
+    model_contract = load_json("schemas/research_answer.v1.schema.json")["$defs"]["model_contract"]
+
+    assert model_contract["additionalProperties"] is False
+    assert {
+        "provider",
+        "model_id",
+        "prompt_contract_hash",
+        "tool_contract_hash",
+        "provider_attempt_id",
+    } == set(model_contract["required"])
+
+
+def test_approved_evidence_search_request_is_exact_release_bound_and_capped() -> None:
+    schema = load_json("schemas/approved_evidence_search_request.v1.schema.json")
+    query = schema["$defs"]["query"]
+
+    assert (
+        schema["properties"]["schema_version"]["const"]
+        == "approved-evidence-search-request.v1"
+    )
+    assert schema["additionalProperties"] is False
+    assert schema["properties"]["queries"]["minItems"] == 1
+    assert schema["properties"]["queries"]["maxItems"] == 32
+    assert set(query["required"]) == {
+        "query_id",
+        "metric",
+        "period_start",
+        "period_end",
+        "unit",
+    }
+    assert query["additionalProperties"] is False
+    assert {"query", "text", "url", "provider"}.isdisjoint(query["properties"])
+
+
+def test_approved_evidence_search_result_authorizes_structured_facts_only() -> None:
+    schema = load_json("schemas/approved_evidence_search_result.v1.schema.json")
+    fact = schema["$defs"]["fact"]
+    citation = schema["$defs"]["citation"]
+
+    assert (
+        schema["properties"]["schema_version"]["const"]
+        == "approved-evidence-search-result.v1"
+    )
+    assert schema["properties"]["status"]["enum"] == [
+        "completed",
+        "partial",
+        "unavailable",
+    ]
+    assert fact["properties"]["measurement"]["properties"]["value"]["$ref"] == (
+        "#/$defs/decimal"
+    )
+    assert citation["properties"]["source_type"]["const"] == "structured_fact"
+    assert citation["properties"]["verification_role"]["const"] == "verdict_evidence"
+    assert citation["properties"]["chunk_hash"]["type"] == "null"
+    assert citation["properties"]["source_span"]["type"] == "null"
+    assert schema["$defs"]["unavailable"]["properties"]["reason"]["const"] == (
+        "exact_fact_not_found"
+    )
+
+
+def test_approved_calculation_request_cannot_supply_values_or_code() -> None:
+    schema = load_json("schemas/approved_calculation_request.v1.schema.json")
+    instruction = schema["$defs"]["instruction"]
+
+    assert (
+        schema["properties"]["schema_version"]["const"]
+        == "approved-calculation-request.v1"
+    )
+    assert schema["additionalProperties"] is False
+    assert schema["properties"]["calculations"]["minItems"] == 1
+    assert schema["properties"]["calculations"]["maxItems"] == 32
+    assert instruction["additionalProperties"] is False
+    assert set(instruction["required"]) == {
+        "result_statement_id",
+        "operation",
+        "input_statement_ids",
+        "decimal_places",
+    }
+    assert {
+        "value",
+        "unit",
+        "text",
+        "formula",
+        "code",
+        "url",
+        "provider",
+    }.isdisjoint(instruction["properties"])
+    assert instruction["properties"]["input_statement_ids"]["items"]["$ref"] == (
+        "#/$defs/fact_statement_id"
+    )
+
+
+def test_approved_calculation_result_matches_research_answer_calculation_shape() -> None:
+    schema = load_json("schemas/approved_calculation_result.v1.schema.json")
+    statement = schema["$defs"]["calculation_statement"]
+    calculation = statement["properties"]["calculation"]
+
+    assert (
+        schema["properties"]["schema_version"]["const"]
+        == "approved-calculation-result.v1"
+    )
+    assert schema["properties"]["status"]["const"] == "completed"
+    assert set(statement["required"]) == {
+        "statement_id",
+        "kind",
+        "text",
+        "citation_ids",
+        "derived_from_statement_ids",
+        "measurement",
+        "calculation",
+    }
+    assert statement["properties"]["kind"]["const"] == "deterministic_calculation"
+    assert statement["properties"]["citation_ids"]["maxItems"] == 0
+    assert statement["properties"]["measurement"]["type"] == "null"
+    assert calculation["properties"]["operation"]["enum"] == [
+        "sum",
+        "difference",
+        "percent_change",
+        "percentage_point_change",
+    ]
+    assert calculation["properties"]["value"]["$ref"] == "#/$defs/decimal"
+    assert calculation["properties"]["decimal_places"]["maximum"] == 12
+
+
+def test_approved_narrative_context_request_is_exact_scoped_and_capped() -> None:
+    schema = load_json("schemas/approved_narrative_context_request.v1.schema.json")
+
+    assert (
+        schema["properties"]["schema_version"]["const"]
+        == "approved-narrative-context-request.v1"
+    )
+    assert schema["additionalProperties"] is False
+    assert schema["properties"]["filing_accessions"]["maxItems"] == 16
+    assert schema["properties"]["filing_accessions"]["uniqueItems"] is True
+    assert schema["properties"]["maximum_chunks"] == {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 16,
+    }
+    assert {
+        "query",
+        "text",
+        "url",
+        "ranking",
+        "provider",
+        "licensed_news",
+    }.isdisjoint(schema["properties"])
+
+
+def test_approved_narrative_context_result_is_context_only() -> None:
+    schema = load_json("schemas/approved_narrative_context_result.v1.schema.json")
+    context = schema["$defs"]["context"]
+    citation = schema["$defs"]["citation"]
+
+    assert (
+        schema["properties"]["schema_version"]["const"]
+        == "approved-narrative-context-result.v1"
+    )
+    assert schema["properties"]["status"]["enum"] == [
+        "completed",
+        "partial",
+        "unavailable",
+    ]
+    assert schema["properties"]["contexts"]["maxItems"] == 16
+    assert context["properties"]["kind"]["const"] == "narrative_context"
+    assert citation["properties"]["source_type"]["const"] == "narrative_disclosure"
+    assert citation["properties"]["verification_role"]["const"] == "context_only"
+    assert citation["properties"]["evidence_id"]["type"] == "null"
+    assert citation["properties"]["chunk_hash"]["$ref"] == "#/$defs/sha256"
+    assert citation["properties"]["source_span"]["$ref"] == "#/$defs/source_span"
+    assert "measurement" not in context["properties"]
+    assert "verdict" not in schema["properties"]
+
+
+def test_approved_review_task_request_is_grounded_and_bounded() -> None:
+    schema = load_json("schemas/approved_review_task_request.v1.schema.json")
+
+    assert (
+        schema["properties"]["schema_version"]["const"]
+        == "approved-review-task-request.v1"
+    )
+    assert schema["additionalProperties"] is False
+    assert schema["properties"]["source_result_hashes"]["minItems"] == 1
+    assert schema["properties"]["source_result_hashes"]["maxItems"] == 8
+    assert schema["properties"]["derived_from_statement_ids"]["maxItems"] == 32
+    assert schema["properties"]["derived_from_citation_ids"]["maxItems"] == 32
+    assert len(schema["anyOf"]) == 2
+    assert schema["properties"]["question"]["maxLength"] == 500
+    assert {
+        "reviewer",
+        "assignee",
+        "approval",
+        "approved",
+        "verdict",
+        "notification",
+    }.isdisjoint(schema["properties"])
+
+
+def test_approved_review_task_result_cannot_claim_approval_or_assignment() -> None:
+    schema = load_json("schemas/approved_review_task_result.v1.schema.json")
+
+    assert (
+        schema["properties"]["schema_version"]["const"]
+        == "approved-review-task-result.v1"
+    )
+    assert schema["properties"]["status"]["const"] == "requires_review"
+    assert schema["properties"]["review_task_id"]["pattern"] == (
+        "^review-[a-f0-9]{32}$"
+    )
+    assert {
+        "reviewer",
+        "assignee",
+        "approval",
+        "approved",
+        "verdict",
+        "queued_at",
+        "notified_at",
+    }.isdisjoint(schema["properties"])

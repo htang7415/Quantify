@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quantify.local/schemas/approved_evidence_search_result.v1.schema.json",
+  "title": "Quantify approved evidence search result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_hash",
+    "status",
+    "release",
+    "facts",
+    "unavailable",
+    "limitation"
+  ],
+  "properties": {
+    "schema_version": { "const": "approved-evidence-search-result.v1" },
+    "request_hash": { "$ref": "#/$defs/sha256" },
+    "status": { "enum": ["completed", "partial", "unavailable"] },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["release_id", "manifest_hash"],
+      "properties": {
+        "release_id": { "type": "string", "minLength": 1 },
+        "manifest_hash": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "facts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/fact" }
+    },
+    "unavailable": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/unavailable" }
+    },
+    "limitation": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "decimal": {
+      "type": "string",
+      "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+    },
+    "fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "query_id",
+        "fact_id",
+        "statement_id",
+        "statement_text",
+        "entity_cik",
+        "metric",
+        "measurement",
+        "period_start",
+        "period_end",
+        "filing_accession",
+        "filed_at",
+        "derived_from_evidence_ids",
+        "citation"
+      ],
+      "properties": {
+        "query_id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+        "fact_id": { "$ref": "#/$defs/sha256" },
+        "statement_id": { "type": "string", "pattern": "^fact-[a-f0-9]{64}$" },
+        "statement_text": { "type": "string", "minLength": 1 },
+        "entity_cik": { "type": "string", "pattern": "^[0-9]{10}$" },
+        "metric": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,127}$" },
+        "measurement": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "unit"],
+          "properties": {
+            "value": { "$ref": "#/$defs/decimal" },
+            "unit": { "type": "string", "minLength": 1 }
+          }
+        },
+        "period_start": { "type": "string", "format": "date" },
+        "period_end": { "type": "string", "format": "date" },
+        "filing_accession": { "type": "string", "minLength": 1 },
+        "filed_at": { "type": "string", "format": "date" },
+        "derived_from_evidence_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "citation": { "$ref": "#/$defs/citation" }
+      }
+    },
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "citation_id",
+        "source_type",
+        "verification_role",
+        "release_manifest_hash",
+        "source_record_id",
+        "source_url",
+        "evidence_id",
+        "chunk_hash",
+        "source_span"
+      ],
+      "properties": {
+        "citation_id": { "type": "string", "pattern": "^citation-[a-f0-9]{64}$" },
+        "source_type": { "const": "structured_fact" },
+        "verification_role": { "const": "verdict_evidence" },
+        "release_manifest_hash": { "$ref": "#/$defs/sha256" },
+        "source_record_id": { "type": "string", "minLength": 1 },
+        "source_url": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "evidence_id": { "type": "string", "minLength": 1 },
+        "chunk_hash": { "type": "null" },
+        "source_span": { "type": "null" }
+      }
+    },
+    "unavailable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["query_id", "reason", "detail"],
+      "properties": {
+        "query_id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]+$" },
+        "reason": { "const": "exact_fact_not_found" },
+        "detail": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

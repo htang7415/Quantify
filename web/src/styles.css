@@ -123,7 +123,7 @@ h1 { color: var(--ink); font-size: clamp(48px, 5.45vw, 74px); line-height: .99; 
 .scale { display: grid; gap: 64px; grid-template-columns: minmax(280px, .78fr) minmax(480px, 1.22fr); padding-block: 112px 42px; }
 .scale-copy > p:last-child, .section-heading > p:last-child { color: var(--muted); font-size: 17px; line-height: 1.55; margin-bottom: 0; max-width: 500px; }
 h2 { font-size: clamp(39px, 4vw, 58px); line-height: 1.04; margin-bottom: 19px; }
-.scale-grid { display: grid; gap: 12px; grid-template-columns: repeat(3, 1fr); }
+.scale-grid { display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .scale-grid article { background: rgba(255, 250, 255, .9); border: 1px solid rgba(255, 255, 255, .55); border-radius: 14px; box-shadow: 0 10px 22px rgba(80, 25, 84, .08); display: flex; flex-direction: column; min-height: 232px; padding: 24px; transition: border-color .2s ease, transform .2s ease; }
 .scale-grid article:hover { border-color: rgba(255, 255, 255, .9); transform: translateY(-3px); }
 .scale-number { color: #7445a1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 15px; font-weight: 800; letter-spacing: .08em; }

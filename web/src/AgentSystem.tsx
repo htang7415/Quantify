@@ -7,8 +7,8 @@ const operatingSteps = [
   { number: "01", label: "Objective", title: "Ask one bounded question.", state: "User supplied" },
   { number: "02", label: "Scope", title: "Lock entity, date, task, and release.", state: "Contract-bound" },
   { number: "03", label: "Data", title: "Load only eligible released records.", state: "Release-indexed" },
-  { number: "04", label: "Intelligence", title: "Organize exact compatible connections.", state: "Typed only" },
-  { number: "05", label: "Verification", title: "Compose the result in deterministic code.", state: "Audit-bound" }
+  { number: "04", label: "Intelligence + analysis", title: "Connect facts; validate every explanation.", state: "Analysis task gated" },
+  { number: "05", label: "Result", title: "Return a cited answer or verifier verdict.", state: "Deterministic controls" }
 ] as const;
 
 const dataDomains: Array<{

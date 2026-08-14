@@ -9,7 +9,7 @@ describe("route metadata", () => {
 
   it("defines distinct metadata for durable commercial routes", () => {
     expect(metadataForPath("/")).toMatchObject({
-      title: "Quantify — AI research agent for company evidence",
+      title: "Quantify — Evidence-bound AI investment research",
       canonicalPath: "/",
       indexable: true
     });

@@ -2,23 +2,51 @@
 
 ## 1. Purpose and boundary
 
-Quantify is a user-first AI research companion for public-company analysis. It
-helps people and external AI agents test factual claims, surface
-counterevidence, and follow an auditable research trail against a declared,
-frozen evidence release.
+Quantify is an evidence-bound AI investment research agent for individual
+investors, professional research teams, institutions, and people learning how
+companies, markets, and policy connect. It turns released financial, company,
+ownership, earnings, macroeconomic, rates, policy, and eventually entitled news
+data into inspectable information, typed intelligence, cited analysis, and
+claim verification.
+
+The product has four distinct output layers:
+
+1. **Data.** Versioned, time-stamped records with source, methodology,
+   freshness, rights, correction, and release state.
+2. **Intelligence.** Exact entity, period, ownership, earnings, market, and
+   policy connections derived only from compatible released records.
+3. **Analysis.** Plain-language comparisons, explanations, drivers,
+   counterpoints, and open questions produced from cited facts and labelled
+   context. Analysis is model-assisted and remains untrusted until its factual
+   statements and citations pass deterministic validation.
+4. **Verification.** Claim-level verdicts composed only by the deterministic
+   verifier from eligible exact facts in the declared evidence release.
+
+Verification is Quantify's trust layer, not its entire product. An analysis may
+help a user understand evidence without assigning a verdict. A verification
+result may be embedded in a broader research answer, but the model can never
+create, modify, soften, or override that verdict.
+
+Two terms keep that boundary clear. **Automatic factual validation** is the
+always-on validation of scope, grounding, statement type, citations,
+derivations, prohibited content, policy, and audit bindings for every safe
+research answer; it does not produce a verdict. **Explicit claim
+verification** is the user-selected agent function that evaluates a bounded
+claim and returns a verdict composed only by the deterministic verifier.
 
 Quantify may also publish a read-only investor-tracking catalog compiled
 offline from approved public disclosures. Catalog metrics describe the exact
 declared filing scope and are not verification verdicts, total assets under
 management, personal holdings, or claims about an investor's intent.
 
-Quantify may publish additional read-only company-ownership, market, macro,
-ETF, cryptocurrency, earnings, policy, and event catalogs only after their
-source rights, methodology, freshness rules, correction path, and release gate
-are defined. These catalogs are time-stamped research data, not live trading
-feeds, predictions, recommendations, or verification verdicts. Until an
-approved release exists, the public web shows an explicit unavailable state and
-does not substitute example, cached-out-of-policy, or model-generated values.
+Quantify may publish additional read-only company, company-ownership, market,
+macro, ETF, cryptocurrency, earnings, policy, event, and entitled news catalogs
+only after their source rights, methodology, freshness rules, correction path,
+and release gate are defined. These catalogs are time-stamped research data,
+not live trading feeds, predictions, recommendations, or verification verdicts.
+Until an approved release exists, the public web shows an explicit unavailable
+state and does not substitute example, cached-out-of-policy, or model-generated
+values.
 
 > A claim may be published only when its cited evidence warrants it and
 > compatible evidence in the same declared frozen pool does not defeat it.
@@ -27,8 +55,11 @@ Quantify is not a stock-prediction, trading, brokerage, portfolio-management,
 or personalized-investment-advice product. It must not make buy, sell, hold,
 allocation, position-size, suitability, or trade-execution recommendations.
 
-The agent may plan research and draft explanations. Only the deterministic
-verifier may mark a factual claim VERIFIED. This is non-negotiable.
+The agent may scope a question, plan research, retrieve approved releases,
+request deterministic calculations, compare compatible facts, draft cited
+analysis, surface counterpoints, and identify open questions. Only the
+deterministic verifier may mark a factual claim VERIFIED. This is
+non-negotiable.
 
 ## 2. Current baseline and target
 
@@ -68,6 +99,15 @@ V1 uses immutable embedded SEC fixtures, Lambda containers, API Gateway,
 Cognito/IAM, DynamoDB, encrypted S3 audit storage, KMS, Secrets Manager, ECR,
 and CloudWatch in us-east-2. It is not yet a multi-tool research agent, a
 live-data terminal, or an async task platform.
+
+The repository also contains the local, provider-free
+`research-answer.v1` schema and deterministic validator. The validator accepts
+only an independently admitted scope, exact authorized citation records,
+calculation inputs, interpretation warrants, model attribution, verifier
+results, and audit identity; it returns a detached canonical document or a
+typed fail-closed error. It is not connected to a model composer, worker, API,
+or public submission surface and therefore does not make model-assisted
+analysis available.
 
 Regional placement is explicit. `us-east-2` is the sole V1 operating region
 for compute, APIs, identity, queues, databases, evidence and audit storage,
@@ -130,34 +170,38 @@ interface be adopted by V1; its behavior and public contract remain unchanged.
 
 ### Target state
 
-The next product is a scalable, no-sign-up research agent with deliberately
-bounded capability. It adds policy-governed planning, efficient retrieval,
-asynchronous tasks, and a sustainable evidence-release factory while retaining
-the V1 verifier as the only verdict authority. Identity, private documents,
-workspaces, and enterprise RBAC are later capabilities, not prerequisites for
-the user-first product.
+The next product is a scalable, no-sign-up investment research agent with
+deliberately bounded capability. It unifies released data, typed intelligence,
+cited analysis, and verification through policy-governed planning, efficient
+retrieval, asynchronous tasks, and a sustainable evidence-release factory while
+retaining the V1 verifier as the only verdict authority. Identity, private
+documents, workspaces, and enterprise RBAC are later capabilities, not
+prerequisites for the user-first product.
 
 ### Commercial product direction
 
-Quantify's commercial direction is a **verified research operating system**
-for public-company analysis. It competes on reproducibility, controlled
-evidence, review workflow, and auditability—not on generic chat, price
-prediction, trade recommendations, or autonomous portfolio action. Every
-published conclusion remains reproducible against its declared evidence
-release, runtime/release-gate policies, deterministic-engine version, and
+Quantify's commercial direction is an **evidence-bound investment intelligence
+system** for company, market, ownership, macroeconomic, policy, and event
+research. It competes on integrated research workflow, reproducibility,
+controlled evidence, source-visible AI analysis, review, and auditability—not
+on generic chat, terminal-scale breadth, price prediction, trade
+recommendations, or autonomous portfolio action. Every factual statement and
+verification result remains attributable to its declared release, source,
+runtime/release-gate policies, deterministic-engine version, and applicable
 model/prompt contract.
 
 The product develops in four independently governed layers:
 
 ~~~
 Research workspace
-  → ask, compare releases, review, and export
+  → explore data, ask, analyze, compare releases, verify, review, and export
 
 Evidence-release platform
   → approved sources, issuer coverage, corrections, revocation, citations
 
 Bounded research workflow agents
-  → verify claims, search approved evidence, create review tasks
+  → search approved data, calculate, compare, draft cited analysis,
+    verify claims, and create review tasks
   → never compose a publication verdict
 
 Enterprise trust control plane
@@ -165,12 +209,14 @@ Enterprise trust control plane
     workspace isolation, RBAC, retention, and legal hold
 ~~~
 
-The initial commercial audience is professional research, corporate strategy,
-investor-relations, consulting, and compliance-sensitive knowledge teams. It
-does not provide personalized investment advice. Commercial packaging may
-differentiate verified-release coverage, team workflow, safe API access, and
-enterprise controls; it must never charge for, incentivize, or imply a trading
-recommendation.
+The public audience includes individual investors and learners who want to
+understand released evidence. The initial paid audience remains professional
+research, corporate strategy, investor-relations, consulting, and
+compliance-sensitive institutional teams. Quantify does not provide
+personalized investment advice. Commercial packaging may differentiate
+released-data coverage, cited analysis, verification, team workflow, safe API
+access, and enterprise controls; it must never charge for, incentivize, or
+imply a trading recommendation.
 
 Scale uses two distinct execution lanes. The interactive lane serves bounded,
 low-latency verification under admission and cost caps. The offline lane runs
@@ -195,20 +241,23 @@ operational gates before the next stage is relied upon.
    provider attempts, bounded workers, recovery/replay proof, encrypted audit,
    and private delivery controls. An LLM may propose structured research work;
    it never establishes a fact or composes a publication verdict.
-2. **Verified research product.** Deliver an evidence-backed public-company
-   research workspace for professional research, strategy,
-   investor-relations, consulting, and compliance-sensitive teams. It supports
-   approved-source research, release comparison, review, and export. Evidence
-   scope, qualification, counterevidence, citation, and audit identity are
-   visible in every result.
+2. **Integrated investment research product.** Deliver an evidence-backed
+   company and market research workspace for individuals, learners,
+   professional research, strategy, investor-relations, consulting, and
+   compliance-sensitive teams. It supports released-data exploration, typed
+   intelligence, approved-source analysis, release comparison, claim
+   verification, review, and export. Evidence scope, interpretation,
+   qualification, counterpoints, citation, unavailable data, and audit identity
+   are visible in every result.
 3. **Research platform.** Deliver bounded APIs, SDKs, and typed tools for
    customer applications. All requests remain subject to identity,
    authorization, tenant boundaries, source entitlements, admission/cost caps,
    policy, provenance, evaluation, and revocation. Customer systems may make
    their own decisions; Quantify must not present a response as personalized
    investment advice or an instruction to trade.
-4. **Business-intelligence workflows.** Add separately evaluated workflows for
-   disclosure, company, regulatory, competitive, and operational research.
+4. **Broader investment-intelligence workflows.** Add separately evaluated
+   workflows for disclosure, company, ownership, earnings, market, macro,
+   policy, regulatory, competitive, event, and entitled news research.
    The shared knowledge layer is time-versioned and permission-aware: every
    fact, definition, policy, legal or institutional source, and correction has
    a source, effective period, release/version, entitlement, warrant status,
@@ -230,8 +279,10 @@ The durable architecture across all stages is:
 
 ~~~
 authoritative, time-versioned data and policy
-  → evidence releases and deterministic verifier
+  → released facts, typed intelligence, and scoped narrative context
   → LLM planner with bounded, typed tools
+  → deterministic factual/citation validation
+  → cited research answer and, when requested, deterministic verifier result
   → workspace, API, or customer workflow
   → human or customer-owned consequential decision
 ~~~
@@ -246,15 +297,18 @@ one undifferentiated first product.
 
 ### Commercial positioning and initial wedge
 
-Quantify is a business-to-business **verifiable research and
-decision-workflow** product. It is not positioned as a cheaper financial data
-terminal, a generic financial chat interface, or a system that predicts prices
-or recommends trades. Established data and research platforms validate demand
-for AI-assisted financial research, but their existence does not weaken the
-need for a provider-neutral control layer that can make research output
-reviewable, reproducible, policy-aware, and attributable.
+Quantify is a public research product with professional and institutional
+**verifiable research and decision-workflow** offerings. It is not positioned
+as a cheaper financial data terminal, a generic financial chat interface, or a
+system that predicts prices or recommends trades. Established data and research
+platforms validate demand for integrated AI-assisted financial research, but
+their existence does not weaken the need for a provider-neutral control layer
+that can make research output reviewable, reproducible, policy-aware, and
+attributable.
 
-The initial paying users are professional research, corporate strategy,
+Public workflows serve individual investors and learners without collecting a
+portfolio, risk tolerance, or suitability profile. Initial paying users are
+professional research, corporate strategy,
 investor-relations, consulting, and compliance-sensitive teams. Initial
 commercial workflows are deliberately narrow and measurable:
 
@@ -377,6 +431,132 @@ Audit records preserve source, time, scope, transformation, model, policy,
 schema, engine, prompt, and manifest versions needed to explain a result. They
 must not include raw user text, credentials, or private operational secrets.
 
+### 4.1 Account, authorization, entitlement, and persistence contracts
+
+Accounts are a future access layer around the same released-data and safety
+contracts; authentication must never change evidence eligibility, factual
+validation, or verdict composition. The intended access levels are:
+
+1. **Public:** approved marketing, methodology, coverage, and selected released
+   research without an account.
+2. **Registered:** released data, permitted news and events, bounded agent use,
+   and saved research only after those capabilities are separately authorized.
+3. **Professional:** approved expanded coverage, briefs, watchlists, exports,
+   and higher limits under an active plan.
+4. **Institutional:** workspaces, role-based access, entitled or private
+   sources, review workflows, and audit export under the private-data gate.
+
+The current Cognito machine client and administrator-created user-pool boundary
+are not human sign-up authorization. A future human web or mobile client uses
+authorization code with PKCE, has no client secret, verifies account ownership,
+and remains separate from machine credentials. MFA may be optional for
+registered and initial professional users. It is required for institutional
+owners and administrators, and step-up authentication is required before
+member or role changes, entitlement administration, private-source access,
+audit export, legal-hold actions, organization deletion, or security-setting
+changes.
+
+Authentication answers who the principal is; authorization answers what that
+principal may do now. All application authorization passes through one
+explicit, testable interface rather than endpoint-specific role checks:
+
+~~~
+authorize(principal, workspace, action, resource, entitlement, policy_pointers)
+  → allow | deny(reason_code, next_safe_action)
+~~~
+
+The interface denies by default and binds the current principal, workspace,
+membership, role, subscription, source entitlement, resource tenant, release
+state, and signed policy pointers. A token claim may narrow access but can
+never expand it. Every decision resolves against authoritative server-side
+state. Read-heavy surfaces may satisfy that resolution from a server-side
+authorization cache with an approved single-digit-second TTL and no client-side
+authority; entitlement, membership, subscription, policy, and release-change
+events explicitly invalidate affected entries. A missed invalidation is bounded
+by that TTL. Security-sensitive actions, queued-task continuation, each tool
+action, exports, private-source reads, and administrative mutations bypass the
+cache and re-read authoritative state. If required state or invalidation
+controls are unavailable, authorization fails closed.
+
+Persistence remains purpose-specific rather than one overloaded database:
+
+- Cognito stores authentication credentials and recovery state.
+- Bounded-domain DynamoDB tables store account profiles, workspaces,
+  memberships, entitlements and subscriptions, Library metadata, task
+  ownership metadata, and usage/admission ledgers. Every tenant-owned key and
+  authorization lookup binds a workspace or account partition.
+- Versioned encrypted S3 stores immutable releases, licensed source objects
+  when rights permit, generated report objects, and pseudonymous audit objects;
+  DynamoDB stores their hashes, ownership, lifecycle state, and authorization
+  metadata rather than large content bodies.
+- Exact fact and context indexes remain compiled, release-bound projections;
+  they are not account databases.
+
+Raw payment credentials are never stored by Quantify. A relational database is
+not added preemptively; it is reconsidered only when measured access patterns
+require relational constraints, multi-entity transactional workflows, or
+analytics that bounded DynamoDB models cannot safely and economically support.
+Any future authorization engine, including a managed policy service, must
+implement the same central interface so adoption is an adapter change rather
+than an endpoint rewrite.
+
+Entitlement is evaluated both when content is created and whenever it is
+served, opened from Library, exported, or used by an agent tool. Library
+records separate public released facts, user-authored notes, licensed-source
+references or excerpts, context-derived analysis, and audit metadata. Library
+storage references licensed material instead of copying it as unrestricted
+content. When a source entitlement expires or is revoked, the default is to
+retain permitted public facts and metadata, hide licensed excerpts and source
+objects, block export, and hide dependent analysis unless the source contract
+explicitly permits continued display. Each source must define expiry,
+revocation, saved-view, excerpt, derivation, export, correction, and deletion
+behavior before its Library schema freezes.
+
+Paid-plan state is an authorization input, not a UI flag. The subscription
+lifecycle must define trial, active, grace, past-due, suspended, cancelled,
+refund, reactivation, and plan-change behavior; a grace state grants access
+only when an approved policy says so. A lapsed plan fails closed using the same
+serve-time checks and user-facing access grammar as a revoked data entitlement.
+Billing-provider references may be stored, but payment secrets may not.
+
+Account deletion and immutable audit use separate identities. Audit records
+contain an opaque pseudonymous principal surrogate and no email, name,
+credential, unnecessary raw content, or payment secret. A separately protected
+mapping binds that surrogate to the mutable account. A deletion request
+immediately disables the account, revokes sessions and entitlements, removes
+memberships, deletes or anonymizes mutable account and Library data on the
+approved schedule, and destroys the mapping when retention and legal-hold rules
+permit. Only the minimum approved pseudonymous audit record remains for its
+defined retention period; immutable means unaltered during that period, not
+retained forever.
+
+Workspace lifecycle is explicit. A sole owner cannot complete ordinary account
+deletion until ownership is transferred or an approved workspace-dissolution
+flow completes. If the owner is abruptly disabled, or an institutional
+subscription lapses, the workspace freezes rather than silently transferring
+or deleting data; an approved recovery, retention, legal-hold, and notification
+policy determines the next action. No support process may improvise ownership.
+
+The following versioned decision artifacts must pass product, legal, privacy,
+security, and data-rights review as applicable before account, workspace,
+entitlement, subscription, or Library schemas freeze:
+
+1. account and workspace lifecycle policy, including orphaned-workspace
+   transfer, freeze, dissolution, recovery, retention, and notification;
+2. licensed-content and Library lifecycle policy;
+3. audit retention, legal hold, export, erasure, and pseudonymization policy;
+4. anonymous-task ownership and expiry contract;
+5. central authorization contract and denial reason registry;
+6. authentication-assurance and step-up policy; and
+7. subscription, billing-reference, grace, downgrade, and entitlement
+   lifecycle policy.
+
+Until those artifacts approve a more permissive outcome, licensed content,
+account deletion, workspace recovery, subscription lapse, and entitlement
+uncertainty use the fail-closed defaults above. This section freezes the design
+boundary; it does not authorize self-registration, billing, private-data
+intake, licensed-news acquisition, a new route, or deployment.
+
 ## 5. Agent and task model
 
 The current synchronous POST /v1/agent/verify remains a tight V1 contract. The
@@ -403,6 +583,12 @@ capability for its linked task; no raw capability is placed in an audit record,
 log, queue message, cache key, or idempotency record. Cognito-principal task
 access is a separate future contract and does not weaken this boundary.
 
+Anonymous tasks are permanently unowned in the first account release. Signing
+in cannot claim or attach an earlier capability-bound task; the user starts a
+new authenticated task instead. A future transfer contract requires separate
+authorization, proof of capability possession, capability rotation, explicit
+consent, duplicate-ownership prevention, expiry handling, and an audit record.
+
 ~~~
 accepted → admitted → queued → running → completed
                        ↘ requires_review | unavailable | failed_unresolved
@@ -421,11 +607,201 @@ Provider uncertainty is fail-closed but fair:
 4. If unresolved, never auto-retry or switch model; record failed_unresolved.
 5. A user or operator may request one controlled retry linked to the original task and reservation. It is separately admitted and audited.
 
-The first implementation slice has one typed tool, verify_claims. Add tools only
-after narrow contracts and evaluations pass: search_approved_evidence_release,
-create_review_task, release-scoped narrative context, then watchlist alerts.
-The planner cannot call arbitrary URLs, inspect private documents, alter policy,
-write a verdict, trade, or access live filings.
+The first implementation slice has one typed tool, `verify_claims`. The bounded
+investment-research sequence adds tools only after narrow contracts and
+evaluations pass:
+
+1. `search_approved_evidence_release` for exact released records;
+2. deterministic calculation and compatible-period comparison tools;
+3. release-scoped narrative context;
+4. research-answer composition under `research-answer.v1`;
+5. `create_review_task`; and
+6. separately governed watchlist alerts.
+
+Explore, analyze, compare, and verify are task intents, not blanket tool
+permissions. The planner receives only the allowlist for the admitted intent.
+It cannot call arbitrary URLs, inspect private documents, alter policy, write a
+verdict, trade, access live filings, or treat a news or narrative passage as an
+eligible verification fact.
+
+The first read-only search contract is split into
+`approved-evidence-search-request.v1` and
+`approved-evidence-search-result.v1`. A request contains one admitted task
+intent, exact company CIK, as-of date, release ID and manifest hash, and no more
+than 32 exact structured queries. Each query declares a unique query ID,
+metric, period start, period end, and unit. It contains no free-form search
+text, URL, provider, ranking instruction, or narrative request.
+
+The provider-free adapter accepts only an in-memory or archive-loaded
+`IndexedEvidenceRelease`. It first proves the release identity, issuer, and
+as-of date were compiled into that release, then performs exact
+release-hash/CIK/metric/period/unit lookup. It never performs similarity search,
+network retrieval, source expansion, or narrative fallback. Missing facts are
+returned explicitly with reason `exact_fact_not_found`; an empty verified fact
+set is a complete safe result.
+
+Each returned fact binds the query and stable fact/evidence IDs to the exact
+entity, metric, canonical decimal-string measurement, period, filing accession
+and date, source URL, release hash, and a deterministic source statement. The
+adapter emits a structured-fact citation authorization compatible with
+`research-answer.v1`; it cannot emit narrative context or a verdict. Result
+status is `completed` when every query resolves, `partial` when some resolve,
+and `unavailable` when none resolve. The canonical request hash and detached
+result hash make replay visible. This local tool contract creates no API route,
+worker action, model call, or deployment authorization.
+
+The first calculation tool is split into
+`approved-calculation-request.v1` and
+`approved-calculation-result.v1`. It is a deliberately narrower execution
+boundary than the complete calculation graph accepted by
+`research-answer.v1`. A request binds the exact approved-evidence search-result
+hash and release manifest hash, then declares one through 32 ordered
+calculation instructions. Each instruction contains a unique result statement
+ID, one of the four approved operations, ordered input statement IDs, and zero
+through twelve decimal places. It cannot supply values, units, result text,
+formulas, executable code, URLs, provider instructions, or narrative.
+
+The provider-free adapter receives the request and the independently validated
+`ApprovedEvidenceSearchResult` object. It proves both hashes and the release
+binding match, resolves every input only to a numeric released-fact statement
+in that result, and performs decimal arithmetic using round-half-even. The
+first adapter does not accept a model value, narrative value, arbitrary caller
+value, or another calculation as an input. This direct-fact restriction keeps
+the initial tool graph bounded even though the downstream research-answer
+validator can replay already validated calculation dependencies.
+
+For `sum`, at least two facts must have one unit and the exact same reporting
+period. For `difference` and `percent_change`, exactly two facts must represent
+current then baseline for the same company, release, metric, and reporting
+period duration, allowing a one-day duration difference for calendar effects;
+the current period must end later. Percent change additionally requires a
+non-zero baseline. `percentage_point_change` has the same comparison rules and
+requires both inputs to use unit `percent`. These checks prevent a model or
+caller from silently comparing incompatible metrics, reversed periods, or
+unrelated reporting windows.
+
+Each completed calculation is the exact `deterministic_calculation` statement
+shape accepted by `research-answer.v1`: fixed kind, statement ID and text,
+empty citation IDs, ordered derivation IDs, null measurement, operation,
+canonical decimal-string value, unit, and decimal places. Canonical request and
+detached result hashes make replay visible. Invalid or unavailable inputs fail
+closed; the adapter never substitutes a value or narrative. This local
+contract adds one policy-known internal tool name,
+`calculate_approved_evidence`, but does not enable it in a deployed policy,
+worker, API, public task, or autonomous action loop.
+
+The first narrative-context tool is split into
+`approved-narrative-context-request.v1` and
+`approved-narrative-context-result.v1`. It is a provider-free retrieval
+boundary over the already compiled narrative index, not the later semantic
+retrieval system. A request binds one admitted task intent, exact company CIK,
+as-of date, release ID and manifest hash, zero through sixteen exact filing
+accessions, and a maximum of one through sixteen chunks. It contains no
+free-form query, URL, source text, ranking instruction, provider, or licensed
+news request. An empty filing list means all eligible issuer chunks within the
+declared release and as-of scope, subject to the explicit cap.
+
+Every compiled narrative chunk binds its release, company, filing accession,
+filing date, HTTPS source URL, exact character span, authorized statement text,
+and content hash. The adapter proves the loaded release identity, issuer, and
+as-of snapshot, excludes chunks filed after the admitted date, filters only by
+the exact requested accessions, and orders results deterministically before
+applying the cap. It reports missing filing context and omitted chunk counts
+explicitly; status is `completed`, `partial`, or `unavailable`. It performs no
+network retrieval, similarity search, source expansion, or model call.
+
+Each returned item is a `narrative_context` statement and a citation
+authorization compatible with `research-answer.v1`. Its source type is fixed to
+`narrative_disclosure`, verification role is fixed to `context_only`, evidence
+ID is null, and release hash, source record, URL, chunk hash, and source span
+must match the compiled chunk exactly. Narrative context cannot authorize a
+measurement, released fact, deterministic calculation, interpretation,
+verification input, or verdict. Canonical request and detached result hashes
+make replay visible. This local contract may replace the untyped internal
+`narrative_context` helper behind the existing policy-known tool name, but it
+does not enable that tool in a deployed policy, worker, API, public task, model
+loop, or autonomous action loop.
+
+The first review boundary is split into
+`approved-review-task-request.v1` and
+`approved-review-task-result.v1`. A request records one admitted task intent;
+one system-assigned origin; one typed review reason; a concise single-line
+review question; the exact release ID and manifest hash; runtime and
+release-gate policy hashes; one through eight independently admitted source
+result hashes; zero through thirty-two statement IDs; zero through thirty-two
+citation IDs; and the audit-manifest hash. At least one statement or citation
+ID is required. The question contains no URL, source passage, hidden reasoning,
+investment recommendation, allocation, price target, or trade instruction.
+
+The origins are `bounded_agent`, `deterministic_validator`,
+`deterministic_verifier`, and `policy_control`. Deterministic code restricts
+each origin to compatible reasons: evidence ambiguity, conflict, missing
+required evidence, interpretation review, verifier resolution, or publication
+policy review. The caller cannot label an agent request as a verifier or policy
+decision. An independently constructed grounding context binds the admitted
+intent, origin, exact data-minimized review question, release, both policy
+hashes, audit hash, authorized source result hashes, statement IDs, and citation
+IDs. The request cannot authorize its own question. Missing, cross-release,
+cross-policy, unaudited, unknown, duplicate, or ungrounded references fail
+closed.
+
+The provider-free adapter derives a stable review-task ID from the canonical
+request hash and emits one replayable `requires_review` record. The same exact
+request is therefore idempotent. Creating this record is not reviewer approval,
+assignment, persistence, notification, publication permission, or verdict
+composition. The first adapter performs no database write, queue operation,
+model call, network request, or user contact. It may replace the mutable
+in-memory `create_review_task` helper behind the existing policy-known tool
+name, but does not enable that tool in a deployed policy, worker, API, public
+task, or autonomous action loop.
+
+The first agent-planning boundary uses one canonical task-intent enum across
+all research contracts: `explore`, `analyze`, `compare`, and `verify`. A
+versioned deterministic matrix narrows the signed runtime policy for each
+intent. Explore may propose exact search, narrative context, or review;
+analyze and compare may additionally propose deterministic calculation;
+verify may propose only deterministic claim verification or review. The
+effective allowlist is the intersection of this matrix and the current signed
+runtime policy after disabled tools are removed. Neither the model nor a
+request may broaden it.
+
+The planning contract is split into `agent-plan-request.v1` and
+`agent-plan-result.v1`. The request binds a task ID, admitted intent, hash of
+the exact normalized user question, company CIK, as-of date, release ID and
+manifest hash, both policy hashes, effective ordered tool allowlist, model-call
+and action caps, and prompt/tool contract hashes. An independently constructed
+grounding context binds the same fields and the exact question; the persisted
+plan request contains only its hash. This keeps raw user text out of the
+replay artifact without allowing the request to authorize its own scope.
+
+A plan result contains only an ordered, bounded list of typed stages or an
+explicit unavailable reason. Each stage has a unique ID, one allowed tool, one
+fixed purpose compatible with that tool, and dependencies that refer only to
+earlier stages. Calculation must depend on exact search; review must depend on
+prior grounded work; verification is available only to the verify intent. The
+plan carries no URL, source passage, executable code, tool arguments, fact,
+citation, answer, recommendation, or verdict. It is therefore a proposal, not
+execution authority. A later tool request must independently pass its own
+typed contract, admitted scope, current-policy authorization, and task-local
+artifact checks immediately before execution.
+
+Each planner call is recorded under `model-attempt.v1`. The record binds the
+task and plan-request hash to the exact provider, model and version, secret
+version, prompt and tool hashes, runtime-policy hash, sequence number,
+provider-attempt identifier when one exists, provider outcome, deterministic
+validation outcome, output hash when completed, token use, and attributable
+cost. It stores no raw prompt, provider output, hidden reasoning, credentials,
+or user text. Completed output is either accepted or rejected by deterministic
+validation; not-started, ambiguous, and unavailable attempts are never treated
+as completed. No attempt authorizes an automatic retry or fallback model.
+
+The first provider-free implementation validates plans and records synthetic
+provider outcomes for tests only. It performs no model call or tool action and
+adds no API, queue consumer, deployment, or public capability. The next private
+slice may connect one pinned model through this boundary, then execute each
+separately validated tool request with policy reauthorization and deterministic
+`research-answer.v1` composition. Explicit claim-verification verdicts remain
+the sole output of the deterministic verifier.
 
 The private pilot foundation implements the SQS batch-adaptation and
 control-plane boundaries described above. Its guarded offline IAM-only
@@ -442,15 +818,86 @@ authorized.
 Every visible statement is labelled verified fact, qualification,
 counterevidence, agent inference, open question, or review required.
 
-A structured fact citation carries source_type structured_fact, verification_role
-verdict_evidence, release hash, filing/accession, fact ID, and evidence ID. A
-narrative citation carries source_type narrative_disclosure, verification_role
-context_only, release hash, filing/accession, chunk hash, and source span. It is
-visibly issuer-disclosure context, not independent verification.
+A structured fact citation carries source_type structured_fact,
+verification_role verdict_evidence, release hash, filing/accession, fact ID,
+and evidence ID. A narrative or entitled-news citation carries source_type
+narrative_disclosure or licensed_news, verification_role context_only, release
+hash, source-record ID, chunk hash, and source span. It is visibly attributed
+context, not independent verification.
 
-Every agent inference and open question includes derived_from citation IDs. This
-allows users to trace reasoning inputs without turning an inference into a
-verdict.
+Every agent inference includes visible derived-from statement IDs. An open
+question includes those IDs when it arises from a visible statement and may
+instead point to an explicitly unavailable request. This allows users to trace
+reasoning inputs without turning an inference into a verdict.
+
+The versioned `research-answer.v1` contract is the safe composition boundary
+for explore, analyze, and compare tasks. It contains task type and terminal
+state; entity and as-of scope; exact release IDs and hashes; a concise answer;
+the ordered statement IDs from which deterministic code composes that answer;
+typed statements; citations; counterpoint statement references; explicitly
+unavailable requests; limitations; the pinned model and prompt/tool contract
+when a model was used; optional embedded deterministic-verifier results; and an
+audit manifest hash. The published answer string must equal the selected
+validated statement texts joined in order with two newline characters. It never
+contains raw provider output, hidden chain of thought, an ungrounded confidence
+score, a recommendation, a price target, an allocation, or a trade instruction.
+
+Research-answer statements use only these types:
+
+- `released_fact` — exact released data with at least one eligible structured
+  citation;
+- `deterministic_calculation` — a recorded calculation derived from released
+  fact statement IDs;
+- `agent_interpretation` — a cited explanation derived from visible statement
+  IDs and never presented as a fact or verdict;
+- `narrative_context` — attributed release-scoped disclosure or entitled-news
+  context whose verification role is always `context_only`; and
+- `open_question` — an explicit unresolved question, never a hidden completion.
+
+Every released-fact or narrative-context statement uses only text authorized by
+its exact release-bound citation record. A numeric released fact may also carry
+a typed measurement containing a canonical finite decimal string and unit. An
+interpretation or open question never carries a measurement. A
+deterministic-calculation statement records its operation, ordered input
+statement IDs, canonical decimal-string result, unit, and decimal places; its
+input IDs exactly equal its derived-from IDs. Decimal strings never use an
+exponent, leading plus sign, `NaN`, or infinity.
+
+The initial replayable calculation operations are deliberately small:
+
+- `sum` accepts at least two inputs with one unit and returns that unit;
+- `difference` accepts current then baseline with one unit and returns that
+  unit;
+- `percent_change` accepts current then non-zero baseline with one unit and
+  returns `percent`; and
+- `percentage_point_change` accepts current then baseline percentages and
+  returns `percentage_points`.
+
+Calculations use decimal arithmetic and round the result to the declared zero
+through twelve decimal places using round-half-even. Inputs may be only numeric
+released facts or already validated deterministic calculations. Interpretation,
+narrative context, and open questions can never become calculation inputs.
+Deterministic code also composes each calculation statement text using one of
+these exact forms: `Calculated sum: {value} {unit}.`, `Calculated difference:
+{value} {unit}.`, `Calculated percent change: {value}%.`, or `Calculated
+percentage-point change: {value} percentage points.`
+
+Validation receives an independently admitted context containing the exact
+ordered release bindings, observed-through time, authorized citation records
+and their permitted statement text and measurement, expected model contract,
+expected deterministic-verifier results, expected audit hash, and any
+interpretation warrants produced by a separate deterministic or policy-approved
+warrant check. An interpretation is rejected unless its statement ID, text, and
+ordered derivation IDs exactly match one of those warrants; the proposed answer
+cannot authorize its own interpretation. Fields in the proposed answer cannot
+authorize themselves. Deterministic validation rejects shape or type drift,
+duplicate IDs, missing or cyclic references, unreachable statements, unused
+citations, citations outside the admitted release scope, unauthorized citation
+content, narrative marked as verdict evidence, non-replaying calculations,
+answer-composition drift, prohibited advisory or trade output, verification
+without exact deterministic authority, and model or audit mismatch. An empty
+fact or analysis set remains a valid safe result when the answer instead
+contains a typed open question and explicit unavailable state.
 
 | Verdict | Meaning |
 | --- | --- |
@@ -737,8 +1184,9 @@ forecast. Narrative context cannot create an affected-asset relationship.
 
 ## 8. Implementation plan
 
-This is an ordered plan, not a timing promise. Build and test each step before
-relying on the next.
+This is a dependency plan, not a timing promise. Build and test each step before
+relying on it. Workstreams explicitly marked independent may proceed in
+parallel, but they converge at the same contracts and gates before exposure.
 
 1. **Policy-control and pilot foundation — complete for one private pilot.** Signed-envelope types, KMS signing and verification boundaries, content-addressed artifact loading, strongly consistent pointer/status reads, and reload-on-authorization are implemented. The target account has active signed runtime and release-gate artifacts, selected evidence pointers, verified KMS/S3/DynamoDB access, replay-visible audit hashes, and a tested emergency disable/restore. Remaining work is recurring operational monitoring and repeating these checks for any new environment or release.
 2. **One approved frozen release — complete for the pilot.** Exact-fact and release-scoped narrative indexes are compiled and replay-checked for the approved embedded corpus. Archive load verifies every index hash; tests prove narrative context cannot enter verdict evaluation. Future releases require the same factory and gate process.
@@ -746,9 +1194,58 @@ relying on the next.
 4. Prove failure/recovery semantics: provider-not-started, completed, ambiguous, reconciliation-unavailable, manual retry, cancellation, and reservation reconciliation. No automatic model retry or fallback.
 5. Load and abuse test public access: sharded hard caps, burst behavior, queue saturation, WAF/rate enforcement, cache behavior, and telemetry separation. Do not expose a research-task route until these tests and an explicit authorization approve it.
 6. **Private catalog staging and delivery — complete for one private pilot, not publicly exposed.** Source validation, normalization, evaluations, Lane A/B gate records, immutable manifests, and rollback/revocation controls are implemented. A separately KMS-signed named-reviewer action can stage or revoke an immutable catalog in a private IAM-only bucket with compare-and-swap pointer updates; a passed release gate cannot stage it automatically. The pilot has a distinct versioned, public-blocked delivery bucket encrypted with a customer-managed key, a CloudFront Origin Access Control, trusted key group, existing global WAF, and an S3 policy limited to catalog reads from that distribution. A separately authorized, non-deleting sync copies only `release-catalogs/v1/` into the delivery bucket. Deployment verification proves unsigned and expired signed URLs return `403`, while a short-lived valid signed URL can read the staged pointer. The original policy-artifact bucket remains outside CDN delivery. A distinct authorization is still required before any public CDN promotion.
-7. Add approved-release search, review tasks, and narrative context one at a time. Each needs a typed contract, policy allowlist, evaluation, provenance, and revocation test.
-8. Expand issuer coverage according to measured release-factory throughput; maintain SDK/tool adapters that preserve the safe contract. Reassess storage only from observed query patterns.
-9. Treat accounts, uploads, workspaces, RBAC, retention, legal hold, and private-data classification as a separate institutional program.
+7. **Grounded research-answer and agent-planning boundary — local validator,
+   exact-search, direct-fact calculation, narrative-context, review-task,
+   intent, plan, and model-attempt contracts complete, not connected.**
+   `research-answer.v1` schema validation,
+   exact admitted-scope comparison, authorized citation binding,
+   statement/reference checks, deterministic calculation replay, independent
+   interpretation warrants, answer composition, prohibited-content screening,
+   model/verifier/audit matching, and focused negative tests are implemented
+   locally. The versioned approved-evidence request/result schemas and
+   provider-free frozen-release adapter now return only exact structured facts
+   or explicit unavailable outcomes, with replay hashes and citation
+   authorizations. The versioned calculation request/result contracts now bind
+   direct released-fact operands to that exact search result, enforce unit and
+   reporting-period compatibility, replay decimal arithmetic, and emit
+   research-answer-compatible calculation statements. The versioned narrative
+   request/result contracts bind exact issuer, as-of, release, optional filing,
+   and chunk-cap scope; the provider-free adapter returns only frozen
+   disclosure chunks with exact source metadata, replay hashes, explicit
+   truncation or unavailable outcomes, and `context_only` citation
+   authorizations. Indexed-release archive `1.2.0` preserves and replays the
+   filing date, HTTPS source URL, character span, text, and chunk hash. The
+   loader may replay a `1.1.0` archive only when it contains no narrative
+   chunks; legacy chunks without the new citation metadata fail closed and
+   require offline recompilation. The versioned review-task request/result
+   contracts bind one safe question to exact origin, reason, release, policy,
+   source-result, statement, citation, and audit context; the deterministic
+   adapter derives an idempotent `requires_review` record without persistence,
+   assignment, approval, notification, or verdict authority. Existing
+   policy-controlled internal tools delegate to all four adapters. The
+   canonical intent matrix, versioned agent-plan request/result contracts,
+   independently grounded provider-free plan validator, and attributable
+   model-attempt record now bound plans to admitted scope, ordered tools,
+   action/model budgets, provider outcome, validation outcome, and replay
+   hashes without storing raw user or provider text. They have no API, model,
+   live retrieval, similarity expansion, or verdict authority. Next connect a
+   provider-free bounded runner to independently typed tool requests, then
+   connect one pinned model in a private orchestration loop.
+   Model-assisted composition remains private until admission, cost, and
+   public-task gates pass.
+8. **Account and access decisions — specification work may run in parallel with
+   step 7.** Complete the seven decision artifacts in section 4.1, including
+   licensed-content retention, audit erasure, subscription lapse, and orphaned
+   workspaces. This work may not create account schemas, collect user data,
+   enable human sign-up, purchase data, or expose a route. The licensed-content
+   and audit/erasure decisions are hard gates for the Library and account data
+   contracts.
+9. Expand issuer coverage according to measured release-factory throughput;
+   maintain SDK/tool adapters that preserve the safe contract. Reassess storage
+   only from observed query patterns.
+10. Implement accounts, workspaces, subscriptions, Library, RBAC, retention,
+    legal hold, and private-data classification only through the gated sequence
+    in section 8.3. None is implied by completion of the public research tools.
 
 ### 8.1 Institutional private-data prerequisite
 
@@ -789,25 +1286,77 @@ The public intelligence web expands through independently releasable slices:
 8. Add a typed cross-catalog entity graph and search only from released exact
    identifiers. Narrative similarity may suggest review work but cannot publish
    an entity relationship as fact.
-9. Add a daily brief only after deterministic validation can bind every factual
+9. Add model-assisted `research-answer.v1` composition only after deterministic
+   validation can bind every factual statement and citation to its declared
+   release, calculations can be replayed, counterpoints and unavailable data are
+   explicit, and admission, cost, privacy, and public-task authorization pass.
+10. Add a daily brief only after deterministic validation can bind every factual
    statement to eligible released fields and label every inference or open
    question. It must not predict prices or recommend a trade.
+
+### 8.3 Account and authorization implementation sequence
+
+Account implementation begins only after section 4.1's reviewed decision
+artifacts exist. It then proceeds in this dependency order:
+
+1. Publish versioned identity, account, workspace, membership, entitlement,
+   subscription, Library, task-ownership, audit-surrogate, and lifecycle
+   contracts. Contract tests cover expiry, downgrade, deletion, legal hold,
+   entitlement revocation, owner loss, and cross-tenant denial.
+2. Implement the central `authorize()` module against deterministic fixtures
+   and fake repositories before persistence. Tests cover deny-by-default,
+   tenant and workspace mismatch, membership and role changes, subscription
+   lapse, source revocation, policy and release revocation, cache expiry and
+   event invalidation, step-up requirements, queued-task continuation, saved
+   result access, export, and administrative actions. The module is not shipped
+   without a backing store; fixture-first work isolates policy semantics.
+3. Bind the same tested repository interfaces to bounded DynamoDB tables and
+   encrypted S3 objects. Prove conditional writes, tenant-key isolation,
+   pseudonymous audit mapping, TTL handling, point-in-time recovery where
+   required, deletion schedules, and fail-closed read or invalidation failure.
+4. Add a non-production human Cognito client and sign-up/sign-in flow only with
+   explicit authorization. Keep machine credentials separate; verify PKCE,
+   account confirmation, recovery, session revocation, MFA, step-up, abuse
+   controls, privacy copy, and safe logs before any public exposure.
+5. Add the concise signed-in shell—`Today`, `Data`, `News & Events`, `Agent`,
+   and `Library`—using only active contracts and canonical access states.
+   Unreleased sources and actions remain visibly unavailable and disabled.
+6. Add licensed news or event content only source by source after rights,
+   lifecycle, attribution, freshness, correction, excerpt, derivation, export,
+   and revocation gates pass.
+7. Add authenticated agent history and saved research only after serve-time
+   authorization, anonymous-task separation, data deletion, and Library
+   redaction behavior pass end-to-end tests.
+8. Add paid plans, daily workflows, institutional workspaces, private sources,
+   APIs, and mobile clients as separate gated slices. Institutional owners and
+   administrators require MFA; private-data intake remains blocked until
+   section 8.1 is complete and explicitly authorized.
+
+The research-tool work in step 7 and the decision work in step 8 are independent
+and should proceed in parallel. All later account implementation depends on the
+reviewed section 4.1 artifacts, while public model-assisted research remains
+independently gated by its tool, evaluation, admission, cost, privacy, and
+authorization requirements.
 
 ## 9. Web experience
 
 ### 9.1 Commercial web product contract
 
 The commercial web presents Quantify as one coherent, high-technology research
-product with three immediately understandable modes:
+product with four immediately understandable layers:
 
-1. **Information.** Browse exact released company, investor, market, earnings,
+1. **Data.** Browse exact released company, investor, market, earnings,
    and policy records with visible observation or filing dates, scope, source,
    freshness, and limitations.
 2. **Intelligence.** Connect only typed identities and relationships already
    present in compatible active releases; show reported change,
    counterevidence, qualifications, and open questions without turning context
    or inference into a fact or market-direction claim.
-3. **Verification.** Give a bounded company-analysis claim to the research
+3. **Analysis.** Explain and compare compatible evidence with statement types,
+   citations, counterpoints, unavailable fields, and limitations. The current
+   public product exposes deterministic metrics and source-bound explanations;
+   general model-assisted research answers remain visibly gated.
+4. **Verification.** Give a bounded company-analysis claim to the research
    agent and receive claim-level verdicts composed only by the deterministic
    verifier, with evidence scope, citations, qualifications, counterevidence,
    review state, and audit identity.
@@ -824,17 +1373,19 @@ product without a current approved comparative evaluation and review.
 
 The homepage must answer, in its first screen, what Quantify does, who it is
 for, what the user can do next, and the current evidence boundary. The preferred
-message pattern is a short outcome-led statement such as `Research the company.
-Verify the claim.`, followed by one sentence that names released information,
-intelligence, evidence, and auditability. The primary action is `Open Agent` or
-`Verify a claim`; the secondary action opens an actual released research view
-or a contract-valid sample result. Marketing copy must not lead with internal
-architecture terminology.
+message pattern is a short outcome-led statement such as `Understand markets.
+Analyze companies. Verify claims.`, followed by one sentence that distinguishes
+currently released data, intelligence, and verification from gated
+model-assisted analysis. The primary action opens an actual released research
+view; the secondary action is `Open Agent` or `Verify a claim`. Marketing copy
+must not lead with internal architecture terminology.
 
-The initial commercial audience remains professional research, corporate
-strategy, investor-relations, consulting, and compliance-sensitive knowledge
-teams. Persona content describes bounded workflows and reviewable outputs. It
-must not promise returns, trading outcomes, comprehensive coverage, time saved,
+The public audience includes self-directed investors and learners who want to
+understand companies, markets, and policy through source-visible research. The
+paid audience includes professional research, corporate strategy,
+investor-relations, consulting, and compliance-sensitive institutional teams.
+Persona content describes bounded workflows and reviewable outputs. It must not
+promise returns, trading outcomes, comprehensive coverage, time saved,
 accuracy, security certification, service levels, or customer adoption unless
 the exact claim is supported by current approved evidence.
 
@@ -842,8 +1393,9 @@ The commercial capability matrix is explicit and release-visible:
 
 | Product area | Available contract | Gated next state |
 | --- | --- | --- |
-| Information | Public read-only views derived from active released catalogs; the public release index is the coverage authority. | New sources, fields, entities, and live or licensed data require their own rights, methodology, freshness, correction, and release gates. |
+| Data and information | Public read-only views derived from active released catalogs; the public release index is the coverage authority. | New sources, fields, entities, and live or licensed data require their own rights, methodology, freshness, correction, and release gates. |
 | Intelligence | Exact released earnings, policy, entity, ownership, and other typed connections only where their sub-releases are active. | Narrative events, briefs, broader cross-catalog synthesis, and additional intelligence workflows remain unavailable until independently contracted and released. |
+| Analysis | Deterministic released metrics and source-bound explanations already present in current research views. No general LLM research-answer task is public. | `research-answer.v1` composition, broader comparisons, counterpoint generation, and model-assisted synthesis require typed tools, grounding evaluation, admission/cost controls, and separate public-task authorization. |
 | Verification | The bounded safe verification contract, current identity or separately authorized trial controls, deterministic verdicts, and audit identity. | Broader issuer coverage, async task UX, comparison, review, and export follow their existing release and task gates. |
 | AI research agent | One structured extraction step under V1 policy; zero production resolution actions; no live retrieval, tool autonomy, or verdict authority. | Multi-step planning and bounded typed tools require a specification contract, focused evaluation, replay controls, and explicit action authorization. |
 | Commercial access | Public catalog plus the currently authorized authentication and trial boundaries. | Pricing, subscriptions, team workspaces, public customer API, enterprise controls, and service commitments require separate product, cost, security, legal, and deployment approval. |
@@ -853,8 +1405,9 @@ contracts wherever possible. A planned capability is visually separated from
 an available capability and never uses an enabled action, fabricated product
 screen, or ambiguous `coming soon` treatment that could imply access.
 
-The commercial product exposes one systematic agent operating model. It is a
-presentation and orchestration model, not additional model or tool authority:
+The commercial product exposes one systematic agent operating model across
+explore, analyze, compare, and verify task intents. It is a presentation and
+orchestration model, not additional model or tool authority:
 
 1. **Objective.** The user supplies a bounded research question or claim.
 2. **Scope contract.** Quantify declares company or entity identity, as-of
@@ -864,22 +1417,28 @@ presentation and orchestration model, not additional model or tool authority:
    catalogs that may supply facts. Catalog status, release identity,
    observation time, freshness, source class, and limitations stay visible;
    unavailable data remains an explicit system state.
-4. **Information and intelligence.** Human-readable records retain their data
+4. **Intelligence and analysis.** Human-readable records retain their data
    bindings. Typed identity, period, ownership, earnings, and policy
-   connections may organize compatible released facts, but cannot create a
-   missing fact or imply market direction.
-5. **Verification result.** Deterministic code validates grounding, warrant,
-   qualifications, and compatible counterevidence, then alone composes the
-   claim verdict, evidence scope, limitation, review state, and audit identity.
+   connections may organize compatible released facts. An admitted analysis
+   task may add deterministically validated comparisons and cited
+   interpretations under `research-answer.v1`, but cannot create a missing fact,
+   hide unavailable information, or imply market direction.
+5. **Research result.** Deterministic code validates factual grounding,
+   citations, derivations, scope, and prohibited content. When verification is
+   requested, the deterministic verifier separately validates warrant,
+   qualifications, and compatible counterevidence and alone composes the claim
+   verdict. The safe result exposes limitations, review state, and audit
+   identity in either case.
 
 The homepage and agent workspace make this sequence legible as a compact
-system map. They distinguish `Data` (versioned machine-readable released
-records), `Information` (readable source-bound records), `Intelligence` (typed
-connections across compatible records), and `Verification` (a deterministic
-claim decision). A visual stage may say `ready`, `available`, or `sample` only
-when that state comes from the current runtime contract, active release index,
-or a labelled versioned fixture. It must not simulate autonomous progress,
-continuous monitoring, live retrieval, or capabilities that are not active.
+system map. They distinguish `Data` (versioned source-bound released records),
+`Intelligence` (typed connections across compatible records), `Analysis`
+(cited explanation whose factual statements are deterministically validated),
+and `Verification` (a deterministic claim decision). A visual stage may say
+`ready`, `available`, or `sample` only when that state comes from the current
+runtime contract, active release index, or a labelled versioned fixture. It
+must not simulate autonomous progress, continuous monitoring, live retrieval,
+or capabilities that are not active.
 
 Release-derived counts answer exactly what they count—for example declared
 catalogs, active catalogs, reporting managers, mapped issuers, or reviewed
@@ -959,14 +1518,21 @@ by `Product`, `Intelligence`, `Coverage`, and `Methodology`. The navigation orde
 must reflect the landing-page hierarchy rather than placing a supporting
 product-explanation page before the homepage.
 
+After account contracts and exposure gates pass, the signed-in application uses
+one stable daily-workflow shell: `Today`, `Data`, `News & Events`, `Agent`, and
+`Library`. `Today` summarizes only entitled, released, time-stamped material;
+it is not a live trading dashboard. Public marketing navigation and signed-in
+application navigation remain distinct so account complexity does not make the
+public research experience harder to scan.
+
 The homepage follows this order:
 
-1. outcome-led hero, evidence-boundary sentence, primary agent action, and one
-   secondary research or sample-result action;
+1. outcome-led hero, evidence-boundary sentence, primary released-research
+   action, and one secondary agent or sample-result action;
 2. a real product-stage demonstration that binds question, released evidence,
    counterevidence, deterministic verdict, and audit identity;
-3. three concise product modules for Information, Intelligence, and
-   Verification;
+3. four concise product modules for Data, Intelligence, Analysis, and
+   Verification, with planned analysis visibly gated;
 4. a release-derived coverage strip showing only current supported entities,
    source/filing periods, observation times, and freshness states;
 5. professional workflow examples for research, strategy,
@@ -1007,21 +1573,58 @@ leads with the result and then exposes evidence, counterevidence,
 qualifications, citations, release identity, and audit identity through
 progressive disclosure.
 
-Information retrieval, intelligence synthesis, and verification remain visibly
-distinct in the agent output. Released structured facts are labelled facts;
-narrative context is labelled context-only; derived explanations retain their
-source bindings; and deterministic verdicts use the meanings in section 6.
+The future multi-tool entry is labelled `Ask Quantify`. Intent routing maps a
+bounded question to explore, analyze, compare, or explicit claim verification
+and shows the interpreted job and scope before work begins. Users who do not
+know what to ask receive a small set of contract-derived starters such as
+research a company, track a released investor filing, explain an approved
+policy record, inspect ETF or BTC-linked exposure, or verify a claim. A starter
+links to an existing released view or enabled agent action; it never simulates
+an unavailable tool. Ambiguous or unsupported questions return a short scope
+choice or an available research route rather than silently choosing broader
+authority.
+
+Data retrieval, intelligence synthesis, analysis, and verification remain
+visibly distinct in the agent output. Released structured facts are labelled
+facts; narrative context is labelled context-only; derived explanations retain
+their source bindings and statement type; and deterministic verdicts use the
+meanings in section 6.
 Unavailability, empty verified scope, refusal, and review-required are complete
 product states with a clear safe next action. The UI must not replace them with
 a model-generated answer, a hidden fallback, or an invitation to make a trade.
+
+A review state uses one concise presentation: `Review required`, one
+plain-language reason, and one safe next action. Release, policy, source-result,
+statement, citation, and audit bindings remain available under details. The UI
+must not say `sent`, `queued`, `assigned`, or `under review` until an authorized
+persistent review workflow has durably recorded that exact state.
+
+Authorization and entitlement failures use one mandatory grammar across data,
+news, subscriptions, step-up authentication, workspaces, Library, and agent
+tools:
+
+~~~
+This {resource} is unavailable under your current access. {Next safe action}.
+~~~
+
+The first sentence is not rewritten per endpoint. The second sentence contains
+one approved action, such as sign in, verify identity, view available sources,
+choose an included plan feature, or contact the workspace owner. A compact
+label may distinguish `Sign-in required`, `Access changed`, `Plan inactive`,
+`Verification required`, or `Workspace unavailable`, while a stable typed
+reason code supports logs and support without exposing sensitive policy detail.
+The same backend reason must render the same label, sentence grammar, and next
+action everywhere. Verification verdict, unavailable-evidence, and
+review-required states retain their separate meanings and are never presented
+as access denials.
 
 Every primary product surface uses the same user-task grammar:
 
 1. **Job.** State the bounded research outcome the user can complete now.
 2. **Required input.** Name the entity, time or release scope, and factual claim
    or released record needed to start.
-3. **Output.** Name the exact information, typed connection, or verification
-   result the current contract can return.
+3. **Output.** Name the exact released data, typed connection, cited analysis,
+   or verification result the current contract can return.
 4. **Boundary.** Keep unavailable data, source limits, access mode, and prohibited
    uses visible before the user acts.
 5. **Next safe action.** After every complete, empty, unavailable, failed, or
@@ -1029,12 +1632,14 @@ Every primary product surface uses the same user-task grammar:
    the claim, inspecting coverage, reviewing methodology, or routing the result
    to an authorized human review process.
 
-The homepage maps user intent to the three available jobs: browse released
-records, connect compatible released facts, or verify one company-analysis
-claim. Each entry names its input and output rather than asking users to infer a
-workflow from the architecture. The verification workspace then groups the
-task into `Define scope` and `Write one claim`, derives readiness from the
-actual form state, and keeps the output contract visible. Architecture and
+The homepage maps user intent to four product jobs: explore released data,
+connect compatible facts, analyze evidence, or verify one company-analysis
+claim. Each entry names its input, output, and current availability rather than
+asking users to infer a workflow from the architecture. Until the public
+research-task gate passes, analysis is displayed as a gated next state with no
+enabled submission action. The current verification workspace groups its
+available task into `Define scope` and `Write one claim`, derives readiness from
+the actual form state, and keeps the output contract visible. Architecture and
 policy detail use progressive disclosure and must not be repeated after the
 user has entered the task flow.
 
@@ -1059,8 +1664,9 @@ stage whenever review finds an unsupported claim or product-state mismatch:
 3. **Homepage.** Implement the concise commercial narrative and contract-valid
    product demonstration. Coverage and freshness are projections of the active
    public release index, never separately maintained marketing values.
-4. **Agent.** Improve the verification entry, truthful task progress, result
-   hierarchy, citation and counterevidence presentation, review-required state,
+4. **Agent.** Clarify the four research layers and the currently available
+   verification task; improve truthful task progress, result hierarchy,
+   citation and counterevidence presentation, review-required state,
    accessibility, and failure states without changing verdict authority or
    enabling a new action.
 5. **Trust and conversion.** Add only approved methodology, coverage, privacy,
@@ -1088,9 +1694,13 @@ prominent observation or filing dates, but every route must feel like the same
 product. Task-progress UI, release selection, and richer citation presentation
 arrive with the async task work above.
 
-The web asks one question: “Is this company-analysis claim supported by the
-declared evidence?” It shows task progress or a bounded result, evidence scope,
-qualifications, counterevidence, citations, and an audit ID.
+The web helps a user answer four bounded questions: “What released data is
+available?”, “What compatible facts connect?”, “What can the cited evidence
+explain?”, and “Is this company-analysis claim supported by the declared
+evidence?” It shows availability, scope, statement type, citations,
+counterpoints, limitations, and audit identity appropriate to the selected
+job. Until model-assisted analysis is authorized, the third question links only
+to deterministic metrics and source-bound explanations in released views.
 
 The investor homepage centers reported holdings and quarter-over-quarter
 changes. Each public-market manager page contains overview, holdings, changes,
@@ -1131,10 +1741,11 @@ use color alone to convey a change or verdict. Investor pages must show the
 reporting period, filing date, SEC accession/source, catalog release, and the
 limitations of 13F coverage.
 
-The released research navigation is `Overview`, `Markets`, `Investors`,
-`Companies`, and `Intelligence`, with claim verification presented as the
-primary action. It remains the current navigation until the commercial shell
-in section 9.3 is separately approved and implemented.
+The released research navigation follows the commercial shell in section 9.3:
+`Research`, `Product`, `Intelligence`, `Coverage`, and `Methodology`, with
+`Open Agent` as the persistent current-task action. Research routes for
+Markets, Investors, and Companies remain directly reachable from the homepage
+and exact released entity graph.
 `Markets` contains Macro, Rates, ETFs, Sectors, Crypto, and Commodities. Company
 pages may connect only released manager positions initially; market cap,
 valuation, insider, ETF, and event modules remain unavailable until their

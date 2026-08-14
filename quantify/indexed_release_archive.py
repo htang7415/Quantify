@@ -21,7 +21,8 @@ from quantify.indexed_release import (
 )
 from quantify.release_factory import EvidenceRelease
 
-_VERSION = "1.1.0"
+_VERSION = "1.2.0"
+_LEGACY_EMPTY_NARRATIVE_VERSION = "1.1.0"
 
 def _evidence(value: EvidenceValue) -> dict[str, object]:
     raw = asdict(value)
@@ -31,6 +32,20 @@ def _evidence(value: EvidenceValue) -> dict[str, object]:
 
 def _load_evidence(raw: Mapping[str, object]) -> EvidenceValue:
     return EvidenceValue(**{**raw, "value": Decimal(str(raw["value"])), "period_start": date.fromisoformat(str(raw["period_start"])), "period_end": date.fromisoformat(str(raw["period_end"])), "filed_at": date.fromisoformat(str(raw["filed_at"])), "derived_from_evidence_ids": tuple(raw.get("derived_from_evidence_ids", ()))})
+
+def _narrative(chunk: NarrativeDisclosureChunk) -> dict[str, object]:
+    raw = asdict(chunk)
+    raw["filed_at"] = chunk.filed_at.isoformat()
+    return raw
+
+def _load_narrative(raw: Mapping[str, object]) -> NarrativeDisclosureChunk:
+    return NarrativeDisclosureChunk(
+        **{
+            **raw,
+            "filed_at": date.fromisoformat(str(raw["filed_at"])),
+            "source_span": tuple(raw["source_span"]),
+        }
+    )
 
 def _audit(manifest: AuditManifest) -> dict[str, object]:
     raw = asdict(manifest); raw["analysis_as_of_date"] = manifest.analysis_as_of_date.isoformat()
@@ -57,7 +72,7 @@ class IndexedReleaseArchive:
             "indexed_release_manifest_hash":release.manifest_hash,
             "exact_fact_index_hash":release.exact_facts.manifest_hash,
             "narrative_context_index_hash":release.narrative_context.manifest_hash,
-            "narrative_chunks":[asdict(chunk) for chunk in release.narrative_context.chunks],
+            "narrative_chunks":[_narrative(chunk) for chunk in release.narrative_context.chunks],
             "snapshots":snapshots,
         }
         return json.dumps(payload,sort_keys=True,separators=(",",":"),default=list).encode()
@@ -66,7 +81,8 @@ class IndexedReleaseArchive:
     def load(payload: bytes) -> "ArchivedIndexedSnapshotProvider":
         try: raw=json.loads(payload)
         except (TypeError,json.JSONDecodeError) as error: raise IndexedReleaseError("indexed release archive is invalid") from error
-        if not isinstance(raw,dict) or raw.get("schema_version")!=_VERSION or not isinstance(raw.get("snapshots"),list) or not isinstance(raw.get("narrative_chunks"),list): raise IndexedReleaseError("indexed release archive schema is invalid")
+        if not isinstance(raw,dict) or raw.get("schema_version") not in {_VERSION,_LEGACY_EMPTY_NARRATIVE_VERSION} or not isinstance(raw.get("snapshots"),list) or not isinstance(raw.get("narrative_chunks"),list): raise IndexedReleaseError("indexed release archive schema is invalid")
+        if raw["schema_version"] == _LEGACY_EMPTY_NARRATIVE_VERSION and raw["narrative_chunks"]: raise IndexedReleaseError("legacy narrative chunks require archive recompilation")
         release_raw=raw.get("evidence_release")
         if not isinstance(release_raw,dict): raise IndexedReleaseError("indexed release archive has no release manifest")
         declared=release_raw.get("manifest_hash")
@@ -76,7 +92,7 @@ class IndexedReleaseArchive:
         if release.manifest_hash != declared: raise IndexedReleaseError("indexed release archive manifest does not replay")
         try:
             snapshots=tuple(_indexed_snapshot(item) for item in raw["snapshots"])
-            chunks=tuple(NarrativeDisclosureChunk(**chunk) for chunk in raw["narrative_chunks"])
+            chunks=tuple(_load_narrative(chunk) for chunk in raw["narrative_chunks"])
             indexed=compile_indexed_release(
                 evidence_release=release,
                 snapshots=snapshots,

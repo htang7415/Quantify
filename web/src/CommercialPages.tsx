@@ -19,9 +19,22 @@ export function ProductPage() {
       <SiteNav active="product" action={{ label: "Open Agent", href: "/agent" }} />
       <section className="commercial-info-hero page-shell">
         <p className="terminal-eyebrow">Quantify product</p>
-        <h1>One system.<br /><span>Three research modes.</span></h1>
-        <p>Move from released information to connected intelligence to a deterministic verification result—without losing the evidence boundary.</p>
-        <div className="overview-actions"><a className="button button-dark" href="/agent">Open Agent →</a><a className="button button-light" href="/coverage">See current coverage</a></div>
+        <h1>One system.<br /><span>Four research layers.</span></h1>
+        <p>Released data, typed intelligence, and bounded verification are available today. Cited model-assisted analysis is the next gated layer.</p>
+        <div className="overview-actions"><a className="button button-dark" href="/#research">Explore research →</a><a className="button button-light" href="/agent">Open Agent</a></div>
+      </section>
+
+      <section className="product-system page-shell" aria-labelledby="product-system-title">
+        <div className="commercial-section-head"><p className="terminal-eyebrow">The system</p><h2 id="product-system-title">Different jobs. Clear authority.</h2></div>
+        <div className="product-system-flow">
+          <article><span>01</span><strong className="product-mode-state is-available">Available · released</strong><h3>Data</h3><p>Exact released records with source, time, scope, freshness, and limitations.</p><a href="/#research">Explore research →</a></article>
+          <i aria-hidden="true">→</i>
+          <article><span>02</span><strong className="product-mode-state is-available">Available · typed</strong><h3>Intelligence</h3><p>Typed connections and reported changes across compatible active releases.</p><a href="/intelligence">Open intelligence →</a></article>
+          <i aria-hidden="true">→</i>
+          <article className="product-system-gated"><span>03</span><strong className="product-mode-state">Gated next · no public task</strong><h3>Analysis</h3><p>Statement-typed explanations with citations, counterpoints, unavailable fields, and limitations.</p></article>
+          <i aria-hidden="true">→</i>
+          <article><span>04</span><strong className="product-mode-state is-available">Available · bounded</strong><h3>Verification</h3><p>Claim-level verdicts with declared evidence scope and immutable audit identity.</p><a href="/agent">Verify a claim →</a></article>
+        </div>
       </section>
 
       <section className="product-operating-system product-modes page-shell" aria-labelledby="product-operating-title">
@@ -32,22 +45,11 @@ export function ProductPage() {
         <AgentSystemMap />
       </section>
 
-      <section className="product-system page-shell" aria-labelledby="product-system-title">
-        <div className="commercial-section-head"><p className="terminal-eyebrow">The system</p><h2 id="product-system-title">Different jobs. Clear authority.</h2></div>
-        <div className="product-system-flow">
-          <article><span>01</span><h3>Information</h3><p>Exact released records with source, time, scope, freshness, and limitations.</p><a href="/#research">Explore research →</a></article>
-          <i aria-hidden="true">→</i>
-          <article><span>02</span><h3>Intelligence</h3><p>Typed connections and reported changes across compatible active releases.</p><a href="/intelligence">Open intelligence →</a></article>
-          <i aria-hidden="true">→</i>
-          <article><span>03</span><h3>Verification</h3><p>Claim-level verdicts with declared evidence scope and immutable audit identity.</p><a href="/agent">Verify a claim →</a></article>
-        </div>
-      </section>
-
       <section className="authority-section signal-surface page-shell">
-        <div><p className="signal-kicker">The authority boundary</p><h2>The agent researches.<br />The verifier decides.</h2></div>
+        <div><p className="signal-kicker">The authority boundary</p><h2>The agent explains.<br />The verifier decides.</h2></div>
         <div className="authority-stack">
-          <article><span>Model</span><strong>Proposes structured work</strong><p>Untrusted until validated.</p></article>
-          <article><span>Code</span><strong>Checks grounding and warrant</strong><p>Exact released facts only.</p></article>
+          <article><span>Model</span><strong>Proposes structured research and analysis</strong><p>Every statement stays untrusted until validated.</p></article>
+          <article><span>Code</span><strong>Checks grounding, citations, and warrant</strong><p>Exact released facts and replayable calculations only.</p></article>
           <article><span>Verifier</span><strong>Composes the publication verdict</strong><p>No model fallback or hidden guess.</p></article>
         </div>
       </section>
@@ -56,8 +58,9 @@ export function ProductPage() {
         <div className="commercial-section-head"><p className="terminal-eyebrow">Current contract</p><h2 id="capability-title">Available now. Gated next.</h2></div>
         <div className="capability-table" role="table" aria-label="Current and gated product capabilities">
           <div role="row"><strong role="columnheader">Product area</strong><strong role="columnheader">Available</strong><strong role="columnheader">Gated next</strong></div>
-          <div role="row"><b role="rowheader">Information</b><span role="cell">Active public release catalogs</span><span role="cell">New sources and live or licensed data</span></div>
+          <div role="row"><b role="rowheader">Data</b><span role="cell">Active public release catalogs</span><span role="cell">New sources and live or licensed data</span></div>
           <div role="row"><b role="rowheader">Intelligence</b><span role="cell">Exact earnings, policy, ownership, and entity connections</span><span role="cell">Narrative briefs and broader synthesis</span></div>
+          <div role="row"><b role="rowheader">Analysis</b><span role="cell">Deterministic metrics and source-bound explanations in released views</span><span role="cell">Model-assisted research answers under the new grounded contract</span></div>
           <div role="row"><b role="rowheader">Verification</b><span role="cell">Bounded safe contract and deterministic verdicts</span><span role="cell">Broader coverage, review workspace, and exports</span></div>
           <div role="row"><b role="rowheader">Agent</b><span role="cell">One structured extraction step; zero production resolution actions</span><span role="cell">Multi-step planning and bounded typed tools</span></div>
         </div>
@@ -74,7 +77,7 @@ export function ProductPage() {
         <p className="commercial-boundary-note">Do not submit private research material. Quantify does not collect pilot requests on this site.</p>
       </section>
 
-      <section className="commercial-cta page-shell"><p className="terminal-eyebrow">Evidence first</p><h2>Start with a claim.</h2><p>Use the current bounded verification contract for Microsoft or Apple.</p><a className="button button-dark" href="/agent">Open Agent →</a></section>
+      <section className="commercial-cta page-shell"><p className="terminal-eyebrow">Start with released evidence</p><h2>Explore first. Verify when needed.</h2><p>Browse current research without sign-in, or use the bounded Agent task for supported Microsoft or Apple claims.</p><a className="button button-dark" href="/#research">Explore research →</a></section>
       <CommercialFooter />
     </main>
   );
