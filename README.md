@@ -1,8 +1,8 @@
-# Quantify
+# Libration
 
 ## Evidence-bound AI investment research agent
 
-Quantify is an AI investment research agent for self-directed investors,
+Libration is an AI investment research agent for self-directed investors,
 learners, analysts, and institutions that want to understand companies,
 markets, and policy through inspectable evidence.
 
@@ -21,11 +21,11 @@ Use the public product across four bounded research jobs:
 - verify one company-analysis claim and receive a verdict, evidence scope,
   limitation, and audit identity.
 
-[Visit Quantify](https://d3ljopjg1qmt4.cloudfront.net/)
+[Visit Libration](https://d3ljopjg1qmt4.cloudfront.net/)
 
 ## Investor intelligence
 
-The public Quantify investor section tracks reported positions for a focused
+The public Libration investor section tracks reported positions for a focused
 set of public-market investment managers. It shows disclosed Form 13F value, portfolio
 weights, quarter-over-quarter share changes, concentration, allocation, and
 five-quarter position history from a frozen, versioned SEC filing catalog.
@@ -55,7 +55,7 @@ relationships never enter the public-company ownership index.
 
 The public overview connects the frozen investor release to deterministic
 company ownership views. A company page sums only the disclosed rows belonging
-to Quantify's tracked reporting managers and links every row back to its SEC
+to Libration's tracked reporting managers and links every row back to its SEC
 filing. It does not claim total institutional or beneficial ownership.
 
 Markets, macro, ETF flows, cryptocurrency, earnings, policy, and high-impact
@@ -71,7 +71,7 @@ feed. It projects reviewed crypto-linked ETP security identities over the
 existing frozen 13F catalog, showing exact disclosed manager positions and
 their SEC filing sources. Spot prices, market capitalization, flows, wallets,
 and network statistics remain unavailable. A versioned source register blocks
-technically public APIs whose terms do not permit Quantify's public commercial
+technically public APIs whose terms do not permit Libration's public commercial
 display.
 
 The first active market layer is an official U.S. Treasury par yield-curve
@@ -251,7 +251,7 @@ target:
 
 ~~~shell
 python scripts/acquire_investor_sec_bundle.py \
-  --user-agent "Quantify Research htang7415@gmail.com" \
+  --user-agent "Libration Research htang7415@gmail.com" \
   --cache-dir /path/to/sec-cache \
   --target-directory /path/to/new-13f-bundle \
   --created-at 2026-08-14T02:00:00Z \
@@ -352,11 +352,11 @@ deploy, or mutate the active index.
 exact firm/relationship diff. Omitting `--venture-source` preserves the active
 Venture binding.
 
-## What Quantify can do
+## What Libration can do
 
 ### Verify factual company claims
 
-Give Quantify a short company analysis or a specific claim. It identifies
+Give Libration a short company analysis or a specific claim. It identifies
 eligible factual assertions and determines whether the declared evidence
 supports them.
 
@@ -368,13 +368,13 @@ Examples:
 
 ### Find what changes the conclusion
 
-Quantify does more than locate supporting passages. It evaluates compatible
+Libration does more than locate supporting passages. It evaluates compatible
 counterevidence and important disclosed qualifications, so users can see when a
 claim is incomplete, overstated, or defeated.
 
 ### Make AI-generated research safer
 
-Use Quantify as a publication gate for analyst work or AI-generated company
+Use Libration as a publication gate for analyst work or AI-generated company
 research. It turns a draft claim into a clear evidence decision before that
 claim is shared with an investment committee, client, research team, or wider
 audience.
@@ -395,7 +395,7 @@ the conclusion.
 | **Defeated** | Compatible counterevidence defeats the claim. |
 | **Review required** | The evidence or grounding is too ambiguous to publish safely. |
 
-Quantify also separates:
+Libration also separates:
 
 - verified facts;
 - qualifications;
@@ -407,7 +407,7 @@ Quantify also separates:
 This makes it clear what has been proven, what is interpretation, and what
 still needs work.
 
-## How Quantify earns trust
+## How Libration earns trust
 
 ~~~
 Your claim or analysis
@@ -420,10 +420,10 @@ Deterministic verdict, scope, and audit trail
 ~~~
 
 The AI agent can organize the work and explain the result. It cannot decide
-that a claim is verified. Quantify’s deterministic verification layer is the
+that a claim is verified. Libration’s deterministic verification layer is the
 only authority that can issue a verified outcome.
 
-This means Quantify is designed to be:
+This means Libration is designed to be:
 
 - **Source-constrained** — conclusions stay inside a named evidence release.
 - **Counterevidence-aware** — support and defeating evidence are treated
@@ -435,7 +435,7 @@ This means Quantify is designed to be:
 
 ## Built for serious research workflows
 
-Quantify is designed for people and teams who need disciplined public-company
+Libration is designed for people and teams who need disciplined public-company
 research:
 
 - self-directed investors who want to check a thesis;
@@ -444,13 +444,13 @@ research:
 - AI products that need an evidence-verification layer; and
 - institutions that require clear provenance and reviewability.
 
-The Quantify website is publicly accessible without sign-up. Submitting a
+The Libration website is publicly accessible without sign-up. Submitting a
 verification request through the current agent experience requires sign-in and
 remains deliberately bounded to maintain reliability and responsible access.
 
 ## Clear boundaries
 
-Quantify is an investment research product with deterministic verification as
+Libration is an investment research product with deterministic verification as
 its trust layer. It does not:
 
 - predict prices or market movements;
@@ -461,7 +461,7 @@ its trust layer. It does not:
 
 ## The goal
 
-Quantify makes investment research more understandable, inspectable,
+Libration makes investment research more understandable, inspectable,
 reviewable, and trustworthy.
 
 Instead of asking only, “Can an AI explain this?”
@@ -469,4 +469,4 @@ Instead of asking only, “Can an AI explain this?”
 Ask, “What does the data show, how is the analysis grounded, and can this claim
 be proven?”
 
-[Visit Quantify](https://d3ljopjg1qmt4.cloudfront.net/)
+[Visit Libration](https://d3ljopjg1qmt4.cloudfront.net/)

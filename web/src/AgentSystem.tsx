@@ -45,7 +45,7 @@ function releaseState(release: PublicRelease): string {
 
 export function AgentSystemMap({ compact = false }: { compact?: boolean }) {
   return (
-    <ol className={`agent-system-map${compact ? " agent-system-map-compact" : ""}`} aria-label="Quantify agent operating model">
+    <ol className={`agent-system-map${compact ? " agent-system-map-compact" : ""}`} aria-label="Libration agent operating model">
       {operatingSteps.map((step) => (
         <li key={step.number}>
           <span>{step.number} / {step.label}</span>

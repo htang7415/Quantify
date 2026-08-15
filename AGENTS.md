@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This repository builds **Quantify Research Referee**, a user-first AI research
+This repository builds **Libration Research Referee**, a user-first AI research
 agent for public-company analysis. Its authoritative product semantics,
 architecture, API plan, policy rules, release lifecycle, and UI direction live
 only in [quantify_spec.md](quantify_spec.md). Do not duplicate or reinterpret
 those rules here; update the specification first when they change.
 
-Quantify is not a stock-prediction, trading, brokerage, portfolio-management,
+Libration is not a stock-prediction, trading, brokerage, portfolio-management,
 or personalized-investment-advice product. Do not add price predictions, buy,
 sell, hold, allocation, position sizing, suitability, or trade execution.
 

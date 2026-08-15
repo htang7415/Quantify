@@ -10,117 +10,117 @@ const defaultDescription =
 
 const exactRoutes: Record<string, Omit<RouteMetadata, "indexable">> = {
   "/": {
-    title: "Quantify — Evidence-bound AI investment research",
+    title: "Libration — Evidence-bound AI investment research",
     description: "Explore released company, ownership, earnings, macro, rates, and policy data; connect typed intelligence; and verify claims against declared evidence.",
     canonicalPath: "/"
   },
   "/product": {
-    title: "Product — Quantify",
-    description: "See how Quantify separates released data, typed intelligence, cited analysis, and deterministic claim verification in one research system.",
+    title: "Product — Libration",
+    description: "See how Libration separates released data, typed intelligence, cited analysis, and deterministic claim verification in one research system.",
     canonicalPath: "/product"
   },
   "/coverage": {
-    title: "Current coverage — Quantify",
-    description: "Inspect the active released catalogs, observation dates, freshness states, limitations, and release identities available to Quantify.",
+    title: "Current coverage — Libration",
+    description: "Inspect the active released catalogs, observation dates, freshness states, limitations, and release identities available to Libration.",
     canonicalPath: "/coverage"
   },
   "/methodology": {
-    title: "Methodology — Quantify",
-    description: "See how Quantify binds claims to released evidence and uses deterministic validation to compose every publication verdict.",
+    title: "Methodology — Libration",
+    description: "See how Libration binds claims to released evidence and uses deterministic validation to compose every publication verdict.",
     canonicalPath: "/methodology"
   },
   "/agent": {
-    title: "Quantify Agent — Verify a company claim",
+    title: "Libration Agent — Verify a company claim",
     description: "Configure a bounded company-analysis task and inspect its released evidence, deterministic verdict, scope, limitations, and audit identity.",
     canonicalPath: "/agent"
   },
   "/verify": {
-    title: "Quantify Agent — Verify a company claim",
+    title: "Libration Agent — Verify a company claim",
     description: "Configure a bounded company-analysis task and inspect its released evidence, deterministic verdict, scope, limitations, and audit identity.",
     canonicalPath: "/agent"
   },
   "/markets": {
-    title: "Markets research — Quantify",
+    title: "Markets research — Libration",
     description: "Browse released macro, rates, ETF, and crypto reference data with visible scope, dates, and limitations.",
     canonicalPath: "/markets"
   },
   "/markets/macro": {
-    title: "Macro research — Quantify",
+    title: "Macro research — Libration",
     description: "Inspect released macroeconomic observations, calculations, dates, and source limitations.",
     canonicalPath: "/markets/macro"
   },
   "/markets/rates": {
-    title: "Rates research — Quantify",
+    title: "Rates research — Libration",
     description: "Inspect the independently released Treasury curve with exact observation dates and source scope.",
     canonicalPath: "/markets/rates"
   },
   "/markets/etfs": {
-    title: "ETF research — Quantify",
+    title: "ETF research — Libration",
     description: "Browse released ETF filings, fund flows, holdings, source dates, and limitations.",
     canonicalPath: "/markets/etfs"
   },
   "/markets/crypto": {
-    title: "Crypto reference data — Quantify",
+    title: "Crypto reference data — Libration",
     description: "Inspect the released crypto reference layer and its explicit availability boundary.",
     canonicalPath: "/markets/crypto"
   },
   "/investors": {
-    title: "Investor research — Quantify",
+    title: "Investor research — Libration",
     description: "Explore released public filings and official-source investor relationships with source dates, scope, and limitations.",
     canonicalPath: "/investors"
   },
   "/investors/compare": {
-    title: "Compare reported holdings — Quantify",
+    title: "Compare reported holdings — Libration",
     description: "Compare exact released security identifiers across two reporting managers without implying portfolio similarity or suitability.",
     canonicalPath: "/investors/compare"
   },
   "/investors/venture": {
-    title: "Venture relationships — Quantify",
+    title: "Venture relationships — Libration",
     description: "Browse released official-source venture relationships without converting them into ownership or portfolio claims.",
     canonicalPath: "/investors/venture"
   },
   "/investors/venture/companies": {
-    title: "Venture company relationships — Quantify",
+    title: "Venture company relationships — Libration",
     description: "Inspect exact company identifiers in the released venture relationship catalog.",
     canonicalPath: "/investors/venture/companies"
   },
   "/investors/venture/overlap": {
-    title: "Venture relationship overlap — Quantify",
+    title: "Venture relationship overlap — Libration",
     description: "Inspect exact pair overlap in the released venture relationship catalog without a similarity score.",
     canonicalPath: "/investors/venture/overlap"
   },
   "/companies": {
-    title: "Company research — Quantify",
+    title: "Company research — Libration",
     description: "Browse released public-company records and open evidence-bound research views.",
     canonicalPath: "/companies"
   },
   "/intelligence": {
-    title: "Research intelligence — Quantify",
+    title: "Research intelligence — Libration",
     description: "Inspect exact earnings, policy, ownership, and entity connections from compatible active releases.",
     canonicalPath: "/intelligence"
   },
   "/intelligence/earnings": {
-    title: "Released earnings — Quantify",
+    title: "Released earnings — Libration",
     description: "Inspect exact released company earnings facts without estimates or market-direction claims.",
     canonicalPath: "/intelligence/earnings"
   },
   "/intelligence/policy": {
-    title: "Released policy intelligence — Quantify",
+    title: "Released policy intelligence — Libration",
     description: "Inspect typed policy actions, scope, effective dates, official sources, and released entity connections.",
     canonicalPath: "/intelligence/policy"
   },
   "/intelligence/releases": {
-    title: "Release operations — Quantify",
+    title: "Release operations — Libration",
     description: "Inspect the public release index, freshness states, limitations, and release identities.",
     canonicalPath: "/intelligence/releases"
   }
 };
 
 const dynamicRoutes: Array<{ pattern: RegExp; title: string; description: string }> = [
-  { pattern: /^\/markets\/etfs\/[a-z0-9-]+$/, title: "ETF research — Quantify", description: exactRoutes["/markets/etfs"].description },
-  { pattern: /^\/investors\/venture\/[a-z0-9-]+$/, title: "Venture firm research — Quantify", description: exactRoutes["/investors/venture"].description },
-  { pattern: /^\/investors\/[a-z0-9-]+$/, title: "Investor research — Quantify", description: exactRoutes["/investors"].description },
-  { pattern: /^\/companies\/[a-z0-9-]+$/, title: "Company research — Quantify", description: exactRoutes["/companies"].description }
+  { pattern: /^\/markets\/etfs\/[a-z0-9-]+$/, title: "ETF research — Libration", description: exactRoutes["/markets/etfs"].description },
+  { pattern: /^\/investors\/venture\/[a-z0-9-]+$/, title: "Venture firm research — Libration", description: exactRoutes["/investors/venture"].description },
+  { pattern: /^\/investors\/[a-z0-9-]+$/, title: "Investor research — Libration", description: exactRoutes["/investors"].description },
+  { pattern: /^\/companies\/[a-z0-9-]+$/, title: "Company research — Libration", description: exactRoutes["/companies"].description }
 ];
 
 function normalizePath(rawPath: string): string {
@@ -144,7 +144,7 @@ export function metadataForPath(rawPath: string): RouteMetadata {
   }
 
   return {
-    title: "Page not found — Quantify",
+    title: "Page not found — Libration",
     description: defaultDescription,
     canonicalPath: path,
     indexable: false
@@ -181,7 +181,7 @@ export function applyRouteMetadata(rawPath: string): RouteMetadata {
   upsertMeta("name", "description", metadata.description);
   upsertMeta("name", "robots", "noindex,nofollow");
   upsertMeta("property", "og:type", "website");
-  upsertMeta("property", "og:site_name", "Quantify");
+  upsertMeta("property", "og:site_name", "Libration");
   upsertMeta("property", "og:title", metadata.title);
   upsertMeta("property", "og:description", metadata.description);
   upsertMeta("property", "og:url", canonicalUrl);

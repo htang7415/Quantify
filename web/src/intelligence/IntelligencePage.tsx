@@ -1,5 +1,7 @@
 import { SectionConnections } from "../SectionConnections";
+import { ResearchFooter, ResearchHero, ResearchSubnav } from "../ResearchUI";
 import { SiteNav } from "../SiteNav";
+import { publicBrandText } from "../brand";
 import { buildCompanyOwnership } from "../companies/ownership";
 import { earningsCatalog } from "../earnings/catalog";
 import { directionalPercent, money, readableDate, sentenceCase } from "../format";
@@ -12,6 +14,10 @@ const eventRelease = releaseFor("events");
 const earningsRelease = releaseFor("earnings");
 const policyRelease = releaseFor("policy");
 const releasedCompanySlugs = new Map(buildCompanyOwnership(investorCatalog).map((company) => [company.ticker, company.slug]));
+
+function IntelligenceNav({ active }: { active: "overview" | "earnings" | "policy" | "releases" }) {
+  return <SiteNav active="intelligence" action={{ label: "Verify a claim", href: "/agent" }} subnav={<ResearchSubnav group="intelligence" active={active} />} />;
+}
 
 export function IntelligencePage() {
   const earningsAvailable = earningsRelease.status === "available";
@@ -30,20 +36,17 @@ export function IntelligencePage() {
   ] as const;
   return (
     <main className="data-app intelligence-page">
-      <SiteNav active="intelligence" action={{ label: "Verify a claim", href: "/agent" }} />
-      <section className="data-hero page-shell">
-        <div><p className="terminal-eyebrow">Released intelligence · provenance</p><h1><span>What happened.</span>{" "}<span>What changed.</span>{" "}<span>What is connected.</span></h1><p>{coverage.length ? `Current released coverage: ${coverage.join("; ")}.` : "No earnings or policy catalog is currently released."} High-impact narrative events remain unavailable until independently released.</p><div className="scope-pills"><span><i /> {availableLabels.length ? `${availableLabels.join(" + ")} available` : "No intelligence catalog available"}</span><span>Narrative events unavailable</span></div></div>
-      </section>
+      <IntelligenceNav active="overview" />
+      <ResearchHero description={<>{coverage.length ? `Current released coverage: ${coverage.join("; ")}.` : "No earnings or policy catalog is currently released."} High-impact narrative events remain unavailable until independently released.</>} eyebrow="Released intelligence · provenance" scope={[{ label: availableLabels.length ? `${availableLabels.join(" + ")} available` : "No intelligence catalog available", available: availableLabels.length > 0 }, { label: "Narrative events unavailable", available: false }]} scopeLabel="Intelligence scope" title={<><span>What happened.</span>{" "}<span>What changed.</span>{" "}<span>What is connected.</span></>} />
       <SectionConnections items={[
         { label: "Companies", detail: "Open exact earnings and named policy scope", href: "/companies" },
         { label: "Markets", detail: "Read rates, ETF, and crypto context", href: "/markets" },
         { label: "Investors", detail: "Trace released reporting-manager positions", href: "/investors" }
       ]} />
-      <nav className="market-subnav page-shell" aria-label="Intelligence sections"><a className="active" href="/intelligence">All intelligence</a><a href="/intelligence/earnings">Earnings</a><a href="/intelligence/policy">Policy</a><a href="/intelligence/releases">Release operations</a></nav>
       <section className="intelligence-empty-grid page-shell">
         {layers.map(([title, copy, href, status, available], index) => <article className={available ? "intelligence-layer-available" : ""} key={title}><span>0{index + 1}</span><h2>{title}</h2><p>{copy}</p>{available && href ? <a href={href}>{status} →</a> : <i>{status === "Available" ? "Release required" : status}</i>}</article>)}
       </section>
-      <footer className="catalog-footer market-catalog-footer"><div><strong>Intelligence boundary</strong><span>Reported earnings and policy actions are active; narrative event releases remain unavailable.</span></div><div><p>{earningsRelease.limitations[0]} {policyRelease.limitations[0]}</p><p>{eventRelease.limitations[0]} Narrative retrieval may provide context later, but it cannot establish a fact, entity connection, or market direction.</p></div><p>Research data only. No price predictions, trade recommendations, or personalized investment advice.</p></footer>
+      <ResearchFooter details={[{ label: "Earnings release", value: earningsRelease.release_id ?? "Not released" }, { label: "Policy release", value: policyRelease.release_id ?? "Not released" }, { label: "Narrative events", value: sentenceCase(eventRelease.status) }]} limitations={[...earningsRelease.limitations, ...policyRelease.limitations, ...eventRelease.limitations, "Narrative retrieval may provide context later, but it cannot establish a fact, entity connection, or market direction."]} observed={`Earnings ${readableDate(earningsCatalog.observed_at.slice(0, 10))} · Policy ${readableDate(policyEventCatalog.observed_at.slice(0, 10))}`} source="SEC Company Facts · Official policy records" status="Earnings and policy available · Narrative events unavailable" />
     </main>
   );
 }
@@ -79,11 +82,8 @@ function PolicyDetails({ event }: { event: PolicyEvent }) {
 export function PolicyPage() {
   return (
     <main className="data-app policy-page">
-      <SiteNav active="intelligence" action={{ label: "Verify a claim", href: "/agent" }} />
-      <section className="data-hero policy-hero page-shell">
-        <div><p className="terminal-eyebrow">Intelligence / policy / official actions</p><h1>Action, scope, effective date.</h1><p>Typed official policy records—without speeches, news noise, market-implied probabilities, or certain price-direction claims.</p><div className="scope-pills"><span><i /> {policyEventCatalog.events.length} reviewed actions</span><span>Observed through {readableDate(policyEventCatalog.observed_at.slice(0, 10))}</span></div></div>
-      </section>
-      <nav className="market-subnav page-shell" aria-label="Intelligence sections"><a href="/intelligence">All intelligence</a><a href="/intelligence/earnings">Earnings</a><a className="active" href="/intelligence/policy">Policy</a><a href="/intelligence/releases">Release operations</a></nav>
+      <IntelligenceNav active="policy" />
+      <ResearchHero className="policy-hero" description="Typed official policy records—without speeches, news noise, market-implied probabilities, or certain price-direction claims." eyebrow="Intelligence / policy / official actions" scope={[{ label: `${policyEventCatalog.events.length} reviewed actions`, available: true }, `Observed through ${readableDate(policyEventCatalog.observed_at.slice(0, 10))}`]} title="Action, scope, effective date." />
       <section className="policy-event-section page-shell" aria-labelledby="policy-events-title">
         <div className="data-section-head"><div><p className="terminal-eyebrow">Official records</p><h2 id="policy-events-title">Released policy actions</h2></div><span className="release-badge">No market direction</span></div>
         <div className="policy-event-list">
@@ -98,7 +98,7 @@ export function PolicyPage() {
         <p className="data-note">{policyEventCatalog.methodology}</p>
       </section>
       <section className="earnings-boundary page-shell"><div><p className="terminal-eyebrow">Publication boundary</p><h2>Affected scope is not predicted impact.</h2></div><div>{policyEventCatalog.limitations.map((limitation) => <p key={limitation}>{limitation}</p>)}</div></section>
-      <footer className="catalog-footer market-catalog-footer"><div><strong>Scope / {policyEventCatalog.release_id}</strong><span>Federal Reserve · SEC · Federal Register</span><code>{policyEventCatalog.manifest_hash}</code></div><div><p>Retrieved {policyEventCatalog.retrieved_at.replace("T", " ").replace("Z", " UTC")}</p><p>{policyEventCatalog.scope}</p></div><p>Research data only. No policy forecast, price prediction, trade recommendation, or personalized investment advice.</p></footer>
+      <ResearchFooter details={[{ label: "Release ID", value: policyEventCatalog.release_id }, { label: "Manifest", value: policyEventCatalog.manifest_hash }, { label: "Retrieved", value: policyEventCatalog.retrieved_at.replace("T", " ").replace("Z", " UTC") }]} disclaimer="Research data only. No policy forecast, price prediction, trade recommendation, or personalized investment advice." limitations={policyEventCatalog.limitations} methodology={policyEventCatalog.methodology} observed={readableDate(policyEventCatalog.observed_at.slice(0, 10))} source="Federal Reserve · SEC · Federal Register" status={`${policyEventCatalog.events.length} reviewed actions`} />
     </main>
   );
 }
@@ -106,11 +106,8 @@ export function PolicyPage() {
 export function EarningsPage() {
   return (
     <main className="data-app earnings-page">
-      <SiteNav active="intelligence" action={{ label: "Verify a claim", href: "/agent" }} />
-      <section className="data-hero earnings-hero page-shell">
-        <div><p className="terminal-eyebrow">Intelligence / reported earnings / SEC</p><h1>Reported results. Nothing invented.</h1><p>Exact quarterly revenue and diluted EPS from one frozen SEC Company Facts release, with comparable year-over-year inputs from the same filing accession.</p><div className="scope-pills"><span><i /> {earningsCatalog.companies.map((company) => company.ticker).join(" + ")}</span><span>Filed through {readableDate(earningsCatalog.observed_at.slice(0, 10))}</span></div></div>
-      </section>
-      <nav className="market-subnav page-shell" aria-label="Intelligence sections"><a href="/intelligence">All intelligence</a><a className="active" href="/intelligence/earnings">Earnings</a><a href="/intelligence/policy">Policy</a><a href="/intelligence/releases">Release operations</a></nav>
+      <IntelligenceNav active="earnings" />
+      <ResearchHero className="earnings-hero" description="Exact quarterly revenue and diluted EPS from one frozen SEC Company Facts release, with comparable year-over-year inputs from the same filing accession." eyebrow="Intelligence / reported earnings / SEC" scope={[{ label: earningsCatalog.companies.map((company) => company.ticker).join(" + "), available: true }, `Filed through ${readableDate(earningsCatalog.observed_at.slice(0, 10))}`]} title="Reported results. Nothing invented." />
       <section className="earnings-company-grid page-shell" aria-labelledby="earnings-release-title">
         <div className="data-section-head"><div><p className="terminal-eyebrow">Frozen SEC release</p><h2 id="earnings-release-title">Latest comparable quarters</h2></div><span className="release-badge">Reported · 10-Q</span></div>
         <div className="earnings-card-grid">
@@ -123,8 +120,8 @@ export function EarningsPage() {
         </div>
         <p className="data-note">{earningsCatalog.methodology}</p>
       </section>
-      <section className="earnings-boundary page-shell"><div><p className="terminal-eyebrow">Publication boundary</p><h2>Reported facts, not an earnings call.</h2></div><div>{earningsCatalog.limitations.map((limitation) => <p key={limitation}>{limitation}</p>)}</div></section>
-      <footer className="catalog-footer market-catalog-footer"><div><strong>Scope / {earningsCatalog.release_id}</strong><span>SEC Company Facts · frozen</span><code>{earningsCatalog.manifest_hash}</code></div><div><p>Source retrieved {earningsCatalog.source_retrieved_at.replace("T", " ").replace("Z", " UTC")}</p><p>{earningsCatalog.scope}</p></div><p>Research data only. No estimates, forecasts, price predictions, trade recommendations, or personalized investment advice.</p></footer>
+      <section className="earnings-boundary page-shell"><div><p className="terminal-eyebrow">Publication boundary</p><h2>Reported facts, not an earnings call.</h2></div><div>{earningsCatalog.limitations.map((limitation) => <p key={limitation}>{publicBrandText(limitation)}</p>)}</div></section>
+      <ResearchFooter details={[{ label: "Release ID", value: earningsCatalog.release_id }, { label: "Manifest", value: earningsCatalog.manifest_hash }, { label: "Retrieved", value: earningsCatalog.source_retrieved_at.replace("T", " ").replace("Z", " UTC") }]} disclaimer="Research data only. No estimates, forecasts, price predictions, trade recommendations, or personalized investment advice." limitations={earningsCatalog.limitations.map((limitation) => publicBrandText(limitation))} methodology={earningsCatalog.methodology} observed={readableDate(earningsCatalog.observed_at.slice(0, 10))} source="SEC Company Facts" status={`${earningsCatalog.companies.length} companies · Frozen 10-Q facts`} />
     </main>
   );
 }

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ResearchFooter, ResearchSubnav, TableScroll } from "../ResearchUI";
 import { SectionConnections } from "../SectionConnections";
 import { SiteNav } from "../SiteNav";
 import { readableDate, sentenceCase } from "../format";
@@ -7,7 +8,7 @@ import { buildVentureCompanies, buildVentureOverlaps, overlapFor } from "./conne
 import type { VentureFirm } from "./types";
 
 function VentureNav() {
-  return <SiteNav active="investors" action={{ label: "Verify a claim", href: "/agent" }} />;
+  return <SiteNav active="investors" action={{ label: "Verify a claim", href: "/agent" }} subnav={<ResearchSubnav group="research" active="investors" />} />;
 }
 
 function UniverseTabs({ active }: { active: "public" | "venture" }) {
@@ -41,11 +42,14 @@ function VentureTools({ active }: { active: "firms" | "companies" | "overlap" })
 }
 
 function VentureFooter() {
-  return <footer className="catalog-footer venture-footer">
-    <div><strong>Scope / {ventureCatalog.release_id}</strong><span>Official venture-firm pages · Frozen review</span><code>{ventureCatalog.manifest_hash}</code></div>
-    <div>{ventureCatalog.limitations.map((limitation) => <p key={limitation}>{limitation}</p>)}</div>
-    <p>Research data only. No price predictions, trade recommendations, or personalized investment advice.</p>
-  </footer>;
+  return <ResearchFooter
+    details={[{ label: "Release ID", value: ventureCatalog.release_id }, { label: "Manifest", value: ventureCatalog.manifest_hash }, { label: "Source manifest", value: ventureCatalog.source_manifest_hash }]}
+    limitations={ventureCatalog.limitations}
+    methodology={ventureCatalog.methodology}
+    observed={readableDate(ventureCatalog.observed_at.slice(0, 10))}
+    source="Official venture-firm pages"
+    status={`${ventureCatalog.firms.length} firms · Frozen review`}
+  />;
 }
 
 export function VentureDashboard() {
@@ -141,7 +145,7 @@ export function VentureOverlapPage() {
       <VentureTools active="overlap" />
       <div className="venture-overlap-controls"><div><p className="terminal-eyebrow">Pair explorer</p><h2 id="venture-overlap-title">Tracked relationship overlap</h2></div><div><label><span>First firm</span><select value={leftId} onChange={(event) => selectLeft(event.target.value)}>{ventureCatalog.firms.map((firm) => <option value={firm.firm_id} key={firm.firm_id}>{firm.name}</option>)}</select></label><span>with</span><label><span>Second firm</span><select value={rightId} onChange={(event) => selectRight(event.target.value)}>{ventureCatalog.firms.map((firm) => <option value={firm.firm_id} key={firm.firm_id}>{firm.name}</option>)}</select></label></div></div>
       <section className="venture-overlap-result" aria-label="Selected tracked relationship overlap"><div><span>Shared released companies</span><strong>{selected?.sharedCompanyIds.length ?? 0}</strong></div><div>{selected?.sharedCompanies.length ? selected.sharedCompanies.map((company) => <a href="/investors/venture/companies" key={company.companyId}><b>{company.companyName}</b><span>{sentenceCase(company.sector)}</span></a>) : <p>No identical released company IDs in this pair.</p>}</div></section>
-      <section className="venture-matrix" aria-labelledby="venture-matrix-title"><div className="module-head"><div><span>02</span><h2 id="venture-matrix-title">Exact overlap matrix</h2></div><p>Diagonal = each firm's tracked count</p></div><div className="venture-matrix-scroll"><table><thead><tr><th>Firm</th>{ventureCatalog.firms.map((firm) => <th key={firm.firm_id}>{firm.name}</th>)}</tr></thead><tbody>{ventureCatalog.firms.map((left) => <tr key={left.firm_id}><th><a href={`/investors/venture/${left.firm_id}`}>{left.name}</a></th>{ventureCatalog.firms.map((right) => <td className={left.firm_id === right.firm_id ? "diagonal" : count(left, right) > 0 ? "connected" : ""} key={right.firm_id}>{count(left, right)}</td>)}</tr>)}</tbody></table></div></section>
+      <section className="venture-matrix" aria-labelledby="venture-matrix-title"><div className="module-head"><div><span>02</span><h2 id="venture-matrix-title">Exact overlap matrix</h2></div><p>Diagonal = each firm's tracked count</p></div><TableScroll className="venture-matrix-scroll" label="Exact venture relationship overlap matrix"><table><thead><tr><th>Firm</th>{ventureCatalog.firms.map((firm) => <th key={firm.firm_id}>{firm.name}</th>)}</tr></thead><tbody>{ventureCatalog.firms.map((left) => <tr key={left.firm_id}><th><a href={`/investors/venture/${left.firm_id}`}>{left.name}</a></th>{ventureCatalog.firms.map((right) => <td className={left.firm_id === right.firm_id ? "diagonal" : count(left, right) > 0 ? "connected" : ""} key={right.firm_id}>{count(left, right)}</td>)}</tr>)}</tbody></table></TableScroll></section>
       <p className="data-note">Overlap means the same released company ID appears for both firms. It is not proof of the same financing round, current ownership, portfolio similarity, or coordinated activity.</p>
     </section>
     <VentureFooter />
@@ -166,14 +170,13 @@ export function VentureDetail({ firmId }: { firmId: string }) {
       </dl>
       <section className="terminal-module venture-relationships" aria-labelledby="venture-relationships-title">
         <div className="module-head"><div><span>01</span><h2 id="venture-relationships-title">Released relationships</h2></div><p>Exact source per row</p></div>
-        <div className="holdings-scroll"><table className="holdings-table venture-table"><thead><tr><th>Company</th><th>Sector</th><th>First partnered</th><th>Stage</th><th>Role</th><th>Follow-on</th><th>Source</th></tr></thead><tbody>{firm.relationships.map((row) => <tr key={row.company_id}><td><strong>{row.company_name}</strong><span>{row.company_id}</span></td><td>{sentenceCase(row.sector)}</td><td>{row.first_partnered_year ?? "Undisclosed"}</td><td>{sentenceCase(row.stage)}</td><td>{sentenceCase(row.participation_role)}</td><td>{sentenceCase(row.follow_on_status)}</td><td><a className="venture-source-link" href={row.source_url} target="_blank" rel="noreferrer">Official source ↗</a></td></tr>)}</tbody></table></div>
+        <TableScroll className="holdings-scroll" label={`${firm.name} released relationships`}><table className="holdings-table venture-table"><thead><tr><th>Company</th><th>Sector</th><th>First partnered</th><th>Stage</th><th>Role</th><th>Follow-on</th><th>Source</th></tr></thead><tbody>{firm.relationships.map((row) => <tr key={row.company_id}><td><strong>{row.company_name}</strong><span>{row.company_id}</span></td><td>{sentenceCase(row.sector)}</td><td>{row.first_partnered_year ?? "Undisclosed"}</td><td>{sentenceCase(row.stage)}</td><td>{sentenceCase(row.participation_role)}</td><td>{sentenceCase(row.follow_on_status)}</td><td><a className="venture-source-link" href={row.source_url} target="_blank" rel="noreferrer">Official source ↗</a></td></tr>)}</tbody></table></TableScroll>
       </section>
       <section className="terminal-module venture-sectors" aria-labelledby="venture-sectors-title">
         <div className="module-head"><div><span>02</span><h2 id="venture-sectors-title">Tracked sectors</h2></div><p>Company count · Not capital weighted</p></div>
         <div className="venture-sector-bars">{firm.sector_counts.map((row) => <div key={row.sector}><span>{sentenceCase(row.sector)}</span><i><b style={{ width: `${(row.company_count / maxSectorCount) * 100}%` }} /></i><strong>{row.company_count}</strong></div>)}</div>
-        <p className="data-note">Sector labels are versioned Quantify classifications for this released sample. They do not describe allocation, investment value, ownership, or returns.</p>
+        <p className="data-note">Sector labels are versioned Libration classifications for this released sample. They do not describe allocation, investment value, ownership, or returns.</p>
       </section>
-      <section className="venture-method"><div><p className="terminal-eyebrow">Method</p><h2>Unknown means undisclosed.</h2></div><p>{ventureCatalog.methodology}</p></section>
     </div>
     <VentureFooter />
   </main>;

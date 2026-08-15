@@ -1,12 +1,9 @@
-import { AgentSystemMap, ReleaseDataSystem } from "./AgentSystem";
 import { CommercialFooter } from "./CommercialFooter";
 import { SiteNav } from "./SiteNav";
 import { buildCompanyOwnership } from "./companies/ownership";
-import { earningsCatalog } from "./earnings/catalog";
-import { money, quarter, readableDate } from "./format";
+import { money, quarter, sentenceCase } from "./format";
 import { investorCatalog } from "./investors/catalog";
 import { publicReleaseIndex, releaseFor } from "./releases/catalog";
-import { ventureCatalog } from "./venture/catalog";
 
 const companies = buildCompanyOwnership(investorCatalog);
 const availableManagers = investorCatalog.managers.filter((manager) => manager.status === "available");
@@ -15,10 +12,6 @@ const disclosedValue = availableManagers.reduce(
   0
 );
 const availableReleases = publicReleaseIndex.releases.filter((release) => release.status === "available");
-const attentionReleases = publicReleaseIndex.releases.filter(
-  (release) => release.status === "revoked" || release.status === "source_review" || release.freshness === "stale"
-);
-const earningsRelease = releaseFor("earnings");
 const policyRelease = releaseFor("policy");
 const ratesRelease = releaseFor("rates");
 const macroRelease = releaseFor("macro");
@@ -44,20 +37,19 @@ function VerificationStage() {
   return (
     <article className="product-stage signal-surface" aria-label="Versioned verification sample">
       <header>
-        <div><span className="agent-orb" aria-hidden="true" /><strong>Quantify Agent</strong></div>
-        <span className="stage-state"><i /> Scope locked</span>
+        <div><span className="agent-orb" aria-hidden="true" /><strong>Libration · Verification sample</strong></div>
+        <span className="stage-state"><i /> Released scope</span>
       </header>
       <div className="stage-query">
-        <span>Evaluation fixture · Microsoft · 10-K</span>
+        <span>Microsoft · FY2024 10-K · SEC filing scope</span>
         <p>{verificationSample.claim}</p>
       </div>
-      <div className="stage-path" aria-label="Verification stages">
-        <span><b>01</b> Grounded</span>
-        <span><b>02</b> Counterevidence checked</span>
-        <span><b>03</b> Composed</span>
-      </div>
       <div className="stage-verdict">
-        <div><span>Deterministic verdict</span><strong>{verificationSample.verdict}</strong></div>
+        <div>
+          <span>Verification result</span>
+          <strong>{verificationSample.verdict}</strong>
+          <small>The released filing supports this claim.</small>
+        </div>
         <b aria-label="Verified">✓</b>
       </div>
       <dl className="stage-evidence">
@@ -65,13 +57,16 @@ function VerificationStage() {
         <div><dt>FY2023 revenue</dt><dd>{money(verificationSample.previous)}</dd></div>
         <div><dt>Counterevidence</dt><dd>None in scope</dd></div>
       </dl>
-      <footer>
-        <a href={verificationSample.sourceUrl}>SEC accession {verificationSample.accession} ↗</a>
-        <span>Evidence {verificationSample.previousEvidenceId} · {verificationSample.currentEvidenceId}</span>
-        <span>Snapshot {shortHash(verificationSample.snapshotHash)}</span>
-        <span>Audit {shortHash(verificationSample.auditHash)}</span>
-        <span>Limit: declared frozen Microsoft FY2024 10-K scope only.</span>
-      </footer>
+      <details className="stage-details">
+        <summary>Evidence and audit details</summary>
+        <div>
+          <a href={verificationSample.sourceUrl}>SEC accession {verificationSample.accession} ↗</a>
+          <span>Evidence {verificationSample.previousEvidenceId} · {verificationSample.currentEvidenceId}</span>
+          <span>Snapshot {shortHash(verificationSample.snapshotHash)}</span>
+          <span>Audit {shortHash(verificationSample.auditHash)}</span>
+          <span>Limit: declared frozen Microsoft FY2024 10-K scope only.</span>
+        </div>
+      </details>
     </article>
   );
 }
@@ -79,144 +74,75 @@ function VerificationStage() {
 export function OverviewPage() {
   return (
     <main className="data-app commercial-home">
-      <SiteNav active="overview" action={{ label: "Open Agent", href: "/agent" }} />
+      <SiteNav active="overview" action={{ label: "Verify a claim", href: "/agent" }} />
 
       <section className="commercial-hero page-shell">
         <div className="commercial-hero-copy">
-          <p className="terminal-eyebrow">Evidence-bound AI investment research</p>
-          <h1>Research markets.<br /><span>Analyze with evidence.</span></h1>
-          <p>Quantify brings company filings, ownership, earnings, macro, rates, and policy into one inspectable system. Explore released data and intelligence today, then verify factual claims against a declared evidence scope.</p>
+          <p className="terminal-eyebrow">AI research for investors</p>
+          <h1>See more of<br /><span>what matters.</span></h1>
+          <p>For investors, analysts, and curious learners: explore released company and market research, trace the sources, and verify factual claims.</p>
           <div className="overview-actions">
-            <a className="button button-dark" href="#research">Explore research <span aria-hidden="true">↓</span></a>
+            <a className="button button-dark" href="/companies">Explore companies <span aria-hidden="true">→</span></a>
             <a className="button button-light" href="/agent">Verify a claim</a>
           </div>
           <div className="commercial-proofline" aria-label="Product boundaries">
             <span><i /> {availableReleases.length} of {publicReleaseIndex.releases.length} catalogs released</span>
-            <span>Model-assisted analysis gated</span>
+            <span>AI research answers not public</span>
             <span>No trading or predictions</span>
           </div>
         </div>
         <VerificationStage />
       </section>
 
-      <section className="release-signal page-shell" aria-label="Current public release state">
-        <div><span>Public release index</span><strong>Generated {readableDate(publicReleaseIndex.generated_at.slice(0, 10))}</strong></div>
-        <div><span>Available</span><strong>{availableReleases.length} catalogs</strong></div>
-        <div><span>Needs attention</span><strong>{attentionReleases.length}</strong></div>
-        <a href="/coverage">Inspect coverage →</a>
-      </section>
-
-      <section className="product-modes page-shell" aria-labelledby="product-modes-title">
-        <div className="commercial-section-head">
-          <p className="terminal-eyebrow">Four research layers</p>
-          <h2 id="product-modes-title">Start with the job.</h2>
-          <p>Each path states what Quantify can return now—and where the current release stops.</p>
-        </div>
-        <div className="product-mode-grid">
-          <article>
-            <span>01 / Data</span>
-            <strong className="product-mode-state is-available">Available · released</strong>
-            <h3>Explore released records.</h3>
-            <p>Company, investor, earnings, macro, rates, ETF, and policy records with visible source, time, scope, and limits.</p>
-            <a href="#research">Explore research →</a>
-          </article>
-          <article>
-            <span>02 / Intelligence</span>
-            <strong className="product-mode-state is-available">Available · typed</strong>
-            <h3>Connect compatible facts.</h3>
-            <p>Exact entity, period, ownership, earnings, and policy connections derived from active compatible releases.</p>
-            <a href="/intelligence">Open intelligence →</a>
-          </article>
-          <article className="product-mode-gated">
-            <span>03 / Analysis</span>
-            <strong className="product-mode-state">Gated next · no public task</strong>
-            <h3>Explain the evidence.</h3>
-            <p>Deterministic metrics and source-bound explanations are available in research views. General cited AI analysis is not public.</p>
-          </article>
-          <article className="product-mode-featured">
-            <span>04 / Verification</span>
-            <strong className="product-mode-state is-current">Available · bounded</strong>
-            <h3>Verify one claim.</h3>
-            <p>Submit a supported company, as-of date, and factual claim. Receive a deterministic verdict, limitation, and audit identity.</p>
-            <a href="/agent">Verify a claim →</a>
-          </article>
-        </div>
-      </section>
-
       <section className="research-grid-section" id="research" aria-labelledby="research-grid-title">
         <div className="page-shell">
           <div className="commercial-section-head split-head">
-            <div><p className="terminal-eyebrow">Released research</p><h2 id="research-grid-title">Evidence, released by scope.</h2></div>
-            <p>Unavailable layers stay unavailable. Every active layer shows when and how it was observed.</p>
+            <div><p className="terminal-eyebrow">Released research</p><h2 id="research-grid-title">Start with the evidence.</h2></div>
+            <p>Every view states its source, observation time, scope, release identity, and limits.</p>
           </div>
-          <div className="research-entry-grid">
+          <div className="research-entry-grid research-entry-grid-compact">
+            <a href="/companies">
+              <span>Companies</span><strong>Connect reported holdings, filed ETF exposure, earnings, and policy.</strong>
+              <small>{companies.length} exact issuer mappings · released connections only</small><b>Open companies →</b>
+            </a>
             <a href="/markets">
-              <span>Markets</span><strong>Macro, rates, and filed ETF context.</strong>
-              <small>{macroRelease.freshness} macro · {ratesRelease.freshness} rates</small><b>Explore →</b>
+              <span>Markets</span><strong>Read official macro, Treasury rates, and filed ETF data.</strong>
+              <small>{macroRelease.freshness} macro · {ratesRelease.freshness} rates</small><b>Open markets →</b>
             </a>
             <a href="/investors">
-              <span>Investors</span><strong>{availableManagers.length} reporting managers across one frozen 13F scope.</strong>
-              <small>{quarter(investorCatalog.report_period)} · {money(disclosedValue)} tracked disclosed value</small><b>Explore →</b>
+              <span>Investors</span><strong>Compare reporting managers and disclosed 13F holdings.</strong>
+              <small>{availableManagers.length} managers · {quarter(investorCatalog.report_period)} · {money(disclosedValue)} tracked value</small><b>Open investors →</b>
             </a>
-            <a href="/companies">
-              <span>Companies</span><strong>{companies.length} exact issuer mappings across compatible releases.</strong>
-              <small>Released connections only</small><b>Explore →</b>
-            </a>
-            <a href="/intelligence">
-              <span>Intelligence</span><strong>Reported earnings and reviewed policy actions.</strong>
-              <small>{earningsRelease.status} earnings · {policyRelease.status} policy</small><b>Explore →</b>
-            </a>
-            <a href="/investors/venture">
-              <span>Venture</span><strong>{ventureCatalog.firms.length} firms and {ventureCatalog.firms.reduce((sum, firm) => sum + firm.tracked_relationship_count, 0)} official-source relationships.</strong>
-              <small>No ownership or valuation inference</small><b>Explore →</b>
-            </a>
-            <a href="/intelligence/earnings">
-              <span>Earnings</span><strong>{earningsCatalog.companies.length} companies with exact comparable SEC facts.</strong>
-              <small>Reported results · no estimates</small><b>Explore →</b>
+            <a href="/intelligence/policy">
+              <span>Policy</span><strong>Trace reviewed official actions to named companies.</strong>
+              <small>{sentenceCase(policyRelease.status)} release · no predicted impact</small><b>Open policy →</b>
             </a>
           </div>
         </div>
       </section>
 
-      <section className="agent-operating-system product-modes page-shell" aria-labelledby="agent-operating-title">
-        <div className="commercial-section-head split-head">
-          <div><p className="terminal-eyebrow">System logic</p><h2 id="agent-operating-title">One objective. Five controlled stages.</h2></div>
-          <p>The agent can organize the work. Released data and deterministic code control what becomes a result.</p>
-        </div>
-        <AgentSystemMap />
-      </section>
-
-      <ReleaseDataSystem />
-
-      <section className="agent-principle page-shell signal-surface">
+      <section className="agent-principle home-trust page-shell signal-surface" aria-labelledby="home-trust-title">
         <div>
-          <p className="signal-kicker">A more accountable AI agent</p>
-          <h2>AI analysis should show its work.</h2>
+          <div><p className="signal-kicker">How Libration works</p><h2 id="home-trust-title">Ask clearly. See what supports the result.</h2></div>
+          <p>Libration works from released data, keeps sources visible, and refuses unsupported results.</p>
         </div>
         <div className="agent-principle-grid">
-          <article><span>Scope</span><strong>Know exactly what the agent checked.</strong></article>
-          <article><span>Data</span><strong>Trace every factual statement to a released source.</strong></article>
-          <article><span>Analysis</span><strong>Separate calculations, interpretation, and open questions.</strong></article>
-          <article><span>Verification</span><strong>Let deterministic code—not the model—decide claims.</strong></article>
+          <article><span>01 · Question</span><strong>Ask one clear research question or claim.</strong></article>
+          <article><span>02 · Scope</span><strong>Choose the company, date, and released scope.</strong></article>
+          <article><span>03 · Evidence</span><strong>Inspect the facts and sources used.</strong></article>
+          <article><span>04 · Result</span><strong>Get a cited view or verification result.</strong></article>
         </div>
-        <a className="button signal-button" href="/product">See how Quantify works →</a>
-      </section>
-
-      <section className="workflow-section page-shell">
-        <div className="commercial-section-head"><p className="terminal-eyebrow">Built for decisions, not advice</p><h2>Research that stays inspectable.</h2></div>
-        <div className="workflow-list">
-          <article><span>Investor research</span><strong>Build a source-visible view of a company and its context.</strong><i>Company → evidence → questions</i></article>
-          <article><span>Strategy</span><strong>Connect companies, policy, earnings, and reported capital.</strong><i>Entity → release → source</i></article>
-          <article><span>Learning</span><strong>Understand financial and policy concepts through released examples.</strong><i>Concept → data → explanation</i></article>
-          <article><span>Institutional review</span><strong>Preserve scope, citations, and audit identity for review.</strong><i>Result → reviewer → record</i></article>
+        <div className="home-trust-actions">
+          <p>Unavailable data stays unavailable. Broader AI research answers are not public yet.</p>
+          <a className="button signal-button" href="/methodology">Read the methodology →</a>
         </div>
       </section>
 
       <section className="commercial-cta page-shell">
         <p className="terminal-eyebrow">Current Agent task · Verification</p>
-        <h2>Verify what matters.</h2>
-        <p>The public Agent currently verifies supported Microsoft or Apple claims. Broader cited AI analysis remains gated.</p>
-        <a className="button button-dark" href="/agent">Open Quantify Agent →</a>
+        <h2>Check one claim.</h2>
+        <p>Verify a supported Microsoft or Apple factual claim against a declared frozen evidence release.</p>
+        <a className="button button-dark" href="/agent">Verify a claim →</a>
       </section>
 
       <CommercialFooter />

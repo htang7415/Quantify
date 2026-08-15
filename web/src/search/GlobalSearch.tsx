@@ -29,7 +29,7 @@ export function GlobalSearch() {
     {open && createPortal(<div className="global-search-backdrop" onMouseDown={(event) => { if (event.currentTarget === event.target) setOpen(false); }}>
       <section className="global-search-dialog" role="dialog" aria-modal="true" aria-labelledby="global-search-title">
         <header>
-          <div><p className="terminal-eyebrow">Released data only</p><h2 id="global-search-title">Search Quantify</h2></div>
+          <div><p className="terminal-eyebrow">Released data only</p><h2 id="global-search-title">Search Libration</h2></div>
           <button type="button" onClick={() => setOpen(false)} aria-label="Close search">Close</button>
         </header>
         <label className="global-search-input">

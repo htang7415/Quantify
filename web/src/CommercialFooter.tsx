@@ -1,17 +1,19 @@
+import { BrandMark } from "./BrandMark";
+
 export function CommercialFooter() {
   return (
     <footer className="commercial-footer">
       <div className="commercial-footer-main page-shell">
         <div className="commercial-footer-brand">
-          <a className="site-brand" href="/" aria-label="Quantify footer home">
-            <span className="site-brand-mark">Q</span>
-            <span>Quantify</span>
+          <a className="site-brand" href="/" aria-label="Libration footer home">
+            <BrandMark />
+            <span>Libration</span>
           </a>
-          <p>Released information, connected intelligence, and evidence-bound verification for public-company research.</p>
+          <p>See more of what matters. Released information, connected intelligence, and evidence-bound verification for public-company research.</p>
         </div>
         <nav aria-label="Product links">
           <strong>Product</strong>
-          <a href="/agent">Open Agent</a>
+          <a href="/agent">Verify a claim</a>
           <a href="/product">How it works</a>
           <a href="/coverage">Coverage</a>
         </nav>
@@ -31,7 +33,7 @@ export function CommercialFooter() {
       </div>
       <div className="commercial-footer-legal page-shell">
         <p>Research data and verification only. No price predictions, trade recommendations, brokerage, or personalized investment advice.</p>
-        <span>© 2026 Quantify</span>
+        <span>© 2026 Libration</span>
       </div>
     </footer>
   );

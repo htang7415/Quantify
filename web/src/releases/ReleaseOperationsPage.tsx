@@ -1,3 +1,4 @@
+import { ResearchFooter, ResearchHero, ResearchSubnav, TableScroll } from "../ResearchUI";
 import { SiteNav } from "../SiteNav";
 import { readableDate, sentenceCase } from "../format";
 import { publicReleaseIndex } from "./catalog";
@@ -27,16 +28,8 @@ export function ReleaseOperationsPage() {
   const summary = summarizeReleaseOperations();
   return (
     <main className="data-app release-operations-page">
-      <SiteNav active="intelligence" action={{ label: "Verify a claim", href: "/agent" }} />
-      <section className="data-hero release-operations-hero page-shell">
-        <div>
-          <p className="terminal-eyebrow">Intelligence / release operations</p>
-          <h1>Every public release. One exact state.</h1>
-          <p>A read-only view of the public release index: what is available, when it was observed, and the immutable identity behind it.</p>
-          <div className="scope-pills"><span><i /> {summary.total} declared catalogs</span><span>Index generated {displayDate(publicReleaseIndex.generated_at)}</span></div>
-        </div>
-      </section>
-      <nav className="market-subnav page-shell" aria-label="Intelligence sections"><a href="/intelligence">All intelligence</a><a href="/intelligence/earnings">Earnings</a><a href="/intelligence/policy">Policy</a><a className="active" href="/intelligence/releases">Release operations</a></nav>
+      <SiteNav active="intelligence" action={{ label: "Verify a claim", href: "/agent" }} subnav={<ResearchSubnav group="intelligence" active="releases" />} />
+      <ResearchHero className="release-operations-hero" description="A read-only view of the public release index: what is available, when it was observed, and the immutable identity behind it." eyebrow="Intelligence / release operations" scope={[{ label: `${summary.total} declared catalogs`, available: true }, `Index generated ${displayDate(publicReleaseIndex.generated_at)}`]} title="Every public release. One exact state." />
 
       <section className="release-operations-shell page-shell" aria-labelledby="release-state-title">
         <div className="release-summary-grid" aria-label="Public release summary">
@@ -47,7 +40,7 @@ export function ReleaseOperationsPage() {
         </div>
 
         <div className="data-section-head release-state-head"><div><p className="terminal-eyebrow">Public index</p><h2 id="release-state-title">Catalog state</h2></div><span className="release-badge">Read only</span></div>
-        <div className="release-table-wrap">
+        <TableScroll className="release-table-wrap" label="Public catalog release states">
           <table className="release-operations-table">
             <thead><tr><th>Catalog</th><th>State</th><th>Freshness</th><th>Observed</th><th>Release ID</th><th>Manifest</th></tr></thead>
             <tbody>{publicReleaseIndex.releases.map((release) => <tr key={release.catalog}>
@@ -59,7 +52,7 @@ export function ReleaseOperationsPage() {
               <td><ManifestHash value={release.manifest_hash} /></td>
             </tr>)}</tbody>
           </table>
-        </div>
+        </TableScroll>
         <p className="data-note">Counts are exact arithmetic over public-release-index.v3. They are not uptime, review throughput, or production telemetry.</p>
       </section>
 
@@ -73,7 +66,7 @@ export function ReleaseOperationsPage() {
         </ol>
       </section>
 
-      <footer className="catalog-footer market-catalog-footer"><div><strong>Index / {publicReleaseIndex.schema_version}</strong><span>Generated {publicReleaseIndex.generated_at.replace("T", " ").replace("Z", " UTC")}</span></div><div><p>Only public catalog identity and state are shown here.</p><p>Unavailable is a valid fail-closed result; no missing value is estimated.</p></div><p>Research data only. No price predictions, trade recommendations, or personalized investment advice.</p></footer>
+      <ResearchFooter details={[{ label: "Schema", value: publicReleaseIndex.schema_version }, { label: "Available", value: summary.available }, { label: "Unavailable", value: summary.unavailable }]} limitations={["Only public catalog identity and state are shown here.", "Unavailable is a valid fail-closed result; no missing value is estimated."]} observed={publicReleaseIndex.generated_at.replace("T", " ").replace("Z", " UTC")} source="Public release index" status={`${summary.available} of ${summary.total} catalogs available`} />
     </main>
   );
 }

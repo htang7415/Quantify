@@ -1,8 +1,8 @@
-# Quantify AI Agent System Design
+# Libration AI Agent System Design
 
 ## 1. Purpose and boundary
 
-Quantify is an evidence-bound AI investment research agent for individual
+Libration is an evidence-bound AI investment research agent for individual
 investors, professional research teams, institutions, and people learning how
 companies, markets, and policy connect. It turns released financial, company,
 ownership, earnings, macroeconomic, rates, policy, and eventually entitled news
@@ -22,7 +22,7 @@ The product has four distinct output layers:
 4. **Verification.** Claim-level verdicts composed only by the deterministic
    verifier from eligible exact facts in the declared evidence release.
 
-Verification is Quantify's trust layer, not its entire product. An analysis may
+Verification is Libration's trust layer, not its entire product. An analysis may
 help a user understand evidence without assigning a verdict. A verification
 result may be embedded in a broader research answer, but the model can never
 create, modify, soften, or override that verdict.
@@ -34,12 +34,12 @@ research answer; it does not produce a verdict. **Explicit claim
 verification** is the user-selected agent function that evaluates a bounded
 claim and returns a verdict composed only by the deterministic verifier.
 
-Quantify may also publish a read-only investor-tracking catalog compiled
+Libration may also publish a read-only investor-tracking catalog compiled
 offline from approved public disclosures. Catalog metrics describe the exact
 declared filing scope and are not verification verdicts, total assets under
 management, personal holdings, or claims about an investor's intent.
 
-Quantify may publish additional read-only company, company-ownership, market,
+Libration may publish additional read-only company, company-ownership, market,
 macro, ETF, cryptocurrency, earnings, policy, event, and entitled news catalogs
 only after their source rights, methodology, freshness rules, correction path,
 and release gate are defined. These catalogs are time-stamped research data,
@@ -51,7 +51,7 @@ values.
 > A claim may be published only when its cited evidence warrants it and
 > compatible evidence in the same declared frozen pool does not defeat it.
 
-Quantify is not a stock-prediction, trading, brokerage, portfolio-management,
+Libration is not a stock-prediction, trading, brokerage, portfolio-management,
 or personalized-investment-advice product. It must not make buy, sell, hold,
 allocation, position-size, suitability, or trade-execution recommendations.
 
@@ -60,6 +60,27 @@ request deterministic calculations, compare compatible facts, draft cited
 analysis, surface counterpoints, and identify open questions. Only the
 deterministic verifier may mark a factual claim VERIFIED. This is
 non-negotiable.
+
+### 1.1 Product identity and compatibility
+
+`Libration` is the single public company and product identity. The user-facing
+agent entry is `Ask Libration`; `Libration Agent` may identify the agent inside
+the workspace. Data, Intelligence, Analysis, and Verification are capabilities
+of Libration, not independent product brands. The approved public descriptor is
+`Evidence-bound AI investment research`, and the concise brand line is `See
+more of what matters.`
+
+This naming change does not expand product authority, source coverage, model
+autonomy, or the deployed route boundary. Existing lowercase technical
+identifiers—including the `quantify` Python package, `quantify_spec.md`, API
+routes, environment variables, authentication scopes, storage keys, cloud
+resources, evidence and release identifiers, policy hashes, and immutable audit
+records—remain stable compatibility identifiers unless a separately specified,
+tested, and authorized migration replaces them. Historical signed artifacts
+must never be rewritten solely to adopt the public brand. A presentation-only
+brand adapter may replace the legacy name when rendering immutable catalog
+prose, but it must not alter, persist, re-hash, or claim to correct the released
+source value.
 
 ## 2. Current baseline and target
 
@@ -114,7 +135,7 @@ for compute, APIs, identity, queues, databases, evidence and audit storage,
 policy control, logs, and regional alarms. CloudFront is global; its required
 WAFv2 Web ACL, WAF metrics, and any WAF-block notification topic/alarm are the
 narrow AWS-required exception and are managed in `us-east-1`. That global
-control-plane exception stores no Quantify evidence, audit, policy, identity,
+control-plane exception stores no Libration evidence, audit, policy, identity,
 or user-request content and must not be used to introduce a second operating
 region. Deployment configuration names the primary region `AWS_REGION` and
 the exception `CLOUDFRONT_WAF_REGION` so a WAF deployment cannot silently
@@ -180,7 +201,7 @@ prerequisites for the user-first product.
 
 ### Commercial product direction
 
-Quantify's commercial direction is an **evidence-bound investment intelligence
+Libration's commercial direction is an **evidence-bound investment intelligence
 system** for company, market, ownership, macroeconomic, policy, and event
 research. It competes on integrated research workflow, reproducibility,
 controlled evidence, source-visible AI analysis, review, and auditability—not
@@ -212,7 +233,7 @@ Enterprise trust control plane
 The public audience includes individual investors and learners who want to
 understand released evidence. The initial paid audience remains professional
 research, corporate strategy, investor-relations, consulting, and
-compliance-sensitive institutional teams. Quantify does not provide
+compliance-sensitive institutional teams. Libration does not provide
 personalized investment advice. Commercial packaging may differentiate
 released-data coverage, cited analysis, verification, team workflow, safe API
 access, and enterprise controls; it must never charge for, incentivize, or
@@ -222,7 +243,7 @@ Scale uses two distinct execution lanes. The interactive lane serves bounded,
 low-latency verification under admission and cost caps. The offline lane runs
 approved issuer onboarding, historical backfills, evaluation campaigns, and
 correction scans through attributable asynchronous provider jobs. Provider
-attempt records bind Quantify task IDs to provider operation IDs, model and
+attempt records bind Libration task IDs to provider operation IDs, model and
 prompt contracts, immutable input/output references, status history, and
 attributable usage where available. Provider results are untrusted until they
 pass deterministic validation; a missing or unattributable result fails closed
@@ -253,7 +274,7 @@ operational gates before the next stage is relied upon.
    customer applications. All requests remain subject to identity,
    authorization, tenant boundaries, source entitlements, admission/cost caps,
    policy, provenance, evaluation, and revocation. Customer systems may make
-   their own decisions; Quantify must not present a response as personalized
+   their own decisions; Libration must not present a response as personalized
    investment advice or an instruction to trade.
 4. **Broader investment-intelligence workflows.** Add separately evaluated
    workflows for disclosure, company, ownership, earnings, market, macro,
@@ -287,7 +308,7 @@ authoritative, time-versioned data and policy
   → human or customer-owned consequential decision
 ~~~
 
-Quantify's defensible advantage is the combination of attributable evidence,
+Libration's defensible advantage is the combination of attributable evidence,
 deterministic policy enforcement, correction and replay, entitlement-aware
 access, and measurable quality/cost/latency/failure controls. Data collection
 or RAG alone is not sufficient. The initial commercial wedge remains
@@ -297,7 +318,7 @@ one undifferentiated first product.
 
 ### Commercial positioning and initial wedge
 
-Quantify is a public research product with professional and institutional
+Libration is a public research product with professional and institutional
 **verifiable research and decision-workflow** offerings. It is not positioned
 as a cheaper financial data terminal, a generic financial chat interface, or a
 system that predicts prices or recommends trades. Established data and research
@@ -327,7 +348,7 @@ handling, reproducibility, latency, and attributable cost. A speed or
 engagement metric alone cannot establish product quality.
 
 Licensed, customer-provided, and public sources remain distinct entitlement
-classes. Quantify must neither imply rights to a source nor use a customer or
+classes. Libration must neither imply rights to a source nor use a customer or
 licensed source outside its recorded terms. Any future integration with a data
 provider, execution system, adviser, regulated financial institution, or
 government entity requires a separately approved data-rights, legal, policy,
@@ -335,7 +356,7 @@ and deployment review.
 
 ## 3. High-level system design
 
-Quantify has three deliberately separated planes:
+Libration has three deliberately separated planes:
 
 ~~~
 Public delivery plane
@@ -394,7 +415,7 @@ change a verdict, establish a numeric fact, or expand the release.
 | Tasks, admission, idempotency, release metadata | DynamoDB | Model access patterns first; reassess relational storage only when justified. |
 | Work execution | SQS, Lambda workers, DLQ | Reserved concurrency and bounded failure handling. |
 
-Browser watchlists are local-only CIK and release-ID lists. Quantify does not
+Browser watchlists are local-only CIK and release-ID lists. Libration does not
 collect holdings, risk tolerance, portfolio composition, or behavioral profiles.
 Abuse-protection identifiers are HMAC-derived, short-lived, and may not be
 joined with feedback or watchlist telemetry.
@@ -492,7 +513,7 @@ Persistence remains purpose-specific rather than one overloaded database:
 - Exact fact and context indexes remain compiled, release-bound projections;
   they are not account databases.
 
-Raw payment credentials are never stored by Quantify. A relational database is
+Raw payment credentials are never stored by Libration. A relational database is
 not added preemptively; it is reconsidered only when measured access patterns
 require relational constraints, multi-entity transactional workflows, or
 analytics that bounded DynamoDB models cannot safely and economically support.
@@ -836,7 +857,7 @@ authorized interpretation warrants.
 
 Web and mobile use one `agent-presentation.v1` grammar over these shared
 contracts. The primary surface contains, in order: one result state, one short answer or
-reason, one plain scope line, and one next safe action. `Ask Quantify` shows
+reason, one plain scope line, and one next safe action. `Ask Libration` shows
 only three working labels: `Understand`, `Research`, and `Check`. Facts,
 analysis, context, and verification are visually distinct, while citations,
 methodology, release identity, policy identity, and audit identity remain under
@@ -1093,7 +1114,7 @@ always records `publication_authorized: false`.
 
 Each published venture row states only that the named firm publicly presents
 the named company as a portfolio relationship in the declared source snapshot.
-Broad sector labels are versioned Quantify display classifications and are
+Broad sector labels are versioned Libration display classifications and are
 counted by tracked company, never by invested dollars. First-partnered year,
 stage, participation role, and follow-on status remain `undisclosed` unless the
 same declared official source states them exactly. V1 contains no ownership
@@ -1126,7 +1147,7 @@ address where applicable, never by symbol alone. A crypto release defines its
 price-composite method, circulating-supply method, continuous-market freshness
 limit, wrapped/bridged-asset policy, chain-finality rule, and revision handling.
 ETF or ETP holdings and flows remain distinct from direct token ownership.
-Quantify does not infer wallet owners, call price or volume movement
+Libration does not infer wallet owners, call price or volume movement
 institutional accumulation, or present staking yield as a recommendation.
 
 Market-source eligibility is recorded in the versioned public-intelligence
@@ -1217,7 +1238,7 @@ action type, status, publication and effective dates, official document ID,
 source URL and source hash, plus a typed detail contract specific to the event.
 The first release contains the latest FOMC target-range decision and scheduled
 next meeting, the final joint Financial Data Transparency Act standards rule,
-and the final BIS advanced-computing export-license review rule. Quantify may
+and the final BIS advanced-computing export-license review rule. Libration may
 show exact named products, agencies, destinations, requirements, and company
 identifiers explicitly named by a source. It does not convert a policy event
 into a certain asset-price direction, implied probability, recommendation, or
@@ -1387,7 +1408,7 @@ authorization requirements.
 
 ### 9.1 Commercial web product contract
 
-The commercial web presents Quantify as one coherent, high-technology research
+The commercial web presents Libration as one coherent, high-technology research
 product with four immediately understandable layers:
 
 1. **Data.** Browse exact released company, investor, market, earnings,
@@ -1416,14 +1437,17 @@ a trade. Public copy may call it an `AI research agent` or `research referee`,
 but may not claim that it is the best, most accurate, or better than a named
 product without a current approved comparative evaluation and review.
 
-The homepage must answer, in its first screen, what Quantify does, who it is
-for, what the user can do next, and the current evidence boundary. The preferred
-message pattern is a short outcome-led statement such as `Understand markets.
-Analyze companies. Verify claims.`, followed by one sentence that distinguishes
-currently released data, intelligence, and verification from gated
-model-assisted analysis. The primary action opens an actual released research
-view; the secondary action is `Open Agent` or `Verify a claim`. Marketing copy
-must not lead with internal architecture terminology.
+The homepage must answer, in its first screen, what Libration does, who it is
+for, what the user can do next, and the current evidence boundary. The hero uses
+the brand line `See more of what matters.` and one plain-language sentence that
+identifies investors, analysts, and learners; released company and market
+research; source visibility; and factual claim verification. The primary
+action is `Explore companies` and opens `/companies`, the canonical first
+released public-company research view. The secondary current-task action is
+`Verify a claim`. `Open Agent` or `Ask Libration` is permitted only after a
+broader public agent task is separately authorized. Marketing copy must not
+lead with internal architecture terminology such as deterministic composition,
+policy envelopes, tool authorization, or warrant matching.
 
 The public audience includes self-directed investors and learners who want to
 understand companies, markets, and policy through source-visible research. The
@@ -1455,7 +1479,7 @@ explore, analyze, compare, and verify task intents. It is a presentation and
 orchestration model, not additional model or tool authority:
 
 1. **Objective.** The user supplies a bounded research question or claim.
-2. **Scope contract.** Quantify declares company or entity identity, as-of
+2. **Scope contract.** Libration declares company or entity identity, as-of
    date, permitted task, evidence release, input limit, and access mode before
    work begins.
 3. **Released data.** The system identifies the exact active structured
@@ -1502,7 +1526,7 @@ sections, and clear trust and disclosure layers. It must not copy another
 company's trade dress, layouts, illustrations, interaction details, product
 names, or trading language.
 
-Quantify retains its own soft-white, lavender, purple-to-magenta visual identity
+Libration retains its own soft-white, lavender, purple-to-magenta visual identity
 and may add a controlled near-black `signal` surface for the agent, verification
 trace, and selected data demonstrations. The gradient is an accent and focus
 device, not a full-page substitute for hierarchy. Interface imagery should be
@@ -1551,7 +1575,7 @@ customer, security, or commercial claims than the rendered page supports.
 
 The public experience uses a compact commercial shell around the existing
 research routes. Its durable concepts are `Research`, `Intelligence`,
-`Coverage`, and `Methodology`, with `Open Agent` as the persistent primary
+`Coverage`, and `Methodology`, with `Verify a claim` as the persistent current
 action and sign-in shown only when required by the active access contract.
 `Research` groups the existing Markets, Investors, and Companies surfaces; it
 does not change their released-data semantics. The exact final header labels
@@ -1559,9 +1583,11 @@ and any new public routes require an approved implementation change before
 deployment.
 
 The primary header begins with `Research`, which links to the homepage, followed
-by `Product`, `Intelligence`, `Coverage`, and `Methodology`. The navigation order
-must reflect the landing-page hierarchy rather than placing a supporting
-product-explanation page before the homepage.
+by `Intelligence`, `Coverage`, and `Methodology`. The supporting `Product` page
+remains available from contextual links and the footer; it is not a primary
+navigation concept. The navigation order must reflect the landing-page
+hierarchy. `Open Agent` or `Ask Libration` must not replace `Verify a claim` in
+the primary header until a broader public agent task is separately authorized.
 
 After account contracts and exposure gates pass, the signed-in application uses
 one stable daily-workflow shell: `Today`, `Data`, `News & Events`, `Agent`, and
@@ -1570,26 +1596,70 @@ it is not a live trading dashboard. Public marketing navigation and signed-in
 application navigation remain distinct so account complexity does not make the
 public research experience harder to scan.
 
-The homepage follows this order:
+Every public research route uses one concise page grammar:
 
-1. outcome-led hero, evidence-boundary sentence, primary released-research
-   action, and one secondary agent or sample-result action;
-2. a real product-stage demonstration that binds question, released evidence,
-   counterevidence, deterministic verdict, and audit identity;
-3. four concise product modules for Data, Intelligence, Analysis, and
-   Verification, with planned analysis visibly gated;
-4. a release-derived coverage strip showing only current supported entities,
-   source/filing periods, observation times, and freshness states;
-5. professional workflow examples for research, strategy,
-   investor-relations, consulting, and compliance-sensitive teams;
-6. a plain-language trust section covering scope, provenance, review-required
-   behavior, correction, revocation, and reproducibility;
-7. a bounded trial or pilot-access action whose limits and data handling are
-   visible before submission; and
-8. a structured footer linking methodology, release operations, corrections,
-   security and privacy information, terms, acceptable use, research
-   disclaimer, product support, company identity, and contact information when
-   those materials are approved for publication.
+~~~
+title → one-sentence purpose → exact scope and status → primary content
+      → sources and limitations
+~~~
+
+The hero contains at most one eyebrow, one short headline, one purpose
+paragraph, one exact scope row, and one functional control or product result
+when the route requires it. Equivalent scope, release, unavailable, source,
+and limitation states use shared presentation components rather than
+route-specific badge or copy systems. A research data card presents, in order,
+the entity or domain, its primary exact fact, observation or report date,
+source or release identity, and current state. Detail stays available through
+labelled progressive disclosure; it is not repeated in the hero and body.
+
+Every released-data route ends with one shared research disclosure. The
+primary source or source class, observation or report date, and release state
+remain visible without interaction. Release ID, manifest hash, methodology,
+freshness and correction details, limitations, source links, and the standard
+research boundary live in one labelled `Sources & limits` disclosure. A route
+may keep a method or calculation section in the body only when it explains a
+primary user-visible result; it must not repeat footer metadata or generic
+product disclaimers. Closing a disclosure never hides whether data is
+available, stale, revoked, under review, or outside the released scope.
+
+Wide research tables preserve their exact tabular semantics on narrow screens.
+They use one labelled horizontal-scroll region, a short non-visual accessible
+instruction, a visible edge cue only when overflow is possible, and a stable
+first entity column where browser support and width permit. Headers, entity
+names, source links, and values remain keyboard reachable; metadata does not
+collapse into an ambiguous card or depend on color. The edge cue is
+presentational and must not imply additional data beyond the table.
+
+Public secondary navigation is stable and hierarchical. `Research` exposes
+`Companies`, `Markets`, and `Investors`. `Intelligence` exposes `Overview`,
+`Earnings`, `Policy`, and `Releases`. The Markets context exposes `Overview`,
+`Macro`, `Rates`, `ETFs`, and `Crypto`. A secondary item uses `aria-current`
+for the active route, remains horizontally usable at narrow widths, and never
+introduces an unreleased destination. Deeper investor, company, and fund views
+retain a concise return path without inventing another global navigation tier.
+
+The homepage contains five progressive blocks:
+
+1. an outcome-led hero with the brand line `See more of what matters.`, one
+   audience-and-evidence sentence, `Explore companies` linking directly to
+   `/companies` as the primary action, and `Verify a claim` as the secondary
+   current-task action;
+2. a real product-stage result that leads with the claim, evidence scope, and
+   verdict while keeping citations, release identity, audit identity, and
+   limitations available under progressive disclosure;
+3. four released research entries for Companies, Markets, Investors, and
+   Policy, each naming the user-visible research job, exact release-derived
+   scope or status, and one destination-specific action;
+4. one concise operating-and-trust block that explains
+   `Question → Scope → Evidence → Result`, provenance, deterministic controls,
+   unavailable states, and the current verification boundary; and
+5. one bounded current-task action followed by the structured footer.
+
+Detailed capability modules, the five-stage agent operating map, declared-data
+catalogs, professional workflow examples, and extended trust methodology live
+on Product, Coverage, or Methodology rather than repeating on the homepage.
+General model-assisted analysis remains visibly gated on those supporting
+pages and is not presented as an enabled homepage action.
 
 Supporting commercial content may include Product, Solutions, Coverage,
 Methodology, Security and privacy, Pilot access or Pricing, About, Contact,
@@ -1600,12 +1670,13 @@ not a fabricated plan or discount. API documentation appears publicly only
 after the corresponding customer API and support contract are authorized.
 
 The sample result is a core product demonstration, not a decorative mockup. It
-must come from a versioned eligible fixture or public-safe released result and
-show the submitted claim, company and as-of date, claim-level verdict, verdict
-meaning, supporting evidence, qualifications, compatible counterevidence,
-citations, release identity, audit reference, and limitation. It must be clearly
-labelled as a sample and must not imply a customer, endorsement, coverage level,
-or production event that did not occur.
+must come from a versioned eligible fixture or public-safe released result. Its
+primary view shows the submitted claim, company and as-of date, claim-level
+verdict, verdict meaning, evidence scope, and compatible counterevidence state.
+Supporting evidence, qualifications, citations, release identity, audit
+reference, and limitation remain available in one labelled details disclosure.
+It must be clearly labelled as a sample and must not imply a customer,
+endorsement, coverage level, or production event that did not occur.
 
 ### 9.4 Agent experience
 
@@ -1618,7 +1689,18 @@ leads with the result and then exposes evidence, counterevidence,
 qualifications, citations, release identity, and audit identity through
 progressive disclosure.
 
-The future multi-tool entry is labelled `Ask Quantify`. Intent routing maps a
+The current public verification workspace is one focused task, not a generic
+chat surface. Its page order is: a short task hero, one truthful boundary row,
+the claim form and adjacent result, then the commercial footer. The form asks
+for company, as-of date, and one factual claim; it may offer a versioned example
+without submitting it. Repeated system maps, capability marketing, and
+architecture explanations belong on Product or Methodology. A completed result
+leads with its verdict and next safe action; evidence scope, snapshot identity,
+audit identity, and limitation remain in one labelled disclosure. Simplifying
+this presentation does not authorize another intent, tool, provider, source,
+model fallback, or resolution action.
+
+The future multi-tool entry is labelled `Ask Libration`. Intent routing maps a
 bounded question to explore, analyze, compare, or explicit claim verification
 and shows the interpreted job and scope before work begins. Users who do not
 know what to ask receive a small set of contract-derived starters such as
@@ -1730,9 +1812,9 @@ stage whenever review finds an unsupported claim or product-state mismatch:
 
 ### 9.6 Released research surface contracts
 
-The public web uses one coherent Quantify visual system across Overview,
+The public web uses one coherent Libration visual system across Overview,
 Markets, Investors, Companies, Intelligence, and claim verification: a
-soft-white canvas, lavender surfaces, the Quantify purple-to-magenta gradient,
+soft-white canvas, lavender surfaces, the Libration purple-to-magenta gradient,
 consistent navigation, typography, spacing, and controls. Data-heavy pages
 remain denser through compact cards, tabular figures, thin borders, and
 prominent observation or filing dates, but every route must feel like the same
@@ -1787,10 +1869,11 @@ reporting period, filing date, SEC accession/source, catalog release, and the
 limitations of 13F coverage.
 
 The released research navigation follows the commercial shell in section 9.3:
-`Research`, `Product`, `Intelligence`, `Coverage`, and `Methodology`, with
-`Open Agent` as the persistent current-task action. Research routes for
-Markets, Investors, and Companies remain directly reachable from the homepage
-and exact released entity graph.
+`Research`, `Intelligence`, `Coverage`, and `Methodology`, with `Verify a claim`
+as the persistent current-task action. `Product` remains contextual rather than
+primary, and `Open Agent` remains unavailable until the broader public agent
+task is authorized. Research routes for Markets, Investors, and Companies
+remain directly reachable from the homepage and exact released entity graph.
 `Markets` contains Macro, Rates, ETFs, Sectors, Crypto, and Commodities. Company
 pages may connect only released manager positions initially; market cap,
 valuation, insider, ETF, and event modules remain unavailable until their
@@ -1808,6 +1891,25 @@ policy connections, with reciprocal links to their owning sections. Policy may
 link an affected Company only when the typed policy record contains that exact
 released ticker. Available connection controls are links; unavailable states
 remain non-interactive and explicit.
+
+Each Company detail is one compact released-research workspace. Its first
+viewport presents company identity, report period and release state, the four
+existing overview metrics, one contextual verification state, and one labelled
+section navigator for Reporting managers, ETF exposure, Earnings, and Policy.
+An available module links to its exact section and names its released row or
+record count; an unavailable module is non-interactive and states `Not in
+current release` or the more exact empty-release reason. The section navigator
+replaces any repeated end-of-page connection directory. Each module retains one
+result surface, source or date, and one concise scope limitation.
+
+The contextual verification action is derived only from the current public
+verification-company allowlist. For a supported company it says `Verify a claim
+about {ticker}` and opens `/agent?company={cik}`. The query parameter may only
+preselect an allowlisted company; it never supplies a claim, submits a task,
+expands evidence, or alters the declared release. Unsupported or malformed
+values fail closed to the existing default scope. A Company outside the
+allowlist shows `Verification not released for this company` and one `Check
+coverage` action instead of an enabled contextual verification control.
 
 Global search is a deterministic browser-side projection of exact identifiers
 and display metadata already present in active public releases. Matching is

@@ -16,26 +16,24 @@ const result: VerificationResponse = {
   limitation: "This is not investment advice."
 };
 
-describe("Quantify web app", () => {
+describe("Libration web app", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
   it("shows the product boundary", () => {
     render(<App initialPath="/agent" />);
-    expect(screen.getByRole("heading", { name: "Turn a company claim into a reviewable result." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Verify one company claim." })).toBeInTheDocument();
     expect(screen.getByText("Data · released")).toBeInTheDocument();
     expect(screen.getByText("AI analysis · gated")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Every stage has one job." })).toBeInTheDocument();
-    expect(within(screen.getByRole("list", { name: "Quantify agent operating model" })).getAllByRole("listitem")).toHaveLength(5);
-    expect(screen.getByRole("heading", { name: "Each layer controls one thing." })).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Libration agent operating model" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Claim in. Evidence out." })).toBeInTheDocument();
     expect(screen.getByText("Ready when you are.")).toBeInTheDocument();
     expect(screen.getByText(/Do not use this tool for price predictions/)).toBeInTheDocument();
     expect(screen.getByLabelText("Current verification contract")).toHaveTextContent("2 companies");
     expect(screen.getByRole("group", { name: "01 · Define scope" })).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "02 · Write one claim" })).toBeInTheDocument();
     expect(screen.getByLabelText("Task readiness")).toHaveTextContent("Add one factual claim");
-    expect(screen.getByLabelText("Current agent task context")).toHaveTextContent("Add one factual claim");
-    expect(screen.getByLabelText("Current agent task context")).toHaveTextContent("Microsoft · CIK 0000789019");
+    expect(screen.queryByLabelText("Current agent task context")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Skip to content" })).toHaveAttribute("href", "#main-content");
     expect(document.getElementById("main-content")).toHaveAttribute("tabindex", "-1");
     expect(screen.getByLabelText("Claim to verify")).toHaveAttribute(
@@ -55,6 +53,23 @@ describe("Quantify web app", () => {
     expect(screen.getByLabelText("Claim as-of date")).toHaveValue("2024-07-30");
     expect(screen.getByLabelText("Task readiness")).toHaveTextContent("Ready to verify");
     expect(verifier).not.toHaveBeenCalled();
+  });
+
+  it("preselects an allowlisted company from research without submitting a claim", () => {
+    const verifier = vi.fn(async () => result);
+    render(<App initialPath="/agent?company=0000320193" verifier={verifier} />);
+
+    expect(screen.getByLabelText("Company")).toHaveValue("0000320193");
+    expect(screen.getByLabelText("Task readiness")).toHaveTextContent("Add one factual claim · Apple");
+    expect(screen.getByLabelText("Claim to verify")).toHaveValue("");
+    expect(verifier).not.toHaveBeenCalled();
+  });
+
+  it("fails a malformed company deep link closed to the existing default scope", () => {
+    render(<App initialPath="/agent?company=unsupported" />);
+
+    expect(screen.getByLabelText("Company")).toHaveValue("0000789019");
+    expect(screen.getByLabelText("Task readiness")).toHaveTextContent("Microsoft");
   });
 
   it("does not pretend sign-in works before public Cognito is configured", async () => {
@@ -90,6 +105,10 @@ describe("Quantify web app", () => {
     expect(screen.getByText("This is not investment advice.")).toBeInTheDocument();
     expect(screen.getByText("e".repeat(64))).toBeInTheDocument();
     expect(screen.getByText("a".repeat(64))).toBeInTheDocument();
+    const evidenceDisclosure = screen.getByText("Evidence, audit, and limitations").closest("details");
+    expect(evidenceDisclosure).not.toHaveAttribute("open");
+    await user.click(screen.getByText("Evidence, audit, and limitations"));
+    expect(evidenceDisclosure).toHaveAttribute("open");
     expect(screen.queryByText("private source report must never render")).not.toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Result next actions" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Check coverage" })).toHaveAttribute("href", "/coverage");
@@ -137,7 +156,7 @@ describe("Quantify web app", () => {
     await user.selectOptions(screen.getByLabelText("Company"), "0000320193");
     expect(screen.queryByText("revenue-growth")).not.toBeInTheDocument();
     expect(screen.getByText("Ready when you are.")).toBeInTheDocument();
-    expect(screen.getByLabelText("Current agent task context")).toHaveTextContent("Apple · CIK 0000320193");
+    expect(screen.getByLabelText("Task readiness")).toHaveTextContent("Apple");
   });
 
   it("makes review-required results prominent without changing the safe contract", async () => {
@@ -158,36 +177,36 @@ describe("Quantify web app", () => {
   it("shows the commercial research overview with a versioned verification sample", () => {
     render(<App initialPath="/" />);
 
-    expect(screen.getByRole("link", { name: "Quantify home" })).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: /Open Agent/ })[0]).toHaveAttribute("href", "/agent");
-    expect(screen.getByRole("heading", { name: /Research markets.*Analyze with evidence/i })).toBeInTheDocument();
-    expect(screen.getByLabelText("Versioned verification sample")).toHaveTextContent("Evaluation fixture · Microsoft · 10-K");
+    const brand = screen.getByRole("link", { name: "Libration home" });
+    expect(brand).toBeInTheDocument();
+    expect(brand.querySelector("svg.site-brand-mark")).toBeInTheDocument();
+    expect(brand.querySelectorAll(".libration-arc")).toHaveLength(2);
+    expect(screen.getAllByRole("link", { name: "Verify a claim" })[0]).toHaveAttribute("href", "/agent");
+    expect(screen.getByRole("heading", { name: "See more of what matters." })).toBeInTheDocument();
+    expect(screen.getByText(/For investors, analysts, and curious learners/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Explore companies/i })).toHaveAttribute("href", "/companies");
+    expect(screen.getByLabelText("Versioned verification sample")).toHaveTextContent("Libration · Verification sample");
+    expect(screen.getByLabelText("Versioned verification sample")).toHaveTextContent("Microsoft · FY2024 10-K · SEC filing scope");
+    expect(screen.getByLabelText("Versioned verification sample")).toHaveTextContent("The released filing supports this claim.");
     expect(screen.getByLabelText("Versioned verification sample")).toHaveTextContent("$245.12B");
     expect(screen.getByLabelText("Versioned verification sample")).toHaveTextContent("Audit 75b9cf2d09…90722e");
+    expect(screen.getByText("Evidence and audit details")).toBeInTheDocument();
     expect(screen.getByLabelText("Product boundaries")).toHaveTextContent("9 of 12 catalogs released");
-    expect(screen.getByRole("heading", { name: "One objective. Five controlled stages." })).toBeInTheDocument();
-    expect(within(screen.getByRole("list", { name: "Quantify agent operating model" })).getAllByRole("listitem")).toHaveLength(5);
-    expect(screen.getByRole("heading", { name: "The agent knows what it can use." })).toBeInTheDocument();
-    expect(screen.getByText("12 declared catalogs. Status comes directly from the public release index.")).toBeInTheDocument();
-    expect(screen.getByText(/0 \/ 3 released/)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Start with the job." })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Explore released records." })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Connect compatible facts." })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Explain the evidence." })).toBeInTheDocument();
-    expect(screen.getByText("Available · released")).toBeInTheDocument();
-    expect(screen.getByText("Available · typed")).toBeInTheDocument();
-    expect(screen.getByText("Gated next · no public task")).toBeInTheDocument();
-    expect(screen.getByText("Available · bounded")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Verify one claim." })).toBeInTheDocument();
-    const releasedResearch = screen.getByRole("heading", { name: "Evidence, released by scope." }).closest("section");
-    const systemLogic = screen.getByRole("heading", { name: "One objective. Five controlled stages." }).closest("section");
-    expect(releasedResearch?.compareDocumentPosition(systemLogic as Node) ?? 0).toBeTruthy();
-    expect(releasedResearch?.compareDocumentPosition(systemLogic as Node)).toBe(
+    const releasedResearch = screen.getByRole("heading", { name: "Start with the evidence." }).closest("section");
+    expect(releasedResearch?.querySelectorAll(".research-entry-grid > a")).toHaveLength(4);
+    expect(within(releasedResearch as HTMLElement).getByRole("link", { name: /Companies.*Open companies/i })).toHaveAttribute("href", "/companies");
+    expect(within(releasedResearch as HTMLElement).getByRole("link", { name: /Markets.*Open markets/i })).toHaveAttribute("href", "/markets");
+    expect(within(releasedResearch as HTMLElement).getByRole("link", { name: /Investors.*Open investors/i })).toHaveAttribute("href", "/investors");
+    expect(within(releasedResearch as HTMLElement).getByRole("link", { name: /Policy.*Open policy/i })).toHaveAttribute("href", "/intelligence/policy");
+    expect(screen.getByRole("heading", { name: "Ask clearly. See what supports the result." })).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Libration agent operating model" })).not.toBeInTheDocument();
+    expect(screen.getByText("AI research answers not public")).toBeInTheDocument();
+    const currentTask = screen.getByRole("heading", { name: "Check one claim." }).closest("section");
+    expect(releasedResearch?.compareDocumentPosition(currentTask as Node)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING
     );
-    expect(screen.getByRole("link", { name: /Investors.*reporting managers/i })).toHaveAttribute("href", "/investors");
-    expect(screen.getByRole("link", { name: /Venture.*4 firms and 24 official-source relationships/i })).toHaveAttribute("href", "/investors/venture");
-    expect(screen.getByRole("heading", { name: "AI analysis should show its work." })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Read the methodology →" })).toHaveAttribute("href", "/methodology");
+    expect(screen.getByText(/Unavailable data stays unavailable/)).toBeInTheDocument();
     expect(screen.queryByText(/real-time market/i)).not.toBeInTheDocument();
   });
 
@@ -203,11 +222,12 @@ describe("Quantify web app", () => {
     expect(screen.getByText("Browse without sign-in")).toBeInTheDocument();
     expect(screen.getByText("Controlled access")).toBeInTheDocument();
     expect(screen.getByText("Private and not open")).toBeInTheDocument();
-    expect(screen.getByText(/Quantify does not collect pilot requests on this site\./)).toBeInTheDocument();
+    expect(screen.getByText(/Libration does not collect pilot requests on this site\./)).toBeInTheDocument();
     expect(screen.queryByRole("form")).not.toBeInTheDocument();
   });
 
-  it("shows the public investor terminal with the declared filing scope", () => {
+  it("shows the public investor terminal with one progressive release disclosure", async () => {
+    const user = userEvent.setup();
     render(<App initialPath="/investors" />);
 
     expect(screen.getByRole("heading", { name: /Follow the money/i })).toBeInTheDocument();
@@ -217,6 +237,16 @@ describe("Quantify web app", () => {
     expect(screen.getByText("SEC 13F · Frozen")).toBeInTheDocument();
     expect(screen.getByText(/Values and weights cover only securities disclosed/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Venture capital" })).toHaveAttribute("href", "/investors/venture");
+    expect(screen.getByLabelText("Research release summary")).toHaveTextContent("SourceSEC EDGAR");
+    expect(screen.getByLabelText("Research release summary")).toHaveTextContent("ObservedSource through");
+    expect(screen.getByLabelText("Research release summary")).toHaveTextContent("State7 of 8 managers available");
+
+    const disclosure = screen.getByText("Sources & limits").closest("details");
+    expect(disclosure).not.toHaveAttribute("open");
+    await user.click(screen.getByText("Sources & limits"));
+    expect(disclosure).toHaveAttribute("open");
+    expect(disclosure).toHaveTextContent("Release ID");
+    expect(disclosure).toHaveTextContent("Research data only");
   });
 
   it("keeps venture relationships separate from public-market positions", () => {
@@ -279,12 +309,13 @@ describe("Quantify web app", () => {
 
     rerender(<App initialPath="/agent" />);
 
-    expect(screen.getByRole("link", { name: "Quantify home" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Libration home" })).toBeInTheDocument();
     const primaryNavigation = screen.getByRole("navigation", { name: "Primary navigation" });
     const researchLink = within(primaryNavigation).getByRole("link", { name: "Research" });
-    const productLink = within(primaryNavigation).getByRole("link", { name: "Product" });
+    const intelligenceLink = within(primaryNavigation).getByRole("link", { name: "Intelligence" });
     expect(researchLink).toHaveAttribute("href", "/");
-    expect(researchLink.compareDocumentPosition(productLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(researchLink.compareDocumentPosition(intelligenceLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(primaryNavigation).queryByRole("link", { name: "Product" })).not.toBeInTheDocument();
     expect(within(primaryNavigation).getByRole("link", { name: "Coverage" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
   });
@@ -294,7 +325,7 @@ describe("Quantify web app", () => {
 
     expect(screen.getByRole("heading", { name: /One system.*Four research layers/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "A visible chain of responsibility." })).toBeInTheDocument();
-    expect(within(screen.getByRole("list", { name: "Quantify agent operating model" })).getAllByRole("listitem")).toHaveLength(5);
+    expect(within(screen.getByRole("list", { name: "Libration agent operating model" })).getAllByRole("listitem")).toHaveLength(5);
     expect(screen.getByRole("heading", { name: /The agent explains.*The verifier decides/i })).toBeInTheDocument();
     expect(screen.getByText("Every statement stays untrusted until validated.")).toBeInTheDocument();
     expect(screen.getByText("Model-assisted research answers under the new grounded contract")).toBeInTheDocument();
@@ -305,7 +336,7 @@ describe("Quantify web app", () => {
   it("projects commercial coverage directly from the public release index", () => {
     render(<App initialPath="/coverage" />);
 
-    expect(screen.getByRole("heading", { name: /Know what Quantify.*can actually see/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Know what Libration.*can actually see/i })).toBeInTheDocument();
     expect(screen.getByLabelText("Coverage summary")).toHaveTextContent("12");
     expect(screen.getByRole("heading", { name: "Every declared layer." })).toBeInTheDocument();
     expect(screen.getByText("No approved market release is active.")).toBeInTheDocument();
@@ -320,7 +351,7 @@ describe("Quantify web app", () => {
     expect(screen.getByRole("heading", { name: "Four controlled steps." })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /Facts decide.*Narrative explains/i })).toBeInTheDocument();
     expect(screen.getByText("Review required")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "What Quantify does not do." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "What Libration does not do." })).toBeInTheDocument();
     expect(screen.getByText("Execute trades or manage a portfolio")).toBeInTheDocument();
   });
 
@@ -329,13 +360,13 @@ describe("Quantify web app", () => {
     render(<App initialPath="/markets" />);
 
     await user.click(screen.getByRole("button", { name: "Search" }));
-    expect(screen.getByRole("dialog", { name: "Search Quantify" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Search Libration" })).toBeInTheDocument();
     await user.type(screen.getByPlaceholderText(/Company, ticker, manager/), "NVDA");
 
     expect(screen.getByRole("link", { name: /NVDA Nvidia corporation/ })).toHaveAttribute("href", "/companies/nvda");
     expect(screen.getByText(/Exact identifiers · deterministic text match/)).toBeInTheDocument();
     await user.keyboard("{Escape}");
-    expect(screen.queryByRole("dialog", { name: "Search Quantify" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Search Libration" })).not.toBeInTheDocument();
   });
 
   it("filters managers without changing the frozen catalog", async () => {
@@ -356,6 +387,12 @@ describe("Quantify web app", () => {
     expect(screen.getAllByText("Exact shared ID").length).toBeGreaterThan(0);
     expect(screen.getByText(/not a similarity score, trade observation/)).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /SEC filing/i })).toHaveLength(2);
+    const tableRegion = screen.getByRole("region", { name: "Reported portfolio comparison" });
+    expect(tableRegion).toHaveAttribute("tabindex", "0");
+    expect(tableRegion).toHaveClass("sticky-column-1");
+    expect(within(tableRegion).getByText("Scroll →")).toHaveAttribute("aria-hidden", "true");
+    const instruction = document.getElementById(tableRegion.getAttribute("aria-describedby") ?? "");
+    expect(instruction).toHaveTextContent("Scroll horizontally to inspect every column.");
   });
 
   it("renders the five public-market investor modules", () => {
@@ -389,7 +426,17 @@ describe("Quantify web app", () => {
     expect(screen.getByText("Sum across tracked managers")).toBeInTheDocument();
     expect(screen.getByText(/not market capitalization, total institutional ownership/i)).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /SEC/i }).length).toBeGreaterThan(0);
-    expect(screen.getByRole("link", { name: /Policy Named policy available/i })).toHaveAttribute("href", "/intelligence/policy");
+    const researchSections = screen.getByRole("navigation", { name: "NVDA research sections" });
+    expect(within(researchSections).getByRole("link", { name: /Reporting managers.*reported rows/i })).toHaveAttribute("href", "#company-managers-title");
+    expect(within(researchSections).getByRole("link", { name: /ETF exposure.*filed top-ten rows/i })).toHaveAttribute("href", "#company-etf-title");
+    expect(within(researchSections).getByRole("link", { name: /Policy.*named action/i })).toHaveAttribute("href", "#company-policy-title");
+    expect(within(researchSections).queryByRole("link", { name: /Earnings/i })).not.toBeInTheDocument();
+    expect(within(researchSections).getByText("Not in current release")).toBeInTheDocument();
+    expect(screen.getByText("Verification not released for this company")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Check coverage →" })).toHaveAttribute("href", "/coverage");
+    expect(screen.queryByRole("heading", { name: "More forces, when released." })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Research release summary")).toHaveTextContent("SEC 13F · SEC Form N-PORT · SEC Company Facts · Official policy records");
+    expect(screen.getByLabelText("Research release summary")).toHaveTextContent("NVDA · 3 released research modules");
   });
 
   it("connects a company to exact released SEC earnings when covered", () => {
@@ -400,6 +447,8 @@ describe("Quantify web app", () => {
     expect(screen.getByText("↑ 16.6% YoY")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /0000320193-26-000013/i })).toHaveAttribute("href", expect.stringMatching(/^https:\/\/www\.sec\.gov\/Archives\//));
     expect(screen.getByRole("link", { name: "All earnings →" })).toHaveAttribute("href", "/intelligence/earnings");
+    expect(screen.getByRole("link", { name: "Verify a claim about AAPL" })).toHaveAttribute("href", "/agent?company=0000320193");
+    expect(within(screen.getByRole("navigation", { name: "AAPL research sections" })).getByRole("link", { name: /Earnings.*filed result/i })).toHaveAttribute("href", "#company-earnings-title");
   });
 
   it("connects NVDA only to the exact product-naming export rule", () => {
@@ -429,7 +478,7 @@ describe("Quantify web app", () => {
     render(<App initialPath="/markets/crypto" />);
 
     expect(screen.getByRole("heading", { name: /Crypto data, when it can be traced/i })).toBeInTheDocument();
-    expect(screen.getByText("No active crypto market release")).toBeInTheDocument();
+    expect(screen.getByText("Crypto market data unavailable")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Reported ETP exposure" })).toBeInTheDocument();
     expect(screen.getByText("BTC / IBIT")).toBeInTheDocument();
     expect(screen.getByText("Coatue Management")).toBeInTheDocument();
@@ -470,6 +519,7 @@ describe("Quantify web app", () => {
     expect(screen.getAllByText("17.27%").length).toBeGreaterThan(0);
     expect(screen.getByText(/publishes only the ten largest reviewed rows/i)).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /N-PORT/i })).toHaveLength(10);
+    expect(screen.getByRole("region", { name: "VGT top filed positions" })).toHaveClass("sticky-column-2");
   });
 
   it("renders the bounded BLS macro release with explicit calculations and terms", () => {
@@ -538,6 +588,8 @@ describe("Quantify web app", () => {
 
   it("connects every primary research section through concise released paths", () => {
     const { rerender } = render(<App initialPath="/markets" />);
+    expect(within(screen.getByRole("navigation", { name: "Research sections" })).getByRole("link", { name: "Markets" })).toHaveAttribute("aria-current", "page");
+    expect(within(screen.getByRole("navigation", { name: "Market sections" })).getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("navigation", { name: "Connected research" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Companies Open filed ETF holdings by issuer/i })).toHaveAttribute("href", "/companies");
     expect(screen.getByText("Macro + rates + filed ETF data available")).toBeInTheDocument();
@@ -551,6 +603,7 @@ describe("Quantify web app", () => {
     expect(screen.getByRole("link", { name: /Intelligence Read released earnings and policy records/i })).toHaveAttribute("href", "/intelligence");
 
     rerender(<App initialPath="/intelligence" />);
+    expect(within(screen.getByRole("navigation", { name: "Intelligence sections" })).getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: /Markets Read rates, ETF, and crypto context/i })).toHaveAttribute("href", "/markets");
   });
 

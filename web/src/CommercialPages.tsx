@@ -16,12 +16,12 @@ const verdicts = [
 export function ProductPage() {
   return (
     <main className="data-app commercial-info-page">
-      <SiteNav active="product" action={{ label: "Open Agent", href: "/agent" }} />
+      <SiteNav active="product" action={{ label: "Verify a claim", href: "/agent" }} />
       <section className="commercial-info-hero page-shell">
-        <p className="terminal-eyebrow">Quantify product</p>
+        <p className="terminal-eyebrow">Libration product</p>
         <h1>One system.<br /><span>Four research layers.</span></h1>
         <p>Released data, typed intelligence, and bounded verification are available today. Cited model-assisted analysis is the next gated layer.</p>
-        <div className="overview-actions"><a className="button button-dark" href="/#research">Explore research →</a><a className="button button-light" href="/agent">Open Agent</a></div>
+        <div className="overview-actions"><a className="button button-dark" href="/#research">Explore research →</a><a className="button button-light" href="/agent">Verify a claim</a></div>
       </section>
 
       <section className="product-system page-shell" aria-labelledby="product-system-title">
@@ -74,7 +74,7 @@ export function ProductPage() {
           <article><span>Claim verification</span><strong>Controlled access</strong><p>Use the active authenticated contract or a separately authorized bounded trial when one is enabled.</p></article>
           <article><span>Research-task pilot</span><strong>Private and not open</strong><p>No public request form, pricing, subscription, or service commitment is currently published.</p></article>
         </div>
-        <p className="commercial-boundary-note">Do not submit private research material. Quantify does not collect pilot requests on this site.</p>
+        <p className="commercial-boundary-note">Do not submit private research material. Libration does not collect pilot requests on this site.</p>
       </section>
 
       <section className="commercial-cta page-shell"><p className="terminal-eyebrow">Start with released evidence</p><h2>Explore first. Verify when needed.</h2><p>Browse current research without sign-in, or use the bounded Agent task for supported Microsoft or Apple claims.</p><a className="button button-dark" href="/#research">Explore research →</a></section>
@@ -87,10 +87,10 @@ export function CoveragePage() {
   const summary = summarizeReleaseOperations(publicReleaseIndex);
   return (
     <main className="data-app commercial-info-page">
-      <SiteNav active="coverage" action={{ label: "Open Agent", href: "/agent" }} />
+      <SiteNav active="coverage" action={{ label: "Verify a claim", href: "/agent" }} />
       <section className="commercial-info-hero compact page-shell">
         <p className="terminal-eyebrow">Current coverage</p>
-        <h1>Know what Quantify<br /><span>can actually see.</span></h1>
+        <h1>Know what Libration<br /><span>can actually see.</span></h1>
         <p>This page is a direct projection of the active public release index. It is coverage state—not uptime, market breadth, or a promise of future availability.</p>
       </section>
 
@@ -114,7 +114,7 @@ export function CoveragePage() {
             </article>
           ))}
         </div>
-        <p className="commercial-boundary-note">Unavailable means unavailable. Quantify does not substitute model-generated, illustrative, or out-of-policy values.</p>
+        <p className="commercial-boundary-note">Unavailable means unavailable. Libration does not substitute model-generated, illustrative, or out-of-policy values.</p>
       </section>
       <CommercialFooter />
     </main>
@@ -124,9 +124,9 @@ export function CoveragePage() {
 export function MethodologyPage() {
   return (
     <main className="data-app commercial-info-page">
-      <SiteNav active="methodology" action={{ label: "Open Agent", href: "/agent" }} />
+      <SiteNav active="methodology" action={{ label: "Verify a claim", href: "/agent" }} />
       <section className="commercial-info-hero compact page-shell">
-        <p className="terminal-eyebrow">Quantify methodology</p>
+        <p className="terminal-eyebrow">Libration methodology</p>
         <h1>Evidence before<br /><span>explanation.</span></h1>
         <p>A model can propose research work. Only deterministic code can validate released facts and compose a publication verdict.</p>
       </section>
@@ -153,7 +153,7 @@ export function MethodologyPage() {
       </section>
 
       <section className="boundary-section page-shell" id="boundaries" aria-labelledby="boundaries-title">
-        <div><p className="terminal-eyebrow">Research boundaries</p><h2 id="boundaries-title">What Quantify does not do.</h2></div>
+        <div><p className="terminal-eyebrow">Research boundaries</p><h2 id="boundaries-title">What Libration does not do.</h2></div>
         <ul><li>Predict security prices or market direction</li><li>Recommend buy, sell, hold, allocation, or position size</li><li>Provide personalized investment advice or suitability</li><li>Execute trades or manage a portfolio</li><li>Claim evidence outside the named frozen release was checked</li></ul>
       </section>
       <CommercialFooter />

@@ -15,12 +15,13 @@ import type { VerificationRequest, VerificationResponse } from "./types";
 type Verifier = (request: VerificationRequest) => Promise<VerificationResponse>;
 
 export function App({ verifier, initialPath }: { verifier?: Verifier; initialPath?: string }) {
-  const path = (initialPath ?? window.location.pathname).replace(/\/$/, "") || "/";
+  const location = new URL(initialPath ?? `${window.location.pathname}${window.location.search}`, window.location.origin);
+  const path = location.pathname.replace(/\/$/, "") || "/";
   useEffect(() => {
     applyRouteMetadata(path);
   }, [path]);
 
-  if (path === "/agent" || path === "/verify") return <VerificationPage verifier={verifier} />;
+  if (path === "/agent" || path === "/verify") return <VerificationPage initialCompanyCik={location.searchParams.get("company") ?? undefined} verifier={verifier} />;
   if (path === "/") return <OverviewPage />;
   if (path === "/product") return <ProductPage />;
   if (path === "/coverage") return <CoveragePage />;

@@ -9,12 +9,12 @@ describe("route metadata", () => {
 
   it("defines distinct metadata for durable commercial routes", () => {
     expect(metadataForPath("/")).toMatchObject({
-      title: "Quantify — Evidence-bound AI investment research",
+      title: "Libration — Evidence-bound AI investment research",
       canonicalPath: "/",
       indexable: true
     });
     expect(metadataForPath("/coverage/")).toMatchObject({
-      title: "Current coverage — Quantify",
+      title: "Current coverage — Libration",
       canonicalPath: "/coverage",
       indexable: true
     });
@@ -26,7 +26,7 @@ describe("route metadata", () => {
 
   it("keeps unknown routes out of search", () => {
     expect(metadataForPath("/outside-release")).toMatchObject({
-      title: "Page not found — Quantify",
+      title: "Page not found — Libration",
       indexable: false
     });
     expect(metadataForPath("/markets/outside-release").indexable).toBe(false);
@@ -37,7 +37,7 @@ describe("route metadata", () => {
     vi.stubEnv("VITE_QUANTIFY_PUBLIC_ORIGIN", "https://research.example.test");
     applyRouteMetadata("/methodology");
 
-    expect(document.title).toBe("Methodology — Quantify");
+    expect(document.title).toBe("Methodology — Libration");
     expect(document.head.querySelector('meta[name="description"]')).toHaveAttribute(
       "content",
       expect.stringContaining("deterministic validation")

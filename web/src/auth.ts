@@ -114,7 +114,7 @@ export async function finishSignIn(): Promise<boolean> {
   }
   const token = (payload as { access_token: string }).access_token;
   if (!accessTokenHasScope(token, config.verifyScope)) {
-    throw new Error("Sign-in did not grant the Quantify verify permission.");
+    throw new Error("Sign-in did not grant the Libration verify permission.");
   }
   window.sessionStorage.setItem(TOKEN_KEY, token);
   window.sessionStorage.removeItem(PKCE_VERIFIER_KEY);

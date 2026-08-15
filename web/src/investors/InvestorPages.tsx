@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
+import { ResearchFooter, ResearchSubnav, TableScroll } from "../ResearchUI";
 import { SectionConnections } from "../SectionConnections";
 import { SiteNav } from "../SiteNav";
+import { publicBrandText } from "../brand";
 import { tickerSlug } from "../companies/ownership";
 import { displayName, holdingChangeText, money, quarter, readableDate, sentenceCase } from "../format";
 import { investorCatalog } from "./catalog";
@@ -12,7 +14,7 @@ function securityLabel(holding: Pick<Holding, "ticker" | "cusip">): string {
 }
 
 function TerminalNav() {
-  return <SiteNav active="investors" action={{ label: "Verify a claim", href: "/agent" }} />;
+  return <SiteNav active="investors" action={{ label: "Verify a claim", href: "/agent" }} subnav={<ResearchSubnav group="research" active="investors" />} />;
 }
 
 function ChangeMark({ holding, compact = false }: { holding: Holding; compact?: boolean }) {
@@ -180,7 +182,7 @@ export function InvestorComparisonPage() {
 
       <section className="terminal-module comparison-table-section" aria-labelledby="comparison-table-title">
         <div className="module-head"><div><span>01</span><h2 id="comparison-table-title">Position comparison</h2></div><p>Shared first · largest disclosed weight next</p></div>
-        <div className="holdings-scroll"><table className="holdings-table comparison-table"><thead><tr><th>Security</th><th>{displayName(left.firm)} weight</th><th>{displayName(right.firm)} weight</th><th>Weight gap</th><th>{displayName(left.firm)} QoQ shares</th><th>{displayName(right.firm)} QoQ shares</th><th>Match</th></tr></thead><tbody>{comparison.rows.map((row) => <tr key={row.securityId}><td>{row.ticker ? <a className="security-entity-link" href={`/companies/${tickerSlug(row.ticker)}`}><strong>{row.ticker}</strong><span>{displayName(row.issuer)} · CUSIP {row.cusip}</span></a> : <><strong>{row.cusip}</strong><span>{displayName(row.issuer)} · CUSIP {row.cusip}</span></>}</td><td>{row.left ? <><strong>{row.left.weight_pct.toFixed(2)}%</strong><span>{money(row.left.value_usd)}</span></> : "—"}</td><td>{row.right ? <><strong>{row.right.weight_pct.toFixed(2)}%</strong><span>{money(row.right.value_usd)}</span></> : "—"}</td><td className={row.weightGapPp > 0 ? "positive" : row.weightGapPp < 0 ? "negative" : ""}>{row.weightGapPp > 0 ? "+" : ""}{row.weightGapPp.toFixed(2)} pp<span>First minus second</span></td><td>{comparisonChange(row.left)}</td><td>{comparisonChange(row.right)}</td><td><span className={row.shared ? "comparison-match shared" : "comparison-match"}>{row.shared ? "Exact shared ID" : "One manager only"}</span></td></tr>)}</tbody></table></div>
+        <TableScroll className="holdings-scroll" label="Reported portfolio comparison"><table className="holdings-table comparison-table"><thead><tr><th>Security</th><th>{displayName(left.firm)} weight</th><th>{displayName(right.firm)} weight</th><th>Weight gap</th><th>{displayName(left.firm)} QoQ shares</th><th>{displayName(right.firm)} QoQ shares</th><th>Match</th></tr></thead><tbody>{comparison.rows.map((row) => <tr key={row.securityId}><td>{row.ticker ? <a className="security-entity-link" href={`/companies/${tickerSlug(row.ticker)}`}><strong>{row.ticker}</strong><span>{displayName(row.issuer)} · CUSIP {row.cusip}</span></a> : <><strong>{row.cusip}</strong><span>{displayName(row.issuer)} · CUSIP {row.cusip}</span></>}</td><td>{row.left ? <><strong>{row.left.weight_pct.toFixed(2)}%</strong><span>{money(row.left.value_usd)}</span></> : "—"}</td><td>{row.right ? <><strong>{row.right.weight_pct.toFixed(2)}%</strong><span>{money(row.right.value_usd)}</span></> : "—"}</td><td className={row.weightGapPp > 0 ? "positive" : row.weightGapPp < 0 ? "negative" : ""}>{row.weightGapPp > 0 ? "+" : ""}{row.weightGapPp.toFixed(2)} pp<span>First minus second</span></td><td>{comparisonChange(row.left)}</td><td>{comparisonChange(row.right)}</td><td><span className={row.shared ? "comparison-match shared" : "comparison-match"}>{row.shared ? "Exact shared ID" : "One manager only"}</span></td></tr>)}</tbody></table></TableScroll>
         <p className="data-note">Shared means the same released security ID appears in both latest released holdings tables. It is not a similarity score, trade observation, or account-level portfolio comparison.</p>
       </section>
     </div>
@@ -210,7 +212,7 @@ function HoldingsTable({ manager }: { manager: InvestorManager }) {
           </select>
         </div>
       </div>
-      <div className="holdings-scroll">
+      <TableScroll className="holdings-scroll" label={`${displayName(manager.firm)} reported holdings`}>
         <table className="holdings-table">
           <thead><tr><th>Security</th><th>Instrument</th><th>Value</th><th>Weight</th><th>Shares</th><th>QoQ shares</th></tr></thead>
           <tbody>{holdings.map((holding) => (
@@ -224,7 +226,7 @@ function HoldingsTable({ manager }: { manager: InvestorManager }) {
             </tr>
           ))}</tbody>
         </table>
-      </div>
+      </TableScroll>
     </section>
   );
 }
@@ -324,11 +326,12 @@ function InvestorNotFound() {
 }
 
 export function CatalogFooter() {
-  return (
-    <footer className="catalog-footer">
-      <div><strong>Scope / {investorCatalog.release_id}</strong><span>{investorCatalog.source}</span><code>{investorCatalog.manifest_hash}</code></div>
-      <div>{investorCatalog.limitations.map((limitation) => <p key={limitation}>{limitation}</p>)}</div>
-      <p>Research data only. No price predictions, trade recommendations, or personalized investment advice.</p>
-    </footer>
-  );
+  const available = investorCatalog.managers.filter((manager) => manager.status === "available").length;
+  return <ResearchFooter
+    details={[{ label: "Release ID", value: investorCatalog.release_id }, { label: "Manifest", value: investorCatalog.manifest_hash }, { label: "Report period", value: investorCatalog.report_period }]}
+    limitations={investorCatalog.limitations.map((limitation) => publicBrandText(limitation))}
+    observed={`Source through ${readableDate(investorCatalog.source_fresh_through)}`}
+    source={investorCatalog.source}
+    status={`${available} of ${investorCatalog.managers.length} managers available`}
+  />;
 }

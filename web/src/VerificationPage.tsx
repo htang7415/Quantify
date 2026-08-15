@@ -1,17 +1,13 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { AgentSystemMap } from "./AgentSystem";
+import { SourceDetails } from "./ResearchUI";
 import { verifyAnalysis } from "./api";
 import { beginSignIn, finishSignIn } from "./auth";
 import { CommercialFooter } from "./CommercialFooter";
 import { SiteNav } from "./SiteNav";
 import type { VerificationRequest, VerificationResponse, Verdict } from "./types";
+import { verificationCompanies, verificationCompanyForCik } from "./verificationContract";
 
 type Verifier = (request: VerificationRequest) => Promise<VerificationResponse>;
-
-const companies = [
-  { cik: "0000789019", name: "Microsoft" },
-  { cik: "0000320193", name: "Apple" }
-];
 
 const verdictCopy: Record<Verdict, string> = {
   verified: "Supported by the declared frozen evidence snapshot.",
@@ -25,9 +21,9 @@ function wordCount(value: string): number {
   return value.trim() ? value.trim().split(/\s+/).length : 0;
 }
 
-export function VerificationPage({ verifier = verifyAnalysis }: { verifier?: Verifier }) {
+export function VerificationPage({ verifier = verifyAnalysis, initialCompanyCik }: { verifier?: Verifier; initialCompanyCik?: string }) {
   const anonymousTrial = Boolean(import.meta.env.VITE_QUANTIFY_TRIAL_URL);
-  const [cik, setCik] = useState(companies[0].cik);
+  const [cik, setCik] = useState(() => verificationCompanyForCik(initialCompanyCik)?.cik ?? verificationCompanies[0].cik);
   const [asOfDate, setAsOfDate] = useState("2024-07-30");
   const [analysis, setAnalysis] = useState("");
   const [result, setResult] = useState<VerificationResponse | null>(null);
@@ -35,7 +31,7 @@ export function VerificationPage({ verifier = verifyAnalysis }: { verifier?: Ver
   const [signInMessage, setSignInMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const analysisRef = useRef<HTMLTextAreaElement>(null);
-  const selectedCompany = companies.find((company) => company.cik === cik)?.name ?? "Selected company";
+  const selectedCompany = verificationCompanyForCik(cik)?.name ?? "Selected company";
   const analysisCount = wordCount(analysis);
   const scopeReady = Boolean(cik && asOfDate);
   const claimReady = analysisCount > 0 && analysisCount <= 250;
@@ -44,18 +40,11 @@ export function VerificationPage({ verifier = verifyAnalysis }: { verifier?: Ver
     : analysisCount === 0
       ? "Add one factual claim"
       : analysisCount > 250
-        ? "Shorten the claim to 250 words"
+      ? "Shorten the claim to 250 words"
         : "Ready to verify";
-  const taskState = isSubmitting
-    ? "Checking declared scope"
-    : result?.requires_agent_resolution
-      ? "Review required"
-      : result
-        ? "Result ready"
-        : readinessMessage;
 
   function loadExample() {
-    setCik("0000789019");
+    setCik(verificationCompanies[0].cik);
     setAsOfDate("2024-07-30");
     setAnalysis("Microsoft revenue increased from fiscal 2023 to fiscal 2024.");
     setResult(null);
@@ -102,7 +91,7 @@ export function VerificationPage({ verifier = verifyAnalysis }: { verifier?: Ver
       setError(
         submissionError instanceof Error
           ? submissionError.message
-          : "Quantify verification is currently unavailable."
+          : "Libration verification is currently unavailable."
       );
     } finally {
       setIsSubmitting(false);
@@ -126,18 +115,17 @@ export function VerificationPage({ verifier = verifyAnalysis }: { verifier?: Ver
       <SiteNav
         active="agent"
         action={anonymousTrial
-          ? { label: "Open agent", href: "#verify" }
+          ? { label: "Verify a claim", href: "#verify" }
           : { label: "Sign in", onClick: () => void signIn() }}
       />
       {signInMessage && <p className="auth-message shell" role="status">{signInMessage}</p>}
 
       <section className="hero shell" id="top">
         <div className="hero-copy">
-          <p className="eyebrow">Quantify Agent · Current task: verification</p>
-          <h1>Turn a company claim into a reviewable result.</h1>
+          <p className="eyebrow">Libration Agent · Current task: verification</p>
+          <h1>Verify one company claim.</h1>
           <p className="hero-text">
-            Quantify spans released data, typed intelligence, cited analysis, and verification.
-            This public task currently checks one supported company claim and returns a deterministic verdict with an audit identity.
+            Check a supported factual claim against frozen SEC evidence and receive a deterministic, reviewable result.
           </p>
           <div className="hero-actions">
             <a className="button button-dark" href="#verify">
@@ -148,12 +136,12 @@ export function VerificationPage({ verifier = verifyAnalysis }: { verifier?: Ver
             </a>
           </div>
         </div>
-        <aside className="agent-panel agent-signal signal-surface" aria-label="Quantify agent workflow">
+        <aside className="agent-panel agent-signal signal-surface" aria-label="Libration agent workflow">
           <div className="agent-window-bar">
             <div className="agent-identity">
               <span className="agent-orb" aria-hidden="true" />
               <div>
-                <strong>Quantify Agent</strong>
+                <strong>Libration Agent</strong>
               <span>Current task · evidence-bound verification</span>
               </div>
             </div>
@@ -184,50 +172,18 @@ export function VerificationPage({ verifier = verifyAnalysis }: { verifier?: Ver
         </aside>
       </section>
 
-      <section className="trust-bar shell" id="trust" aria-label="Quantify principles">
+      <section className="trust-bar shell" id="trust" aria-label="Libration principles">
         <span>Data · released</span>
         <span>Intelligence · typed</span>
         <span>AI analysis · gated</span>
         <span>Verification · available</span>
       </section>
 
-      <section className="agent-model shell" aria-labelledby="agent-model-title">
-        <div className="section-heading">
-          <p className="eyebrow">How the system reasons</p>
-          <h2 id="agent-model-title">Every stage has one job.</h2>
-          <p>The agent structures the path; released records supply facts; deterministic verification controls the result.</p>
-        </div>
-        <AgentSystemMap compact />
-      </section>
-
-      <section className="scale shell" aria-labelledby="scale-title">
-        <div className="scale-copy">
-          <p className="eyebrow">Layered authority</p>
-          <h2 id="scale-title">Each layer controls one thing.</h2>
-          <p>
-            The broader product separates research explanation from claim authority.
-            Every current verification result remains constrained to its declared release.
-          </p>
-        </div>
-        <div className="scale-grid">
-          <article><span className="scale-number">01</span><h3>Data</h3><p>Only declared structured facts from the frozen release can warrant a verdict.</p></article>
-          <article><span className="scale-number">02</span><h3>Intelligence</h3><p>Typed compatible connections organize facts without creating new ones.</p></article>
-          <article><span className="scale-number">03</span><h3>Analysis</h3><p>Interpretation must retain statement types, citations, counterpoints, and limitations.</p></article>
-          <article><span className="scale-number">04</span><h3>Verification</h3><p>Deterministic code returns the verdict or stops for review.</p></article>
-        </div>
-      </section>
-
       <section className="workspace shell" id="verify">
         <div className="section-heading">
           <p className="eyebrow">Available Agent task · Verification</p>
-          <h2>Check a claim before it travels.</h2>
-          <p>Use released data and deterministic verification now. Cited AI analysis remains gated. This task returns a verdict, declared evidence scope, limitation, and audit reference.</p>
-        </div>
-        <div className="task-context release-signal" aria-label="Current agent task context">
-          <div><span>Agent task · {taskState}</span><strong>Verify a company-analysis claim</strong></div>
-          <div><span>Entity</span><strong>{selectedCompany} · CIK {cik}</strong></div>
-          <div><span>As of</span><strong>{asOfDate}</strong></div>
-          <div><span>Output</span><strong>Verdict · scope · limitation · audit</strong></div>
+          <h2>Claim in. Evidence out.</h2>
+          <p>Choose the scope, write one factual claim, and inspect the result. General AI analysis remains gated.</p>
         </div>
         <div className="work-grid">
           <form className="verify-form" onSubmit={submit} noValidate>
@@ -239,7 +195,7 @@ export function VerificationPage({ verifier = verifyAnalysis }: { verifier?: Ver
               <legend>01 · Define scope</legend>
               <label htmlFor="company">Company</label>
               <select id="company" value={cik} onChange={(event) => { setCik(event.target.value); invalidateResult(); }}>
-                {companies.map((company) => (
+                {verificationCompanies.map((company) => (
                   <option key={company.cik} value={company.cik}>
                     {company.name} · CIK {company.cik}
                   </option>
@@ -348,12 +304,14 @@ function Results({ result, isSubmitting, companyName, onContinue }: { result: Ve
       {result.requires_agent_resolution && (
         <p className="review-callout"><strong>Review required.</strong> Do not publish automatically; the declared evidence could not resolve this result.</p>
       )}
-      <dl className="result-details">
-        <div><dt>Evidence scope</dt><dd>{result.evidence_scope.source} · {result.evidence_scope.forms.join(", ")}</dd></div>
-        <div><dt>Snapshot</dt><dd className="hash-value">{result.evidence_scope.snapshot_manifest_hash}</dd></div>
-        <div><dt>Audit reference</dt><dd className="hash-value">{result.audit_manifest_hash}</dd></div>
-      </dl>
-      <p className="limitation">{result.limitation}</p>
+      <SourceDetails className="result-disclosure" title="Evidence, audit, and limitations">
+        <dl className="result-details">
+          <div><dt>Evidence scope</dt><dd>{result.evidence_scope.source} · {result.evidence_scope.forms.join(", ")}</dd></div>
+          <div><dt>Snapshot</dt><dd className="hash-value">{result.evidence_scope.snapshot_manifest_hash}</dd></div>
+          <div><dt>Audit reference</dt><dd className="hash-value">{result.audit_manifest_hash}</dd></div>
+        </dl>
+        <p className="limitation">{result.limitation}</p>
+      </SourceDetails>
       <nav className="result-next-actions" aria-label="Result next actions">
         <button type="button" onClick={onContinue}>{result.requires_agent_resolution ? "Revise claim" : "Verify another claim"}</button>
         <a href="/coverage">Check coverage</a>
